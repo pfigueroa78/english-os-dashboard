@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 
@@ -220,7 +220,23 @@ export default function Home() {
             </p>
           </div>
 
-          <UserButton />
+          <div className="flex items-center gap-3">
+            <Link
+              href="/coach"
+              className="rounded-xl bg-blue-600 px-4 py-2 font-semibold hover:bg-blue-500"
+            >
+              Open Coach
+            </Link>
+
+            <Link
+              href="/users"
+              className="rounded-xl border border-slate-700 px-4 py-2 font-semibold hover:bg-slate-900"
+            >
+              Users
+            </Link>
+
+            <UserButton />
+          </div>
         </header>
 
         <section className="rounded-2xl bg-slate-900 p-5 border border-slate-800">

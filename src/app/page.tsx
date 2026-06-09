@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 
 type EnglishOSContext = {
   ok: boolean;
@@ -47,11 +48,52 @@ type EnglishOSContext = {
 };
 
 export default function Home() {
-  const [email, setEmail] = useState("pfigueroamiranda@gmail.com");
+  const { isLoaded, isSignedIn } = useUser();
+
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [documentLoading, setDocumentLoading] = useState(false);
   const [data, setData] = useState<EnglishOSContext | null>(null);
   const [message, setMessage] = useState("");
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
+
+  async function loadCurrentUser() {
+    setAuthLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/english-os/current-user", {
+        cache: "no-store",
+      });
+
+      const result = await response.json();
+
+      if (result.ok && result.authorized && result.email) {
+        setAuthorized(true);
+        setEmail(result.email);
+        setData(result.englishOS);
+      } else {
+        setAuthorized(false);
+        setMessage(result.error || "Access not authorized for this email.");
+      }
+    } catch (error) {
+      setAuthorized(false);
+      setMessage(error instanceof Error ? error.message : "Unknown error");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      loadCurrentUser();
+    }
+
+    if (isLoaded && !isSignedIn) {
+      setAuthLoading(false);
+    }
+  }, [isLoaded, isSignedIn]);
 
   async function loadContext() {
     setLoading(true);
@@ -71,10 +113,7 @@ export default function Home() {
     }
   }
 
-  async function createDocument(
-    documentType: string,
-    targetFolderKey: string
-  ) {
+  async function createDocument(documentType: string, targetFolderKey: string) {
     setDocumentLoading(true);
     setMessage("");
 
@@ -119,14 +158,69 @@ export default function Home() {
   const mission = data?.missionControl?.missionControl;
   const recommendation = data?.nextRecommendedAction?.recommendation;
 
+  if (!isLoaded || authLoading) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
+        <div className="rounded-2xl bg-slate-900 border border-slate-800 p-6">
+          Loading English OS...
+        </div>
+      </main>
+    );
+  }
+
+  if (!isSignedIn) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
+        <div className="rounded-2xl bg-slate-900 border border-slate-800 p-8 max-w-md w-full text-center space-y-4">
+          <h1 className="text-2xl font-bold">English OS Dashboard</h1>
+          <p className="text-slate-400">
+            Sign in with Google to access your learning dashboard.
+          </p>
+
+          <SignInButton mode="redirect">
+            <button className="rounded-xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500">
+              Sign in
+            </button>
+          </SignInButton>
+        </div>
+      </main>
+    );
+  }
+
+  if (!authorized) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-slate-100 p-6">
+        <div className="mx-auto max-w-3xl rounded-2xl bg-red-950 border border-red-800 p-6 text-red-100 space-y-3">
+          <div className="flex justify-end">
+            <UserButton />
+          </div>
+
+          <h2 className="text-xl font-bold">Access not authorized</h2>
+
+          <p>
+            Your Google account is authenticated, but this email is not active in
+            English OS Users.
+          </p>
+
+          {message && <p className="text-sm">{message}</p>}
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-6">
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="space-y-2">
-          <h1 className="text-3xl font-bold">English OS Dashboard</h1>
-          <p className="text-slate-400">
-            Operational dashboard for learner context, Mission Control, and next actions.
-          </p>
+        <header className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold">English OS Dashboard</h1>
+            <p className="text-slate-400">
+              Operational dashboard for learner context, Mission Control, and
+              next actions.
+            </p>
+          </div>
+
+          <UserButton />
         </header>
 
         <section className="rounded-2xl bg-slate-900 p-5 border border-slate-800">
@@ -138,7 +232,7 @@ export default function Home() {
             <input
               className="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 outline-none"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              readOnly
               placeholder="learner@example.com"
             />
 
@@ -147,7 +241,7 @@ export default function Home() {
               disabled={loading}
               className="rounded-xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500 disabled:opacity-50"
             >
-              {loading ? "Loading..." : "Load context"}
+              {loading ? "Loading..." : "Reload context"}
             </button>
           </div>
         </section>
@@ -184,7 +278,10 @@ export default function Home() {
               <Info label="Current CEFR" value={mission?.currentCEFR} />
               <Info label="Status" value={mission?.status} />
               <Info label="Last GPT Used" value={mission?.lastGPTUsed} />
-              <Info label="Last Activity" value={String(mission?.lastActivity || "")} />
+              <Info
+                label="Last Activity"
+                value={formatDate(String(mission?.lastActivity || ""))}
+              />
             </section>
 
             <section className="rounded-2xl bg-slate-900 p-5 border border-slate-800 space-y-3">
@@ -217,10 +314,14 @@ export default function Home() {
 
               <Info label="Priority" value={recommendation?.priority} />
               <Info label="Skill" value={recommendation?.recommendedSkill} />
-              <Info label="Activity" value={recommendation?.recommendedActivity} />
+              <Info
+                label="Activity"
+                value={recommendation?.recommendedActivity}
+              />
 
               <div className="rounded-xl bg-slate-800 p-4 text-slate-200">
-                {recommendation?.recommendedPrompt || "No recommendation available."}
+                {recommendation?.recommendedPrompt ||
+                  "No recommendation available."}
               </div>
             </section>
 
@@ -245,16 +346,18 @@ export default function Home() {
               <h2 className="text-xl font-bold mb-3">Active Vocabulary</h2>
 
               <div className="space-y-3">
-                {(data.activeVocabulary || []).slice(0, 8).map((item, index) => (
-                  <div key={index} className="rounded-xl bg-slate-800 p-4">
-                    <p className="font-semibold">
-                      {String(item["Word/Chunk"] || "")}
-                    </p>
-                    <p className="text-sm text-slate-400">
-                      {String(item["Meaning"] || "")}
-                    </p>
-                  </div>
-                ))}
+                {(data.activeVocabulary || [])
+                  .slice(0, 8)
+                  .map((item, index) => (
+                    <div key={index} className="rounded-xl bg-slate-800 p-4">
+                      <p className="font-semibold">
+                        {String(item["Word/Chunk"] || "")}
+                      </p>
+                      <p className="text-sm text-slate-400">
+                        {String(item["Meaning"] || "")}
+                      </p>
+                    </div>
+                  ))}
               </div>
             </section>
 
@@ -275,7 +378,10 @@ export default function Home() {
                 <button
                   disabled={documentLoading}
                   onClick={() =>
-                    createDocument("Mission Control Snapshot", "b2MissionControl")
+                    createDocument(
+                      "Mission Control Snapshot",
+                      "b2MissionControl"
+                    )
                   }
                   className="rounded-xl bg-purple-600 px-5 py-3 font-semibold hover:bg-purple-500 disabled:opacity-50"
                 >
@@ -297,4 +403,9 @@ function Info({ label, value }: { label: string; value?: string }) {
       <p className="text-slate-100">{value || "—"}</p>
     </div>
   );
+}
+
+function formatDate(value: string) {
+  if (!value) return "—";
+  return value.includes("T") ? value.split("T")[0] : value;
 }

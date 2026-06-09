@@ -120,6 +120,8 @@ async function getLearnerContext(email: string) {
 }
 
 async function registerUserFromClerk(email: string, name: string) {
+  const today = new Date().toISOString().slice(0, 10);
+
   const response = await fetch(BASE_URL as string, {
     method: "POST",
     headers: {
@@ -139,8 +141,13 @@ async function registerUserFromClerk(email: string, name: string) {
         currentUnit: "",
         currentLesson: "",
         currentCEFR: "",
+        lastActivity: today,
         active: true,
         notes: "Self-registered from Clerk Google SSO.",
+        role: "learner",
+        createdAt: today,
+        lastLogin: today,
+        accessSource: "Clerk Self Registration",
       },
       dailyLog: {
         skill: "System",

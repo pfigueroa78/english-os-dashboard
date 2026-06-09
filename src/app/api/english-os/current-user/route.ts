@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 
 const BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const TOKEN = process.env.ENGLISH_OS_TOKEN;
+const ALLOW_SELF_REGISTRATION =
+  process.env.ENGLISH_OS_ALLOW_SELF_REGISTRATION === "true";
 
 export async function GET() {
   try {
@@ -17,6 +19,11 @@ export async function GET() {
 
     const clerkUser = await currentUser();
     const email = clerkUser?.emailAddresses?.[0]?.emailAddress;
+    const name =
+      clerkUser?.fullName ||
+      clerkUser?.firstName ||
+      email ||
+      "New English OS Learner";
 
     if (!email) {
       return NextResponse.json(
@@ -42,29 +49,47 @@ export async function GET() {
       );
     }
 
-    const url = new URL(BASE_URL);
-    url.searchParams.set("token", TOKEN);
-    url.searchParams.set("action", "getLearnerContext");
-    url.searchParams.set("userEmail", email);
-    url.searchParams.set("learnerId", email);
+    const existingUser = await getLearnerContext(email);
 
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      cache: "no-store",
-    });
+    const active = String(existingUser?.user?.["Active"] || "").toLowerCase();
+    const authorized = Boolean(existingUser?.user) && active !== "false";
 
-    const data = await response.json();
+    if (authorized) {
+      return NextResponse.json({
+        ok: true,
+        authenticated: true,
+        authorized: true,
+        email,
+        englishOS: existingUser,
+        role: existingUser?.user?.["Role"] || "learner",
+      });
+    }
 
-    const active = String(data?.user?.["Active"] || "").toLowerCase();
-    const authorized = Boolean(data?.user) && active !== "false";
+    if (!existingUser?.user && ALLOW_SELF_REGISTRATION) {
+      await registerUserFromClerk(email, name);
+
+      const newUser = await getLearnerContext(email);
+
+      return NextResponse.json({
+        ok: true,
+        authenticated: true,
+        authorized: true,
+        selfRegistered: true,
+        email,
+        englishOS: newUser,
+        role: "learner",
+      });
+    }
 
     return NextResponse.json({
       ok: true,
       authenticated: true,
-      authorized,
+      authorized: false,
       email,
-      englishOS: data,
-      role: data?.user?.["Role"] || "learner",
+      selfRegistrationEnabled: ALLOW_SELF_REGISTRATION,
+      error: ALLOW_SELF_REGISTRATION
+        ? "User could not be registered automatically."
+        : "User is not registered in English OS and self-registration is disabled.",
     });
   } catch (error) {
     return NextResponse.json(
@@ -77,4 +102,58 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+async function getLearnerContext(email: string) {
+  const url = new URL(BASE_URL as string);
+  url.searchParams.set("token", TOKEN as string);
+  url.searchParams.set("action", "getLearnerContext");
+  url.searchParams.set("userEmail", email);
+  url.searchParams.set("learnerId", email);
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  return response.json();
+}
+
+async function registerUserFromClerk(email: string, name: string) {
+  const response = await fetch(BASE_URL as string, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      token: TOKEN,
+      sourceAgent: "English OS Dashboard",
+      userEmail: email,
+      learnerId: email,
+      userProfile: {
+        name,
+        userEmail: email,
+        learnerId: email,
+        preferredChannel: "Dashboard",
+        currentUnit: "",
+        currentLesson: "",
+        currentCEFR: "",
+        active: true,
+        notes: "Self-registered from Clerk Google SSO.",
+      },
+      dailyLog: {
+        skill: "System",
+        activity: "Self registration",
+        mainTopic: "English OS Dashboard access",
+        time: "automatic",
+        summary: "Learner self-registered through Clerk Google SSO.",
+        weakness: "",
+        newVocabulary: "",
+        nextAction: "Start learner onboarding.",
+      },
+    }),
+  });
+
+  return response.json();
 }

@@ -1,10 +1,10 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { userId } = await auth();
 
@@ -15,16 +15,6 @@ export async function GET() {
       );
     }
 
-    const user = await currentUser();
-    const userEmail = user?.primaryEmailAddress?.emailAddress || "";
-
-    if (!userEmail) {
-      return NextResponse.json(
-        { ok: false, error: "Missing userEmail from Clerk session." },
-        { status: 400 }
-      );
-    }
-
     if (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN) {
       return NextResponse.json(
         { ok: false, error: "Missing English OS environment variables." },
@@ -32,11 +22,13 @@ export async function GET() {
       );
     }
 
+    const { searchParams } = new URL(request.url);
+    const unit = searchParams.get("unit") || "";
+
     const url = new URL(ENGLISH_OS_BASE_URL);
     url.searchParams.set("token", ENGLISH_OS_TOKEN);
-    url.searchParams.set("action", "context");
-    url.searchParams.set("userEmail", userEmail);
-    url.searchParams.set("learnerId", userEmail);
+    url.searchParams.set("action", "listDriveUnitResources");
+    url.searchParams.set("unit", unit);
 
     const response = await fetch(url.toString(), {
       method: "GET",
@@ -54,19 +46,12 @@ export async function GET() {
     }
 
     if (!response.ok || !data.ok) {
-      throw new Error(data.error || "Failed to load English OS context.");
+      throw new Error(data.error || "Failed to load Drive unit resources.");
     }
 
     return NextResponse.json({
       ok: true,
-      userEmail,
-      learnerId: data.learnerId || userEmail,
-      context: data.context || data,
-      missionControl:
-        data.context?.missionControl ||
-        data.missionControl ||
-        data.context ||
-        {},
+      resources: data.resources || [],
     });
   } catch (error) {
     return NextResponse.json(

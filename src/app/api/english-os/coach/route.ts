@@ -58,24 +58,24 @@ function getTokenUsage(openaiResponse: any) {
   const inputTokens =
     Number(
       usage.input_tokens ??
-        usage.prompt_tokens ??
-        usage.inputTokens ??
-        0
+      usage.prompt_tokens ??
+      usage.inputTokens ??
+      0
     ) || 0;
 
   const outputTokens =
     Number(
       usage.output_tokens ??
-        usage.completion_tokens ??
-        usage.outputTokens ??
-        0
+      usage.completion_tokens ??
+      usage.outputTokens ??
+      0
     ) || 0;
 
   const totalTokens =
     Number(
       usage.total_tokens ??
-        usage.totalTokens ??
-        inputTokens + outputTokens
+      usage.totalTokens ??
+      inputTokens + outputTokens
     ) || inputTokens + outputTokens;
 
   return {
@@ -127,15 +127,41 @@ async function logAIUsage(params: {
   estimatedCostUSD: number;
   activity: string;
 }) {
-  if (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN) return;
+  if (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN) {
+    console.error("Missing English OS env vars for AI Usage logging.");
+    return;
+  }
 
-  await fetch(ENGLISH_OS_BASE_URL, {
+  const response = await fetch(ENGLISH_OS_BASE_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     cache: "no-store",
     body: JSON.stringify({
+      token: ENGLISH_OS_TOKEN,
+      action: "logAIUsage",
+      userEmail: params.userEmail,
+      learnerId: params.learnerId,
+      aiUsage: {
+        timestamp: new Date().toISOString(),
+        userEmail: params.userEmail,
+        learnerId: params.learnerId,
+        agent: "coach",
+        model: params.model,
+        inputTokens: params.inputTokens,
+        outputTokens: params.outputTokens,
+        totalTokens: params.totalTokens,
+        estimatedCostUSD: params.estimatedCostUSD,
+        activity: params.activity,
+        requestSource: "Dashboard /coach",
+        notes: "Coach text interaction",
+      },
+    }),
+
+
+
+    /*JSON.stringify({
       token: ENGLISH_OS_TOKEN,
       action: "logAIUsage",
       aiUsage: {
@@ -152,8 +178,31 @@ async function logAIUsage(params: {
         requestSource: "Dashboard /coach",
         notes: "Coach text interaction",
       },
-    }),
+    }),*/
   });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    console.error("AI Usage logging failed:", response.status, text);
+    throw new Error(`AI Usage logging failed: ${response.status} ${text}`);
+  }
+
+  let data;
+
+  try {
+    data = JSON.parse(text);
+  } catch {
+    console.error("AI Usage logging returned non-JSON:", text);
+    throw new Error("AI Usage logging returned non-JSON response.");
+  }
+
+  if (!data.ok) {
+    console.error("AI Usage logging rejected by Apps Script:", data);
+    throw new Error(data.error || "AI Usage logging rejected by Apps Script.");
+  }
+
+  return data;
 }
 
 async function logDailySession(params: {

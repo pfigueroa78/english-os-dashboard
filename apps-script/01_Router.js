@@ -152,6 +152,10 @@ function doGet(e) {
       });
     }
 
+    if (action === 'createGrammarWorkbook') {
+      return jsonResponse_(createGrammarWorkbook(ss, params));
+    }
+
     if (action === 'getLearnerContext') {
       return jsonResponse_(getLearnerContext_(ss, params));
     }

@@ -1,3 +1,11 @@
+function listDriveUnitResources(unitText) {
+  return listDriveUnitResources_(unitText);
+}
+
+function testListDriveUnitResources() {
+  return testListDriveUnitResources_();
+}
+
 function listDriveUnitResources_(unitText) {
   const unitNumber = extractUnitNumber_(unitText);
 

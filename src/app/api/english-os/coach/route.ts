@@ -123,6 +123,98 @@ async function getLearnerContext(email: string) {
   return data;
 }
 
+
+function extractRequestedUnit(message: string, currentUnit: string): string {
+  const explicit = message.match(/(?:unit|unidad)\s*(\d{1,2})/i);
+
+  if (explicit?.[1]) {
+    return explicit[1];
+  }
+
+  const current = currentUnit.match(/Unit\s*(\d{1,2})/i);
+  return current?.[1] || "";
+}
+
+function extractRequestedClass(message: string): string {
+  const explicit = message.match(/(?:class|clase)\s*(\d{1,2})/i);
+  return explicit?.[1] || "";
+}
+
+function shouldLoadCourseClassIndex(message: string): boolean {
+  return /clase|clases|class|classes|página|paginas|pages|book|libro|unidad|unit|lesson|lección/i.test(message);
+}
+
+async function getCourseClassIndexContext(message: string, currentUnit: string) {
+  if (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN) return "";
+
+  if (!shouldLoadCourseClassIndex(message)) {
+    return "";
+  }
+
+  const unit = extractRequestedUnit(message, currentUnit);
+  const classNumber = extractRequestedClass(message);
+
+  const url = new URL(ENGLISH_OS_BASE_URL);
+  url.searchParams.set("token", ENGLISH_OS_TOKEN);
+  url.searchParams.set("action", "getCourseClassIndex");
+
+  if (unit) {
+    url.searchParams.set("unit", unit);
+  }
+
+  if (classNumber) {
+    url.searchParams.set("classNumber", classNumber);
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.ok || !Array.isArray(data.items)) {
+    return "";
+  }
+
+  const rows = data.items
+    .slice(0, 90)
+    .map((item: any) => {
+      const special = item.specialClass ? ` | Special: ${item.specialClass}` : "";
+      const notes = item.notes ? ` | Notes: ${item.notes}` : "";
+      const pdf =
+        item.pdfInitialPage && item.pdfFinalPage
+          ? ` | PDF pages: ${item.pdfInitialPage}-${item.pdfFinalPage}`
+          : "";
+      const book =
+        item.bookInitialPage && item.bookFinalPage
+          ? ` | Book pages: ${item.bookInitialPage}-${item.bookFinalPage}`
+          : "";
+
+      return `Unit ${item.unit} | Class ${item.classNumber}${pdf}${book}${special}${notes}`;
+    })
+    .join("\n");
+
+  return `
+PASSAGES COURSE CLASS INDEX
+
+Source:
+- Course Class Index tab in English OS spreadsheet.
+- Original source: Passages Student's book Index.xlsx.
+- Book source: passages-level-1-students-book-3nbsped-9781107447004_compress.pdf.
+
+Rules:
+- Do not confuse book lessons with English OS classes.
+- If the learner asks for "clases" or "classes", answer with the class sequence.
+- If the learner asks for a class, use the PDF pages and book pages from this index.
+- If the learner asks to give a class, first identify the Unit, Class, PDF pages and Book pages.
+- If this index contains rows for the requested unit, use those rows as the source of truth.
+
+Relevant index rows:
+${rows}
+`.trim();
+}
+
 async function logAIUsage(params: {
   userEmail: string;
   learnerId: string;
@@ -254,7 +346,8 @@ async function logDailySession(params: {
 function buildCoachPrompt(
   context: any,
   message: string,
-  conversationHistory: CoachMessage[] = []
+  conversationHistory: CoachMessage[] = [],
+  courseClassIndexContext = ""
 ) {
   const user = context?.user || {};
   const missionControl = context?.missionControl || {};
@@ -316,6 +409,8 @@ Your job:
 - Use Spanish only when the explanation is complex or when it helps clarity.
 - Be practical, structured, motivating, and direct.
 - Always adapt to the learner's current unit, lesson, CEFR level, recurring mistakes, and next recommended action.
+- Use the Passages Course Class Index when the learner asks about classes, units, pages, book pages, PDF pages, lessons, or class sequence.
+- Do not confuse book lessons with English OS classes.
 - The current unit is the default learning context, not a restriction.
 - If the learner explicitly asks to review all units, previous units, another unit, or a general test, follow the requested scope.
 - Do not force the answer back to the current unit unless the learner asks for the current class.
@@ -334,6 +429,8 @@ Response style:
       role: "user",
       content: `
 ENGLISH OS CONTEXT
+
+${courseClassIndexContext || "No Passages Course Class Index loaded for this message."}
 
 Learner:
 ${learnerName}
@@ -457,7 +554,17 @@ export async function POST(request: Request) {
       context?.learnerId ||
       email;
 
-    const input = buildCoachPrompt(context, message, conversationHistory);
+    const courseClassIndexContext = await getCourseClassIndexContext(
+      message,
+      currentUnit
+    );
+
+    const input = buildCoachPrompt(
+      context,
+      message,
+      conversationHistory,
+      courseClassIndexContext
+    );
 
     const openaiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",

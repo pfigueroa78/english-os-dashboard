@@ -348,15 +348,22 @@ function isCourseClassListQuestion(message: string): boolean {
   const normalized = message
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[¿?¡!.,;:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  const asksForClasses =
-    /clase|clases|class|classes|class sequence|secuencia de clases|lista de clases/.test(normalized);
+  const hasClassWord =
+    normalized.includes("clase") ||
+    normalized.includes("clases") ||
+    normalized.includes("class") ||
+    normalized.includes("classes");
 
-  const mentionsUnit =
-    /unidad\s*\d{1,2}|unit\s*\d{1,2}/.test(normalized);
+  const hasUnitWord =
+    /unidad\s+\d{1,2}/.test(normalized) ||
+    /unit\s+\d{1,2}/.test(normalized);
 
-  return asksForClasses && mentionsUnit;
+  return hasClassWord && hasUnitWord;
 }
 
 async function getDirectCourseClassIndexReply(message: string, currentUnit: string) {
@@ -380,7 +387,15 @@ async function getDirectCourseClassIndexReply(message: string, currentUnit: stri
   const data = await response.json();
 
   if (!response.ok || !data.ok || !Array.isArray(data.items) || data.items.length === 0) {
-    return "";
+    return `⚠️ Detecté que estás preguntando por las clases de la Unidad ${unit}, pero no pude cargar el Course Class Index desde Apps Script.
+
+Esto no debe responderse con temas genéricos.
+
+Revisa:
+- action=getCourseClassIndex
+- unit=${unit}
+- pestaña Course Class Index
+- despliegue de Apps Script`;
   }
 
   const rows = data.items
@@ -625,6 +640,12 @@ export async function POST(request: Request) {
       user["Learner ID"] ||
       context?.learnerId ||
       email;
+
+    console.log("COURSE_CLASS_INDEX_DETECTOR_INPUT", {
+      message,
+      currentUnit,
+      isClassListQuestion: isCourseClassListQuestion(message),
+    });
 
     const directCourseClassReply = await getDirectCourseClassIndexReply(
       message,

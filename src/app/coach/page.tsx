@@ -74,14 +74,43 @@ const SPECIALIST_AGENTS: SpecialistAgent[] = [
   },
 ];
 
+function buildTodayClassMessage(unit: string, lesson: string) {
+  const safeUnit = unit || "tu unidad actual";
+  const safeLesson = lesson || "la clase de hoy";
+
+  return [
+    "Hola. Hoy no necesitas decidir qué practicar.",
+    "",
+    `Unidad actual: ${safeUnit}`,
+    `Clase de hoy: ${safeLesson}`,
+    "",
+    "Vamos a seguir el hilo normal de English OS:",
+    "1. Diagnóstico corto",
+    "2. Vocabulario base",
+    "3. Mini práctica guiada",
+    "4. Corrección y siguiente paso",
+    "",
+    "Cuando estés listo, usa el botón Continuar clase de hoy en el panel de recursos o escribe: start",
+  ].join("\\n");
+}
+
+function buildStartTodayClassPrompt(unit: string, lesson: string) {
+  return [
+    "Start today's English OS class based on my current unit, current lesson, CEFR level, recent mistakes, vocabulary and next recommended action.",
+    "Guide me step by step like a structured class.",
+    "Start with a short diagnostic question, then continue with vocabulary and speaking practice.",
+    `Current unit: ${unit || "current unit"}`,
+    `Current lesson: ${lesson || "current lesson"}`,
+  ].join("\\n");
+}
+
 export default function CoachPage() {
   const { isLoaded, isSignedIn, user } = useUser();
 
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "coach",
-      content:
-        "Hi Pedro. I’m your English OS Coach. Tell me what you want to practice today, or choose a specialist agent from the Unit Resources panel.",
+      content: "Loading your English OS class plan...",
     },
   ]);
 
@@ -165,6 +194,22 @@ export default function CoachPage() {
 
       if (unit) setCurrentUnit(unit);
       if (lesson) setCurrentLesson(lesson);
+
+      setMessages((current) => {
+        const shouldReplaceInitialMessage =
+          current.length === 1 &&
+          current[0]?.role === "coach" &&
+          current[0]?.content.includes("Loading your English OS class plan");
+
+        if (!shouldReplaceInitialMessage) return current;
+
+        return [
+          {
+            role: "coach",
+            content: buildTodayClassMessage(unit, lesson),
+          },
+        ];
+      });
     } catch (err) {
       setContextError(
         err instanceof Error ? err.message : "Unknown context error"
@@ -396,6 +441,22 @@ export default function CoachPage() {
       if (unit) setCurrentUnit(unit);
       if (lesson) setCurrentLesson(lesson);
 
+      setMessages((current) => {
+        const shouldReplaceInitialMessage =
+          current.length === 1 &&
+          current[0]?.role === "coach" &&
+          current[0]?.content.includes("Loading your English OS class plan");
+
+        if (!shouldReplaceInitialMessage) return current;
+
+        return [
+          {
+            role: "coach",
+            content: buildTodayClassMessage(unit, lesson),
+          },
+        ];
+      });
+
       setLastCost(data.usage?.estimatedCostUSD ?? null);
       setLastTokens(data.usage?.totalTokens ?? null);
 
@@ -412,6 +473,10 @@ export default function CoachPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function startTodayClass() {
+    sendMessage(buildStartTodayClassPrompt(currentUnit, currentLesson));
   }
 
   function requestUnitGrammar() {
@@ -651,7 +716,7 @@ export default function CoachPage() {
                       sendMessage();
                     }
                   }}
-                  placeholder="Example: Help me practice giving advice in a business context."
+                  placeholder="Example: answer the diagnostic question from today's class."
                   className="min-h-28 flex-1 resize-none rounded-xl border border-slate-700 bg-slate-900 p-4 text-base text-white outline-none focus:border-blue-500"
                 />
 
@@ -665,7 +730,7 @@ export default function CoachPage() {
               </div>
 
               <p className="mt-2 text-xs text-slate-500">
-                Enter sends with the general coach. Unit resources, workbooks and specialist agents are in the right panel.
+                Enter sends with the general coach. Use Continuar clase de hoy when you want a guided class.
               </p>
             </footer>
           </section>
@@ -680,6 +745,26 @@ export default function CoachPage() {
                   </p>
                 </div>
               </div>
+            </section>
+
+            <section className="rounded-2xl border border-blue-900 bg-blue-950/40 p-4">
+              <p className="text-xs uppercase tracking-wide text-blue-300">
+                Today's Class
+              </p>
+              <p className="mt-1 text-sm font-semibold text-white">
+                {currentLesson || "Clase guiada de English OS"}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-blue-100/80">
+                El Coach guía la clase paso a paso. No tienes que decidir qué practicar.
+              </p>
+              <button
+                type="button"
+                onClick={startTodayClass}
+                disabled={loading || !currentUnit}
+                className="mt-3 w-full rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+              >
+                Continuar clase de hoy
+              </button>
             </section>
 
             <section className="rounded-2xl border border-slate-800 bg-slate-950 p-4">

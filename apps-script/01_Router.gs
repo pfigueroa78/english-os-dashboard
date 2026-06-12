@@ -142,7 +142,7 @@ function doGet(e) {
     if (action === 'listDriveUnitResources') {
       const unit = e.parameter.unit || '';
 
-      const resources = listDriveUnitResources_(unit);
+      const resources = listDriveUnitResources(unit);
 
       return jsonResponse_({
         ok: true,

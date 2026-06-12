@@ -34,6 +34,13 @@ type DriveUnitResource = {
   order?: number;
 };
 
+type GrammarWorkbook = {
+  title: string;
+  fileUrl: string;
+  exportUrl: string;
+  generatedAt?: string;
+};
+
 export default function CoachPage() {
   const { isLoaded, isSignedIn, user } = useUser();
 
@@ -59,6 +66,11 @@ export default function CoachPage() {
   const [resources, setResources] = useState<DriveUnitResource[]>([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
   const [resourcesError, setResourcesError] = useState("");
+
+  const [grammarWorkbook, setGrammarWorkbook] =
+    useState<GrammarWorkbook | null>(null);
+  const [grammarWorkbookLoading, setGrammarWorkbookLoading] = useState(false);
+  const [grammarWorkbookError, setGrammarWorkbookError] = useState("");
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -158,6 +170,64 @@ export default function CoachPage() {
       );
     } finally {
       setResourcesLoading(false);
+    }
+  }
+
+  async function downloadGrammarWorkbook() {
+    if (!currentUnit || grammarWorkbookLoading) return;
+
+    setGrammarWorkbookLoading(true);
+    setGrammarWorkbookError("");
+    setError("");
+
+    try {
+      const params = new URLSearchParams({
+        unit: currentUnit,
+        lesson: currentLesson,
+      });
+
+      const response = await fetch(
+        `/api/english-os/grammar-workbook?${params.toString()}`,
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Failed to create grammar workbook.");
+      }
+
+      const workbook = {
+        title: data.title,
+        fileUrl: data.fileUrl,
+        exportUrl: data.exportUrl,
+        generatedAt: data.generatedAt,
+      };
+
+      setGrammarWorkbook(workbook);
+      window.open(data.exportUrl || data.fileUrl, "_blank", "noopener,noreferrer");
+
+      setMessages((current) => [
+        ...current,
+        {
+          role: "coach",
+          content:
+            `Listo. Generé el Excel de gramática para tu unidad actual.\n\n` +
+            `Archivo: ${workbook.title}\n` +
+            `Descarga Excel: ${workbook.exportUrl}\n` +
+            `Abrir en Google Sheets: ${workbook.fileUrl}`,
+        },
+      ]);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unknown grammar workbook error";
+      setGrammarWorkbookError(message);
+      setError(message);
+    } finally {
+      setGrammarWorkbookLoading(false);
     }
   }
 
@@ -312,14 +382,14 @@ export default function CoachPage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <div className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-300">
-                Tokens:{" "}
+                Tokens: {" "}
                 <span className="font-semibold text-white">
                   {lastTokens ?? "—"}
                 </span>
               </div>
 
               <div className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-300">
-                Cost:{" "}
+                Cost: {" "}
                 <span className="font-semibold text-white">
                   {lastCost === null ? "—" : `$${lastCost.toFixed(6)}`}
                 </span>
@@ -433,6 +503,17 @@ export default function CoachPage() {
 
                 <button
                   type="button"
+                  onClick={downloadGrammarWorkbook}
+                  disabled={grammarWorkbookLoading || !currentUnit}
+                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                >
+                  {grammarWorkbookLoading
+                    ? "Generando Excel..."
+                    : "Descargar Excel de gramática"}
+                </button>
+
+                <button
+                  type="button"
                   onClick={requestUnitVocabulary}
                   disabled={loading || !currentUnit}
                   className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-50"
@@ -440,6 +521,36 @@ export default function CoachPage() {
                   Agregar vocabulario de la unidad
                 </button>
               </div>
+
+              {grammarWorkbookError && (
+                <div className="mb-3 rounded-xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
+                  {grammarWorkbookError}
+                </div>
+              )}
+
+              {grammarWorkbook && (
+                <div className="mb-3 rounded-xl border border-emerald-800 bg-emerald-950/60 p-3 text-sm text-emerald-100">
+                  <p className="font-semibold">Excel de gramática generado</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <a
+                      href={grammarWorkbook.exportUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500"
+                    >
+                      Descargar XLSX
+                    </a>
+                    <a
+                      href={grammarWorkbook.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-lg border border-emerald-700 px-3 py-2 text-xs font-semibold hover:bg-emerald-900"
+                    >
+                      Abrir en Sheets
+                    </a>
+                  </div>
+                </div>
+              )}
 
               <div className="flex flex-col gap-3 md:flex-row">
                 <textarea

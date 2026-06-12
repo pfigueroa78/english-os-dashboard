@@ -366,6 +366,60 @@ function isCourseClassListQuestion(message: string): boolean {
   return hasClassWord && hasUnitWord;
 }
 
+function extractRequestedUnits(message: string, currentUnit: string): string[] {
+  const normalized = message
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[¿?¡!.,;:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (/todas las unidades|all units|todas|all/.test(normalized)) {
+    return Array.from({ length: 12 }, (_, index) => String(index + 1));
+  }
+
+  const units = new Set<string>();
+
+  const unitGroups = normalized.matchAll(
+    /(?:unidad|unidades|unit|units)\s+((?:\d{1,2}\s*(?:y|and|,|&)?\s*)+)/g
+  );
+
+  for (const group of unitGroups) {
+    const numbers = group[1].match(/\d{1,2}/g) || [];
+    numbers.forEach((number) => units.add(number));
+  }
+
+  if (units.size === 0) {
+    const currentUnitMatch = currentUnit.match(/Unit\s*(\d{1,2})/i);
+    if (currentUnitMatch?.[1]) units.add(currentUnitMatch[1]);
+  }
+
+  return Array.from(units);
+}
+
+async function fetchCourseClassIndexUnit(unit: string) {
+  if (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN) return [];
+
+  const url = new URL(ENGLISH_OS_BASE_URL);
+  url.searchParams.set("token", ENGLISH_OS_TOKEN);
+  url.searchParams.set("action", "getCourseClassIndex");
+  url.searchParams.set("unit", unit);
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.ok || !Array.isArray(data.items)) {
+    return [];
+  }
+
+  return data.items;
+}
+
 async function getDirectCourseClassIndexReply(message: string, currentUnit: string) {
   if (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN) return "";
 
@@ -377,80 +431,66 @@ async function getDirectCourseClassIndexReply(message: string, currentUnit: stri
     .replace(/\s+/g, " ")
     .trim();
 
-  const mentionsClass = normalized.includes("clase") || normalized.includes("class");
+  const mentionsClass =
+    normalized.includes("clase") ||
+    normalized.includes("clases") ||
+    normalized.includes("class") ||
+    normalized.includes("classes");
 
-  if (!mentionsClass) {
-    return "";
-  }
+  if (!mentionsClass) return "";
 
-  const explicitUnit = normalized.match(/(?:unidad|unit)\s+(\d{1,2})/);
-  const currentUnitMatch = currentUnit.match(/Unit\s*(\d{1,2})/i);
-  const anyNumber = normalized.match(/\b(\d{1,2})\b/);
+  const units = extractRequestedUnits(message, currentUnit);
 
-  const unit = explicitUnit?.[1] || currentUnitMatch?.[1] || anyNumber?.[1] || "";
+  if (units.length === 0) return "";
 
-  if (!unit) {
-    return "";
-  }
+  const sections: string[] = [];
 
-  const url = new URL(ENGLISH_OS_BASE_URL);
-  url.searchParams.set("token", ENGLISH_OS_TOKEN);
-  url.searchParams.set("action", "getCourseClassIndex");
-  url.searchParams.set("unit", unit);
+  for (const unit of units) {
+    const items = await fetchCourseClassIndexUnit(unit);
 
-  console.log("COURSE_CLASS_INDEX_FORCE_BRANCH", {
-    message,
-    normalized,
-    currentUnit,
-    unit,
-  });
+    if (!items.length) {
+      sections.push(`## Unit ${unit}\n\nNo encontré filas en Course Class Index para esta unidad.`);
+      continue;
+    }
 
-  const response = await fetch(url.toString(), {
-    method: "GET",
-    cache: "no-store",
-  });
+    const rows = items
+      .map((item: any) => {
+        const type = item.specialClass || "Student's Book";
+        const pdfPages =
+          item.pdfInitialPage && item.pdfFinalPage
+            ? `${item.pdfInitialPage}–${item.pdfFinalPage}`
+            : "—";
+        const bookPages =
+          item.bookInitialPage && item.bookFinalPage
+            ? `${item.bookInitialPage}–${item.bookFinalPage}`
+            : "—";
+        const notes = item.notes || "—";
 
-  const data = await response.json();
+        return `| Class ${item.classNumber} | ${type} | ${pdfPages} | ${bookPages} | ${notes} |`;
+      })
+      .join("\n");
 
-  console.log("COURSE_CLASS_INDEX_FORCE_RESULT", {
-    ok: data?.ok,
-    total: data?.total,
-    unit: data?.unit,
-  });
+    sections.push(`
+## Unit ${unit}
 
-  if (!response.ok || !data.ok || !Array.isArray(data.items) || data.items.length === 0) {
-    return `⚠️ Detecté que estás preguntando por clases, pero no pude cargar Course Class Index para la Unidad ${unit}.`;
-  }
-
-  const rows = data.items
-    .map((item: any) => {
-      const type = item.specialClass || "Student's Book";
-      const pdfPages =
-        item.pdfInitialPage && item.pdfFinalPage
-          ? `${item.pdfInitialPage}–${item.pdfFinalPage}`
-          : "—";
-      const bookPages =
-        item.bookInitialPage && item.bookFinalPage
-          ? `${item.bookInitialPage}–${item.bookFinalPage}`
-          : "—";
-      const notes = item.notes || "—";
-
-      return `| Class ${item.classNumber} | ${type} | ${pdfPages} | ${bookPages} | ${notes} |`;
-    })
-    .join("\n");
-
-  return `
-✅ RESPUESTA DESDE COURSE CLASS INDEX. La Unidad ${unit} tiene ${data.items.length} clases en English OS.
+La Unidad ${unit} tiene ${items.length} clases en English OS.
 
 | Clase | Tipo | Páginas PDF | Páginas del libro | Notas |
 |---|---|---:|---:|---|
 ${rows}
+`.trim());
+  }
 
-Estas son las **clases del curso**, no solamente las lecciones del libro. El libro puede tener Lesson A / Lesson B, pero English OS lo organiza en clases.
+  return `
+✅ RESPUESTA DESDE COURSE CLASS INDEX.
 
-Fuente usada: **Course Class Index**.
+${sections.join("\n\n")}
 
-Next action: dime “Dame la clase 1 de la unidad ${unit}” y te la preparo como clase guiada.
+Importante: estas son las **clases del curso**, no solamente las lecciones del libro. El libro puede organizar cada unidad en Lesson A / Lesson B, pero English OS la trabaja como una secuencia de clases.
+
+Fuente usada: **Course Class Index**, basada en el índice del Student's Book de Passages.
+
+Next action: dime “Dame la clase 1 de la unidad 1” o “Dame la clase 8 de la unidad 2” y te la preparo como clase guiada.
 `.trim();
 }
 

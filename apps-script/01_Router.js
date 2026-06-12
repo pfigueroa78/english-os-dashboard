@@ -28,6 +28,10 @@ function doPost(e) {
       });
     }
 
+    if (payload.action === 'deleteUser') {
+      return jsonResponse_(deleteUser_(ss, payload));
+    }
+
     const profile = payload.userProfile || {};
     const hasUserEmail = payload.userEmail || profile.userEmail;
     const hasLearnerId = payload.learnerId || profile.learnerId;
@@ -158,6 +162,10 @@ function doGet(e) {
 
     if (action === 'createVocabularyWorkbook') {
       return jsonResponse_(createVocabularyWorkbook(ss, params));
+    }
+
+    if (action === 'deleteUser') {
+      return jsonResponse_(deleteUser_(ss, params));
     }
 
     if (action === 'getLearnerContext') {

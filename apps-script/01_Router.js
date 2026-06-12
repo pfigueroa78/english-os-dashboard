@@ -156,6 +156,10 @@ function doGet(e) {
       return jsonResponse_(createGrammarWorkbook(ss, params));
     }
 
+    if (action === 'createVocabularyWorkbook') {
+      return jsonResponse_(createVocabularyWorkbook(ss, params));
+    }
+
     if (action === 'getLearnerContext') {
       return jsonResponse_(getLearnerContext_(ss, params));
     }

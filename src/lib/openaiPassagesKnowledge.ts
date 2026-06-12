@@ -1,3 +1,4 @@
+import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_PASSAGES_VECTOR_STORE_ID = process.env.OPENAI_PASSAGES_VECTOR_STORE_ID;
 
@@ -79,7 +80,7 @@ export function buildPassagesKnowledgeInput(params: {
     {
       role: "system",
       content: `
-You are English OS Coach.
+${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}\n\nYou are now teaching with Passages file_search.
 
 Use the Passages Student's Book and Course Class Index available through file_search.
 Teach the requested class using retrieved book content, not generic knowledge.

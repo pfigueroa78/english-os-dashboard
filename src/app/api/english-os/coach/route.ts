@@ -1,5 +1,12 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import {
+  buildPassagesKnowledgeInput,
+  createPassagesKnowledgeResponse,
+  hasPassagesKnowledgeBase,
+  shouldUsePassagesKnowledge,
+} from "@/lib/openaiPassagesKnowledge";
+import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
@@ -914,7 +921,7 @@ function buildCoachPrompt(
     {
       role: "system",
       content: `
-You are English OS Coach, Pedro's personal English coach.
+${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}
 
 Your job:
 - Help the learner progress from B1/B1+ to B2.
@@ -1203,6 +1210,67 @@ export async function POST(request: Request) {
             userEmail: email,
             learnerId,
           });
+
+      if (hasPassagesKnowledgeBase() && shouldUsePassagesKnowledge(message)) {
+        const passagesInput = buildPassagesKnowledgeInput({
+          message,
+          learnerContext: context,
+          classContent,
+          conversationHistory,
+        });
+
+        const passagesResponse = await createPassagesKnowledgeResponse({
+          model: OPENAI_COACH_MODEL,
+          input: passagesInput,
+          maxOutputTokens: OPENAI_COACH_MAX_OUTPUT_TOKENS,
+        });
+
+        const reply =
+          getOutputText(passagesResponse) ||
+          formatCurrentClassContentReply(classContent);
+
+        const usage = getTokenUsage(passagesResponse);
+        const estimatedCostUSD = estimateCostUSD(
+          usage.inputTokens,
+          usage.outputTokens
+        );
+
+        await logAIUsage({
+          userEmail: email,
+          learnerId,
+          model: OPENAI_COACH_MODEL,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          totalTokens: usage.totalTokens,
+          estimatedCostUSD,
+          activity: message.slice(0, 180),
+        });
+
+        await logDailySession({
+          userEmail: email,
+          learnerId,
+          userMessage: message,
+          coachReply: reply,
+          currentUnit,
+          currentLesson,
+          currentCEFR,
+        });
+
+        return NextResponse.json({
+          ok: true,
+          agent: "coach",
+          reply,
+          source: "OpenAI File Search / Passages Vector Store",
+          deterministic: false,
+          usage: {
+            model: OPENAI_COACH_MODEL,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            totalTokens: usage.totalTokens,
+            estimatedCostUSD,
+          },
+        });
+      }
 
       const reply = formatCurrentClassContentReply(classContent);
 

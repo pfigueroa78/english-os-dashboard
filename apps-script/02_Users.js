@@ -1,3 +1,7 @@
+const DEFAULT_LEARNER_UNIT = 'Passages Level 1 - Unit 1: Friends and family';
+const DEFAULT_LEARNER_LESSON = 'Unit 1 onboarding diagnostic and first speaking practice';
+const DEFAULT_LEARNER_CEFR = 'B1';
+
 function ensureUser_(ss, payload) {
   const sheet = getOrCreateSheet_(ss, 'Users', SHEET_HEADERS.users);
 
@@ -69,9 +73,9 @@ function buildUserData_(payload, profile, inputEmail, inputLearnerId) {
     whatsAppNumber: profile.whatsAppNumber || profile.whatsappNumber || payload.whatsAppNumber || payload.whatsappNumber || '',
     preferredChannel: profile.preferredChannel || payload.preferredChannel || '',
     whatsAppOptIn: profile.whatsAppOptIn === true || profile.whatsappOptIn === true || payload.whatsAppOptIn === true || payload.whatsappOptIn === true,
-    currentUnit: profile.currentUnit || payload.unit || '',
-    currentLesson: profile.currentLesson || payload.lesson || '',
-    currentCEFR: profile.currentCEFR || profile.currentCefr || payload.currentCEFR || payload.currentCefr || '',
+    currentUnit: profile.currentUnit || payload.unit || DEFAULT_LEARNER_UNIT,
+    currentLesson: profile.currentLesson || payload.lesson || DEFAULT_LEARNER_LESSON,
+    currentCEFR: profile.currentCEFR || profile.currentCefr || payload.currentCEFR || payload.currentCefr || DEFAULT_LEARNER_CEFR,
     lastActivity: profile.lastActivity || payload.date || today_(),
     active: profile.active === false || payload.active === false ? false : true,
     notes: profile.notes || payload.notes || '',
@@ -170,4 +174,72 @@ function findUser_(ss, userEmail, learnerId) {
       (learnerId && rowLearnerId === learnerId)
     );
   }) || null;
+}
+
+function deleteUser_(ss, params) {
+  const sheet = ss.getSheetByName('Users');
+
+  if (!sheet) {
+    return {
+      ok: false,
+      action: 'deleteUser',
+      error: 'Users sheet not found.'
+    };
+  }
+
+  const values = sheet.getDataRange().getValues();
+
+  if (values.length < 2) {
+    return {
+      ok: true,
+      action: 'deleteUser',
+      deleted: false,
+      message: 'No users to delete.'
+    };
+  }
+
+  const header = values[0];
+  const emailIdx = header.indexOf('User Email');
+  const learnerIdx = header.indexOf('Learner ID');
+
+  const targetEmail = normalizeEmail_(params.userEmail || params.email || '');
+  const targetLearnerId = String(params.learnerId || '').trim();
+
+  if (!targetEmail && !targetLearnerId) {
+    return {
+      ok: false,
+      action: 'deleteUser',
+      error: 'Missing userEmail or learnerId.'
+    };
+  }
+
+  for (let i = values.length - 1; i >= 1; i--) {
+    const rowEmail = normalizeEmail_(values[i][emailIdx] || '');
+    const rowLearnerId = String(values[i][learnerIdx] || '').trim();
+
+    if (
+      (targetEmail && rowEmail === targetEmail) ||
+      (targetLearnerId && rowLearnerId === targetLearnerId)
+    ) {
+      sheet.deleteRow(i + 1);
+
+      return {
+        ok: true,
+        action: 'deleteUser',
+        deleted: true,
+        userEmail: rowEmail,
+        learnerId: rowLearnerId,
+        rowNumber: i + 1
+      };
+    }
+  }
+
+  return {
+    ok: true,
+    action: 'deleteUser',
+    deleted: false,
+    message: 'User not found.',
+    userEmail: targetEmail,
+    learnerId: targetLearnerId
+  };
 }

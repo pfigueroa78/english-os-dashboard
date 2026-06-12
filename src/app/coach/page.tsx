@@ -81,7 +81,7 @@ export default function CoachPage() {
     {
       role: "coach",
       content:
-        "Hi Pedro. I’m your English OS Coach. Tell me what you want to practice today, or choose a specialist agent.",
+        "Hi Pedro. I’m your English OS Coach. Tell me what you want to practice today, or choose a specialist agent from the Unit Resources panel.",
     },
   ]);
 
@@ -267,10 +267,7 @@ export default function CoachPage() {
         {
           role: "coach",
           content:
-            `Listo. Generé el Excel de ${isGrammar ? "gramática" : "vocabulario"} para tu unidad actual.\n\n` +
-            `Archivo: ${workbook.title}\n` +
-            `Descarga Excel: ${workbook.exportUrl}\n` +
-            `Abrir en Google Sheets: ${workbook.fileUrl}`,
+            `Listo. Generé el Excel de ${isGrammar ? "gramática" : "vocabulario"}. Puedes encontrarlo en el panel de recursos de la unidad.`,
         },
       ]);
     } catch (err) {
@@ -466,9 +463,9 @@ export default function CoachPage() {
         : "border-cyan-700 hover:bg-cyan-900";
 
     return (
-      <div className={`mb-3 rounded-xl border p-3 text-sm ${colorClass}`}>
+      <div className={`rounded-xl border p-3 text-sm ${colorClass}`}>
         <p className="font-semibold">Excel de {label} generado</p>
-        <p className="mt-1 text-xs opacity-90">{workbook.title}</p>
+        <p className="mt-1 break-words text-xs opacity-90">{workbook.title}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <a
             href={workbook.exportUrl}
@@ -644,122 +641,6 @@ export default function CoachPage() {
             </div>
 
             <footer className="border-t border-slate-800 bg-slate-950/80 p-4">
-              <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-900 p-4">
-                <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Specialist Agent
-                    </p>
-                    <p className="mt-1 text-sm text-slate-300">
-                      {activeAgent.description}
-                    </p>
-                  </div>
-
-                  <select
-                    value={activeAgentId}
-                    onChange={(event) =>
-                      setActiveAgentId(event.target.value as AgentId)
-                    }
-                    className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
-                  >
-                    {SPECIALIST_AGENTS.map((agent) => (
-                      <option key={agent.id} value={agent.id}>
-                        {agent.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => sendAgentMessage()}
-                    disabled={agentLoading}
-                    className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-50"
-                  >
-                    {agentLoading ? "Running agent..." : "Usar agente"}
-                  </button>
-
-                  {SPECIALIST_AGENTS.map((agent) => (
-                    <button
-                      key={agent.id}
-                      type="button"
-                      onClick={() => {
-                        setActiveAgentId(agent.id);
-                        sendAgentMessage(agent.defaultPrompt);
-                      }}
-                      disabled={agentLoading}
-                      className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-50"
-                    >
-                      {agent.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {agentError && (
-                <div className="mb-3 rounded-xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
-                  {agentError}
-                </div>
-              )}
-
-              <div className="mb-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={requestUnitGrammar}
-                  disabled={loading || !currentUnit}
-                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-50"
-                >
-                  Agregar gramática de la unidad
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => createWorkbook("grammar")}
-                  disabled={grammarWorkbookLoading || !currentUnit}
-                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
-                >
-                  {grammarWorkbookLoading
-                    ? "Generando Excel..."
-                    : "Descargar Excel de gramática"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={requestUnitVocabulary}
-                  disabled={loading || !currentUnit}
-                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-50"
-                >
-                  Agregar vocabulario de la unidad
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => createWorkbook("vocabulary")}
-                  disabled={vocabularyWorkbookLoading || !currentUnit}
-                  className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50"
-                >
-                  {vocabularyWorkbookLoading
-                    ? "Generando Excel..."
-                    : "Descargar Excel de vocabulario"}
-                </button>
-              </div>
-
-              {grammarWorkbookError && (
-                <div className="mb-3 rounded-xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
-                  {grammarWorkbookError}
-                </div>
-              )}
-
-              {vocabularyWorkbookError && (
-                <div className="mb-3 rounded-xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
-                  {vocabularyWorkbookError}
-                </div>
-              )}
-
-              {renderWorkbookCard("grammar", grammarWorkbook)}
-              {renderWorkbookCard("vocabulary", vocabularyWorkbook)}
-
               <div className="flex flex-col gap-3 md:flex-row">
                 <textarea
                   value={input}
@@ -784,99 +665,235 @@ export default function CoachPage() {
               </div>
 
               <p className="mt-2 text-xs text-slate-500">
-                Enter sends with the general coach. Use the specialist agent panel for Grammar, Speaking or Evaluation.
+                Enter sends with the general coach. Unit resources, workbooks and specialist agents are in the right panel.
               </p>
             </footer>
           </section>
 
-          <aside className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-            <div className="mb-4">
-              <h2 className="text-lg font-bold">Unit Resources</h2>
+          <aside className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-4">
+            <section className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold">Unit Resources</h2>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Materials, workbooks and specialist tools for this unit.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Unit Workbooks
+              </p>
               <p className="mt-1 text-sm text-slate-400">
+                Genera archivos de estudio sin interrumpir la conversación.
+              </p>
+
+              <div className="mt-3 grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => createWorkbook("grammar")}
+                  disabled={grammarWorkbookLoading || !currentUnit}
+                  className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                >
+                  {grammarWorkbookLoading
+                    ? "Generando gramática..."
+                    : "Descargar Excel de gramática"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => createWorkbook("vocabulary")}
+                  disabled={vocabularyWorkbookLoading || !currentUnit}
+                  className="rounded-xl bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50"
+                >
+                  {vocabularyWorkbookLoading
+                    ? "Generando vocabulario..."
+                    : "Descargar Excel de vocabulario"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={requestUnitGrammar}
+                  disabled={loading || !currentUnit}
+                  className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-50"
+                >
+                  Agregar gramática al chat
+                </button>
+
+                <button
+                  type="button"
+                  onClick={requestUnitVocabulary}
+                  disabled={loading || !currentUnit}
+                  className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-50"
+                >
+                  Agregar vocabulario al chat
+                </button>
+              </div>
+
+              <div className="mt-3 space-y-3">
+                {grammarWorkbookError && (
+                  <div className="rounded-xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
+                    {grammarWorkbookError}
+                  </div>
+                )}
+
+                {vocabularyWorkbookError && (
+                  <div className="rounded-xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
+                    {vocabularyWorkbookError}
+                  </div>
+                )}
+
+                {renderWorkbookCard("grammar", grammarWorkbook)}
+                {renderWorkbookCard("vocabulary", vocabularyWorkbook)}
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+              <div className="mb-3 flex flex-col gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-500">
+                    Specialist Agent
+                  </p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    {activeAgent.description}
+                  </p>
+                </div>
+
+                <select
+                  value={activeAgentId}
+                  onChange={(event) => setActiveAgentId(event.target.value as AgentId)}
+                  className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+                >
+                  {SPECIALIST_AGENTS.map((agent) => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => sendAgentMessage()}
+                  disabled={agentLoading}
+                  className="rounded-xl bg-purple-600 px-3 py-2 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-50"
+                >
+                  {agentLoading ? "Running agent..." : "Usar agente"}
+                </button>
+
+                {SPECIALIST_AGENTS.map((agent) => (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveAgentId(agent.id);
+                      sendAgentMessage(agent.defaultPrompt);
+                    }}
+                    disabled={agentLoading}
+                    className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    {agent.name}
+                  </button>
+                ))}
+              </div>
+
+              {agentError && (
+                <div className="mt-3 rounded-xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
+                  {agentError}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+              <h3 className="text-sm font-bold text-slate-100">Drive Materials</h3>
+              <p className="mt-1 text-xs text-slate-400">
                 Audios and videos loaded from Google Drive.
               </p>
-            </div>
 
-            {resourcesLoading && (
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
-                Loading resources...
-              </div>
-            )}
+              {resourcesLoading && (
+                <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
+                  Loading resources...
+                </div>
+              )}
 
-            {resourcesError && (
-              <div className="rounded-xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">
-                {resourcesError}
-              </div>
-            )}
+              {resourcesError && (
+                <div className="mt-3 rounded-xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">
+                  {resourcesError}
+                </div>
+              )}
 
-            {!resourcesLoading && !resourcesError && resources.length === 0 && (
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
-                No Drive resources found for this unit.
-              </div>
-            )}
+              {!resourcesLoading && !resourcesError && resources.length === 0 && (
+                <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
+                  No Drive resources found for this unit.
+                </div>
+              )}
 
-            <div className="space-y-4">
-              {resources.map((resource) => (
-                <div
-                  key={resource.resourceId}
-                  className="rounded-xl border border-slate-800 bg-slate-950 p-4"
-                >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-slate-100">
-                      {resource.title}
-                    </h3>
+              <div className="mt-3 space-y-4">
+                {resources.map((resource) => (
+                  <div
+                    key={resource.resourceId}
+                    className="rounded-xl border border-slate-800 bg-slate-950 p-4"
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-slate-100">
+                        {resource.title}
+                      </h3>
 
-                    <span className="rounded-full border border-slate-700 px-2 py-1 text-xs uppercase text-slate-400">
-                      {resource.type}
-                    </span>
-                  </div>
+                      <span className="rounded-full border border-slate-700 px-2 py-1 text-xs uppercase text-slate-400">
+                        {resource.type}
+                      </span>
+                    </div>
 
-                  <p className="mb-3 text-xs text-slate-400">
-                    {resource.description}
-                  </p>
+                    <p className="mb-3 text-xs text-slate-400">
+                      {resource.description}
+                    </p>
 
-                  {resource.type === "audio" && resource.embedUrl && (
-                    <iframe
-                      src={resource.embedUrl}
-                      className="mb-3 h-20 w-full rounded-xl border border-slate-800 bg-black"
-                      allow="autoplay"
-                    />
-                  )}
-
-                  {resource.type === "video" && resource.embedUrl && (
-                    <div className="mb-3 aspect-video overflow-hidden rounded-xl border border-slate-800 bg-black">
+                    {resource.type === "audio" && resource.embedUrl && (
                       <iframe
                         src={resource.embedUrl}
-                        title={resource.title}
-                        className="h-full w-full"
-                        allow="autoplay; encrypted-media; picture-in-picture"
-                        allowFullScreen
+                        className="mb-3 h-20 w-full rounded-xl border border-slate-800 bg-black"
+                        allow="autoplay"
                       />
+                    )}
+
+                    {resource.type === "video" && resource.embedUrl && (
+                      <div className="mb-3 aspect-video overflow-hidden rounded-xl border border-slate-800 bg-black">
+                        <iframe
+                          src={resource.embedUrl}
+                          title={resource.title}
+                          className="h-full w-full"
+                          allow="autoplay; encrypted-media; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={resource.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold hover:bg-slate-800"
+                      >
+                        Open
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => requestResourcePractice(resource)}
+                        disabled={loading}
+                        className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"
+                      >
+                        Practice this
+                      </button>
                     </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-2">
-                    <a
-                      href={resource.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold hover:bg-slate-800"
-                    >
-                      Open
-                    </a>
-
-                    <button
-                      type="button"
-                      onClick={() => requestResourcePractice(resource)}
-                      disabled={loading}
-                      className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"
-                    >
-                      Practice this
-                    </button>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </section>
           </aside>
         </div>
       </div>

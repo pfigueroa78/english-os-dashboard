@@ -91,7 +91,7 @@ function buildTodayClassMessage(unit: string, lesson: string) {
     "4. Corrección y siguiente paso",
     "",
     "Cuando estés listo, usa el botón Continuar clase de hoy en el panel de recursos o escribe: start",
-  ].join("\\n");
+  ].join("\n");
 }
 
 function buildStartTodayClassPrompt(unit: string, lesson: string) {
@@ -101,7 +101,7 @@ function buildStartTodayClassPrompt(unit: string, lesson: string) {
     "Start with a short diagnostic question, then continue with vocabulary and speaking practice.",
     `Current unit: ${unit || "current unit"}`,
     `Current lesson: ${lesson || "current lesson"}`,
-  ].join("\\n");
+  ].join("\n");
 }
 
 export default function CoachPage() {

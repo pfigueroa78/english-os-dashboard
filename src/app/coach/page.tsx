@@ -74,6 +74,31 @@ const SPECIALIST_AGENTS: SpecialistAgent[] = [
   },
 ];
 
+function renderFormattedText(content: string) {
+  const lines = content.split("\n");
+
+  return lines.map((line, lineIndex) => {
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+
+    return (
+      <span key={lineIndex}>
+        {parts.map((part, partIndex) => {
+          if (part.startsWith("**") && part.endsWith("**")) {
+            return (
+              <strong key={partIndex} className="font-bold text-white">
+                {part.slice(2, -2)}
+              </strong>
+            );
+          }
+
+          return <span key={partIndex}>{part}</span>;
+        })}
+        {lineIndex < lines.length - 1 ? <br /> : null}
+      </span>
+    );
+  });
+}
+
 function buildTodayClassMessage(unit: string, lesson: string) {
   const safeUnit = unit || "tu unidad actual";
   const safeLesson = lesson || "la clase de hoy";
@@ -147,14 +172,42 @@ export default function CoachPage() {
     SPECIALIST_AGENTS.find((agent) => agent.id === activeAgentId) ||
     SPECIALIST_AGENTS[0];
 
+  const conversationStorageKey = user?.primaryEmailAddress?.emailAddress
+    ? `english-os-coach:${user.primaryEmailAddress.emailAddress}`
+    : "";
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, agentLoading]);
+
+    if (conversationStorageKey && messages.length > 0) {
+      window.localStorage.setItem(
+        conversationStorageKey,
+        JSON.stringify(messages.slice(-40))
+      );
+    }
+  }, [messages, loading, agentLoading, conversationStorageKey]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
+
+    if (conversationStorageKey) {
+      const saved = window.localStorage.getItem(conversationStorageKey);
+
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as Message[];
+
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed);
+          }
+        } catch {
+          window.localStorage.removeItem(conversationStorageKey);
+        }
+      }
+    }
+
     loadUserContext();
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, conversationStorageKey]);
 
   useEffect(() => {
     if (!currentUnit) return;
@@ -414,7 +467,10 @@ export default function CoachPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({
+          message,
+          conversationHistory: messages.slice(-12),
+        }),
       });
 
       const data = await response.json();
@@ -689,7 +745,7 @@ export default function CoachPage() {
                   </div>
 
                   <div className="prose prose-invert max-w-none whitespace-pre-wrap text-base leading-8 text-slate-100 md:text-lg">
-                    {message.content}
+                    {renderFormattedText(message.content)}
                   </div>
                 </article>
               ))}

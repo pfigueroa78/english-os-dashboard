@@ -18,8 +18,14 @@ const OUTPUT_COST_PER_1M = Number(
   process.env.OPENAI_COACH_OUTPUT_COST_PER_1M || 0
 );
 
+type CoachMessage = {
+  role: "user" | "coach";
+  content: string;
+};
+
 type CoachRequest = {
   message: string;
+  conversationHistory?: CoachMessage[];
 };
 
 function getToday(): string {
@@ -245,7 +251,11 @@ async function logDailySession(params: {
   });
 }
 
-function buildCoachPrompt(context: any, message: string) {
+function buildCoachPrompt(
+  context: any,
+  message: string,
+  conversationHistory: CoachMessage[] = []
+) {
   const user = context?.user || {};
   const missionControl = context?.missionControl || {};
   const nextRecommendedAction =
@@ -306,6 +316,9 @@ Your job:
 - Use Spanish only when the explanation is complex or when it helps clarity.
 - Be practical, structured, motivating, and direct.
 - Always adapt to the learner's current unit, lesson, CEFR level, recurring mistakes, and next recommended action.
+- The current unit is the default learning context, not a restriction.
+- If the learner explicitly asks to review all units, previous units, another unit, or a general test, follow the requested scope.
+- Do not force the answer back to the current unit unless the learner asks for the current class.
 - Do not invent progress data. Use only the provided English OS context.
 - At the end, give one short next action.
 
@@ -345,6 +358,9 @@ ${JSON.stringify(recurringMistakes).slice(0, 2500)}
 
 Vocabulary Intelligence:
 ${JSON.stringify(vocabulary).slice(0, 2500)}
+
+Recent Conversation History:
+${JSON.stringify(conversationHistory).slice(0, 3500)}
 
 USER MESSAGE:
 ${message}
@@ -392,6 +408,9 @@ export async function POST(request: Request) {
 
     const body = (await request.json()) as CoachRequest;
     const message = String(body.message || "").trim();
+    const conversationHistory = Array.isArray(body.conversationHistory)
+      ? body.conversationHistory.slice(-12)
+      : [];
 
     if (!message) {
       return NextResponse.json(
@@ -438,7 +457,7 @@ export async function POST(request: Request) {
       context?.learnerId ||
       email;
 
-    const input = buildCoachPrompt(context, message);
+    const input = buildCoachPrompt(context, message, conversationHistory);
 
     const openaiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",

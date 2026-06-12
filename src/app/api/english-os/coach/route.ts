@@ -568,6 +568,295 @@ Next action: dime “Dame la clase 1 de la unidad 1” o “Dame la clase 8 de l
 `.trim();
 }
 
+
+function normalizeCoachCommand(message: string): string {
+  return message
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[¿?¡!.,;:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isGiveClassQuestion(message: string): boolean {
+  const normalized = normalizeCoachCommand(message);
+
+  const asksForClass =
+    normalized.includes("dame la clase") ||
+    normalized.includes("dar la clase") ||
+    normalized.includes("continua la clase") ||
+    normalized.includes("continuar la clase") ||
+    normalized.includes("continua mi clase") ||
+    normalized.includes("continuar mi clase") ||
+    normalized.includes("empecemos la clase") ||
+    normalized.includes("empezar la clase") ||
+    normalized.includes("start class") ||
+    normalized.includes("continue class") ||
+    normalized.includes("give me class");
+
+  return asksForClass;
+}
+
+function isApproveExercisesQuestion(message: string): boolean {
+  const normalized = normalizeCoachCommand(message);
+
+  return (
+    normalized.includes("apruebo los ejercicios") ||
+    normalized.includes("aprobar ejercicios") ||
+    normalized.includes("aprobe los ejercicios") ||
+    normalized.includes("ejercicios aprobados") ||
+    normalized.includes("approve exercises") ||
+    normalized.includes("exercises approved")
+  );
+}
+
+function isAdvanceClassQuestion(message: string): boolean {
+  const normalized = normalizeCoachCommand(message);
+
+  return (
+    normalized.includes("avanza a la siguiente clase") ||
+    normalized.includes("avanzar a la siguiente clase") ||
+    normalized.includes("siguiente clase") ||
+    normalized.includes("next class") ||
+    normalized.includes("advance class")
+  );
+}
+
+function isReviewModeQuestion(message: string): boolean {
+  const normalized = normalizeCoachCommand(message);
+
+  return (
+    normalized.includes("repasar") ||
+    normalized.includes("repasemos") ||
+    normalized.includes("review unit") ||
+    normalized.includes("review class")
+  ) && (
+    normalized.includes("unidad") ||
+    normalized.includes("unit") ||
+    normalized.includes("clase") ||
+    normalized.includes("class")
+  );
+}
+
+function isClearReviewModeQuestion(message: string): boolean {
+  const normalized = normalizeCoachCommand(message);
+
+  return (
+    normalized.includes("volver a mi clase actual") ||
+    normalized.includes("volvamos a mi clase actual") ||
+    normalized.includes("continua mi clase actual") ||
+    normalized.includes("continuar mi clase actual") ||
+    normalized.includes("back to current class") ||
+    normalized.includes("return to current class")
+  );
+}
+
+function extractRequestedUnitNumber(message: string): string {
+  const normalized = normalizeCoachCommand(message);
+  const match = normalized.match(/(?:unidad|unit)\s+(\d{1,2})/);
+  return match?.[1] || "";
+}
+
+function extractRequestedClassNumber(message: string): string {
+  const normalized = normalizeCoachCommand(message);
+  const match = normalized.match(/(?:clase|class)\s+(\d{1,2})/);
+  return match?.[1] || "";
+}
+
+async function callEnglishOSAction(action: string, params: Record<string, string>) {
+  if (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN) {
+    return null;
+  }
+
+  const url = new URL(ENGLISH_OS_BASE_URL);
+  url.searchParams.set("token", ENGLISH_OS_TOKEN);
+  url.searchParams.set("action", action);
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.set(key, String(value));
+    }
+  });
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.ok) {
+    return {
+      ok: false,
+      action,
+      error: data?.error || `Action ${action} failed.`,
+      raw: data,
+    };
+  }
+
+  return data;
+}
+
+function formatCurrentClassContentReply(data: any): string {
+  const state = data?.learningState || {};
+  const classIndex =
+    data?.currentClassIndex ||
+    (Array.isArray(data?.courseClassIndex) ? data.courseClassIndex[0] : null) ||
+    {};
+  const bookContent = Array.isArray(data?.bookContentIndex)
+    ? data.bookContentIndex[0]
+    : null;
+
+  const unit = state.currentUnit || classIndex.unit || data?.unit || "—";
+  const classNumber = state.currentClass || classIndex.classNumber || data?.classNumber || "—";
+  const status = state.currentClassStatus || "—";
+  const mode = state.classMode || "viewing_current_class";
+
+  const pdfPages =
+    classIndex.pdfInitialPage && classIndex.pdfFinalPage
+      ? `${classIndex.pdfInitialPage}–${classIndex.pdfFinalPage}`
+      : bookContent?.pdfPages || "—";
+
+  const bookPages =
+    classIndex.bookInitialPage && classIndex.bookFinalPage
+      ? `${classIndex.bookInitialPage}–${classIndex.bookFinalPage}`
+      : bookContent?.bookPages || "—";
+
+  const lesson = bookContent?.lesson || "—";
+  const section = bookContent?.section || "—";
+  const skill = bookContent?.skill || "—";
+  const grammar = bookContent?.grammarFocus || "—";
+  const vocabulary = bookContent?.vocabularyFocus || "—";
+  const speaking = bookContent?.speakingFocus || "—";
+  const writing = bookContent?.writingFocus || "";
+  const listening = bookContent?.listeningFocus || "";
+  const reading = bookContent?.readingFocus || "";
+  const summary = bookContent?.classSummary || "";
+  const keyLanguage = bookContent?.keyLanguage || "";
+  const guidance = bookContent?.exerciseGuidance || data?.advancePolicy || "";
+
+  const resources = Array.isArray(data?.driveResources)
+    ? data.driveResources
+        .slice(0, 5)
+        .map((item: any) => `- ${item.name || item.title || "Resource"}${item.type ? ` (${item.type})` : ""}`)
+        .join("\n")
+    : "";
+
+  return `
+## Clase actual / contenido de clase
+
+| Campo | Valor |
+|---|---|
+| Unidad | Unit ${unit} |
+| Clase | Class ${classNumber} |
+| Estado | ${status} |
+| Modo | ${mode} |
+| Páginas PDF | ${pdfPages} |
+| Páginas del libro | ${bookPages} |
+| Lesson | ${lesson} |
+| Section | ${section} |
+| Skill | ${skill} |
+
+${summary ? `### Objetivo de la clase\n${summary}\n` : ""}
+
+### Grammar focus
+${grammar}
+
+### Vocabulary focus
+${vocabulary}
+
+### Speaking focus
+${speaking}
+
+${writing ? `### Writing focus\n${writing}\n` : ""}
+
+${listening ? `### Listening focus\n${listening}\n` : ""}
+
+${reading ? `### Reading focus\n${reading}\n` : ""}
+
+${keyLanguage ? `### Key language\n${keyLanguage}\n` : ""}
+
+${resources ? `### Recursos de Drive\n${resources}\n` : ""}
+
+### Regla de avance
+${guidance || "No avanzaré automáticamente. Avanzo solo cuando apruebes los ejercicios o lo indiques explícitamente."}
+
+### Práctica inicial
+Responde en inglés:
+
+**What is the main idea of this class, and how does it connect to your work or daily life?**
+`.trim();
+}
+
+function formatLearningStateActionReply(action: string, data: any): string {
+  const state = data?.learningState || {};
+
+  if (!data?.ok) {
+    return `No pude ejecutar ${action}: ${data?.error || "error desconocido"}`;
+  }
+
+  if (action === "approveCurrentClassExercises") {
+    return `
+✅ Ejercicios aprobados.
+
+| Campo | Valor |
+|---|---|
+| Unidad aprobada | Unit ${state.lastApprovedUnit || state.currentUnit || "—"} |
+| Clase aprobada | Class ${state.lastApprovedClass || state.currentClass || "—"} |
+| Estado | ${state.currentClassStatus || "approved"} |
+| Puede avanzar | Sí |
+
+Cuando quieras, dime: **Avanza a la siguiente clase**.
+`.trim();
+  }
+
+  if (action === "advanceToNextClass") {
+    return `
+✅ Avance controlado realizado.
+
+| Campo | Valor |
+|---|---|
+| Nueva unidad | Unit ${state.currentUnit || "—"} |
+| Nueva clase | Class ${state.currentClass || "—"} |
+| Estado | ${state.currentClassStatus || "not_started"} |
+| Modo | ${state.classMode || "viewing_current_class"} |
+
+No iniciaré la clase automáticamente si no quieres. Puedes decir: **Dame la clase actual**.
+`.trim();
+  }
+
+  if (action === "setReviewMode") {
+    return `
+✅ Modo repaso activado.
+
+| Campo | Valor |
+|---|---|
+| Clase actual real | Unit ${state.currentUnit || "—"} / Class ${state.currentClass || "—"} |
+| Modo | ${state.classMode || "reviewing"} |
+| Unidad de repaso | Unit ${state.reviewUnit || "—"} |
+| Clase de repaso | ${state.reviewClass || "—"} |
+
+Importante: tu clase actual real **no cambió**. El repaso es temporal.
+`.trim();
+  }
+
+  if (action === "clearReviewMode") {
+    return `
+✅ Volvimos a tu clase actual.
+
+| Campo | Valor |
+|---|---|
+| Unidad actual | Unit ${state.currentUnit || "—"} |
+| Clase actual | Class ${state.currentClass || "—"} |
+| Estado | ${state.currentClassStatus || "—"} |
+| Modo | ${state.classMode || "viewing_current_class"} |
+`.trim();
+  }
+
+  return `✅ Acción ejecutada: ${action}`;
+}
+
 function buildCoachPrompt(
   context: any,
   message: string,
@@ -635,6 +924,9 @@ Your job:
 - Be practical, structured, motivating, and direct.
 - Always adapt to the learner's current unit, lesson, CEFR level, recurring mistakes, and next recommended action.
 - Use the Passages Course Class Index when the learner asks about classes, units, pages, book pages, PDF pages, lessons, or class sequence.
+- When the learner asks to give, start, continue, or teach a class, use Book Content Index and Learning State before OpenAI.
+- Never advance the current class automatically. Advance only after explicit learner approval or approved exercises.
+- Review mode is temporary and must not change the persistent current class.
 - Do not confuse book lessons with English OS classes.
 - The current unit is the default learning context, not a restriction.
 - If the learner explicitly asks to review all units, previous units, another unit, or a general test, follow the requested scope.
@@ -778,6 +1070,153 @@ export async function POST(request: Request) {
       user["Learner ID"] ||
       context?.learnerId ||
       email;
+
+    if (isApproveExercisesQuestion(message)) {
+      const approval = await callEnglishOSAction("approveCurrentClassExercises", {
+        userEmail: email,
+        learnerId,
+      });
+
+      const reply = formatLearningStateActionReply("approveCurrentClassExercises", approval);
+
+      await logDailySession({
+        userEmail: email,
+        learnerId,
+        userMessage: message,
+        coachReply: reply,
+        currentUnit,
+        currentLesson,
+        currentCEFR,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        agent: "coach",
+        reply,
+        source: "Learning State",
+        deterministic: true,
+      });
+    }
+
+    if (isAdvanceClassQuestion(message)) {
+      const advance = await callEnglishOSAction("advanceToNextClass", {
+        userEmail: email,
+        learnerId,
+      });
+
+      const reply = formatLearningStateActionReply("advanceToNextClass", advance);
+
+      await logDailySession({
+        userEmail: email,
+        learnerId,
+        userMessage: message,
+        coachReply: reply,
+        currentUnit,
+        currentLesson,
+        currentCEFR,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        agent: "coach",
+        reply,
+        source: "Learning State",
+        deterministic: true,
+      });
+    }
+
+    if (isReviewModeQuestion(message)) {
+      const review = await callEnglishOSAction("setReviewMode", {
+        userEmail: email,
+        learnerId,
+        unit: extractRequestedUnitNumber(message),
+        classNumber: extractRequestedClassNumber(message),
+      });
+
+      const reply = formatLearningStateActionReply("setReviewMode", review);
+
+      await logDailySession({
+        userEmail: email,
+        learnerId,
+        userMessage: message,
+        coachReply: reply,
+        currentUnit,
+        currentLesson,
+        currentCEFR,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        agent: "coach",
+        reply,
+        source: "Learning State",
+        deterministic: true,
+      });
+    }
+
+    if (isClearReviewModeQuestion(message)) {
+      const cleared = await callEnglishOSAction("clearReviewMode", {
+        userEmail: email,
+        learnerId,
+      });
+
+      const reply = formatLearningStateActionReply("clearReviewMode", cleared);
+
+      await logDailySession({
+        userEmail: email,
+        learnerId,
+        userMessage: message,
+        coachReply: reply,
+        currentUnit,
+        currentLesson,
+        currentCEFR,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        agent: "coach",
+        reply,
+        source: "Learning State",
+        deterministic: true,
+      });
+    }
+
+    if (isGiveClassQuestion(message)) {
+      const requestedUnit = extractRequestedUnitNumber(message);
+      const requestedClass = extractRequestedClassNumber(message);
+
+      const classContent = requestedClass || requestedUnit
+        ? await callEnglishOSAction("getClassContent", {
+            unit: requestedUnit,
+            classNumber: requestedClass,
+            userEmail: email,
+            learnerId,
+          })
+        : await callEnglishOSAction("getCurrentClassContent", {
+            userEmail: email,
+            learnerId,
+          });
+
+      const reply = formatCurrentClassContentReply(classContent);
+
+      await logDailySession({
+        userEmail: email,
+        learnerId,
+        userMessage: message,
+        coachReply: reply,
+        currentUnit,
+        currentLesson,
+        currentCEFR,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        agent: "coach",
+        reply,
+        source: "Book Content Index",
+        deterministic: true,
+      });
+    }
 
     if (isCurrentClassQuestion(message)) {
       const currentClassReply = buildCurrentClassReply(context);

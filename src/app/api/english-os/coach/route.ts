@@ -369,15 +369,41 @@ function isCourseClassListQuestion(message: string): boolean {
 async function getDirectCourseClassIndexReply(message: string, currentUnit: string) {
   if (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN) return "";
 
-  if (!isCourseClassListQuestion(message)) return "";
+  const normalized = message
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[¿?¡!.,;:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  const unit = extractRequestedUnit(message, currentUnit);
-  if (!unit) return "";
+  const mentionsClass = normalized.includes("clase") || normalized.includes("class");
+
+  if (!mentionsClass) {
+    return "";
+  }
+
+  const explicitUnit = normalized.match(/(?:unidad|unit)\s+(\d{1,2})/);
+  const currentUnitMatch = currentUnit.match(/Unit\s*(\d{1,2})/i);
+  const anyNumber = normalized.match(/\b(\d{1,2})\b/);
+
+  const unit = explicitUnit?.[1] || currentUnitMatch?.[1] || anyNumber?.[1] || "";
+
+  if (!unit) {
+    return "";
+  }
 
   const url = new URL(ENGLISH_OS_BASE_URL);
   url.searchParams.set("token", ENGLISH_OS_TOKEN);
   url.searchParams.set("action", "getCourseClassIndex");
   url.searchParams.set("unit", unit);
+
+  console.log("COURSE_CLASS_INDEX_FORCE_BRANCH", {
+    message,
+    normalized,
+    currentUnit,
+    unit,
+  });
 
   const response = await fetch(url.toString(), {
     method: "GET",
@@ -386,16 +412,14 @@ async function getDirectCourseClassIndexReply(message: string, currentUnit: stri
 
   const data = await response.json();
 
+  console.log("COURSE_CLASS_INDEX_FORCE_RESULT", {
+    ok: data?.ok,
+    total: data?.total,
+    unit: data?.unit,
+  });
+
   if (!response.ok || !data.ok || !Array.isArray(data.items) || data.items.length === 0) {
-    return `⚠️ Detecté que estás preguntando por las clases de la Unidad ${unit}, pero no pude cargar el Course Class Index desde Apps Script.
-
-Esto no debe responderse con temas genéricos.
-
-Revisa:
-- action=getCourseClassIndex
-- unit=${unit}
-- pestaña Course Class Index
-- despliegue de Apps Script`;
+    return `⚠️ Detecté que estás preguntando por clases, pero no pude cargar Course Class Index para la Unidad ${unit}.`;
   }
 
   const rows = data.items
@@ -409,9 +433,9 @@ Revisa:
         item.bookInitialPage && item.bookFinalPage
           ? `${item.bookInitialPage}–${item.bookFinalPage}`
           : "—";
-      const notes = item.notes || "";
+      const notes = item.notes || "—";
 
-      return `| Class ${item.classNumber} | ${type} | ${pdfPages} | ${bookPages} | ${notes || "—"} |`;
+      return `| Class ${item.classNumber} | ${type} | ${pdfPages} | ${bookPages} | ${notes} |`;
     })
     .join("\n");
 
@@ -422,9 +446,9 @@ Revisa:
 |---|---|---:|---:|---|
 ${rows}
 
-Importante: estas son las **clases del curso**, no solamente las lecciones del libro. El libro puede organizar la unidad en Lesson A / Lesson B, pero English OS la trabaja como una secuencia de clases.
+Estas son las **clases del curso**, no solamente las lecciones del libro. El libro puede tener Lesson A / Lesson B, pero English OS lo organiza en clases.
 
-Fuente usada: **Course Class Index**, basada en el índice del Student's Book de Passages.
+Fuente usada: **Course Class Index**.
 
 Next action: dime “Dame la clase 1 de la unidad ${unit}” y te la preparo como clase guiada.
 `.trim();
@@ -765,3 +789,4 @@ export async function POST(request: Request) {
     );
   }
 }
+// force coach route rebuild Fri Jun 12 16:55:45 UTC 2026

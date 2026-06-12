@@ -11,16 +11,52 @@ const DEFAULT_FILES = [
   process.env.PASSAGES_INDEX_PATH || "knowledge/passages-students-book-index.xlsx",
   process.env.PASSAGES_PAGE_MAP_PATH || "knowledge/passages-level-1-students-book-page-map.md",
   process.env.PASSAGES_CLASS_PACKS_PATH || "knowledge/passages-class-packs.md",
+  process.env.PASSAGES_CLASS_PACKS_DIR || "knowledge/class-packs",
 ].filter(Boolean);
 
-const args = new Set(process.argv.slice(2));
+const rawArgs = process.argv.slice(2);
+const args = new Set(rawArgs);
 const shouldUpload = args.has("--upload");
 const shouldCheck = args.has("--check") || !shouldUpload;
-const requestedFiles = process.argv
-  .slice(2)
-  .filter((arg) => !arg.startsWith("--"));
+const forceFreshUpload = args.has("--fresh") || args.has("--force");
+const shouldWait = !args.has("--no-wait");
+const requestedFiles = rawArgs.filter((arg) => !arg.startsWith("--"));
 
-const filesToUpload = requestedFiles.length ? requestedFiles : DEFAULT_FILES;
+const filesToUpload = expandFiles(requestedFiles.length ? requestedFiles : DEFAULT_FILES);
+
+function expandFiles(entries) {
+  const expanded = [];
+
+  for (const entry of entries) {
+    const absoluteEntry = path.resolve(entry);
+
+    if (!fs.existsSync(absoluteEntry)) {
+      expanded.push(entry);
+      continue;
+    }
+
+    const stat = fs.statSync(absoluteEntry);
+
+    if (stat.isDirectory()) {
+      const files = fs
+        .readdirSync(absoluteEntry)
+        .filter((file) => /\.(pdf|xlsx|xls|md|txt)$/i.test(file))
+        .sort()
+        .map((file) => path.join(entry, file));
+
+      expanded.push(...files);
+      continue;
+    }
+
+    expanded.push(entry);
+  }
+
+  return Array.from(new Set(expanded));
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function assertEnv() {
   if (!OPENAI_API_KEY) {
@@ -54,7 +90,7 @@ async function openaiFetch(pathname, options = {}) {
 }
 
 async function listAllFiles() {
-  const firstPage = await openaiFetch("/files");
+  const firstPage = await openaiFetch("/files?limit=10000");
   return Array.isArray(firstPage.data) ? firstPage.data : [];
 }
 
@@ -86,10 +122,14 @@ async function uploadFileIfNeeded(filePath, existingFiles) {
   }
 
   const filename = path.basename(absolutePath);
-  const existing = existingFiles.find((file) => file.filename === filename);
+  const stat = fs.statSync(absolutePath);
+
+  const existing = forceFreshUpload
+    ? null
+    : existingFiles.find((file) => file.filename === filename && Number(file.bytes || 0) === stat.size);
 
   if (existing) {
-    return { file: existing, uploaded: false };
+    return { file: existing, uploaded: false, reusedBy: "filename+size" };
   }
 
   const form = new FormData();
@@ -103,7 +143,7 @@ async function uploadFileIfNeeded(filePath, existingFiles) {
     body: form,
   });
 
-  return { file, uploaded: true };
+  return { file, uploaded: true, reusedBy: null };
 }
 
 async function attachFileToVectorStore(vectorStoreId, fileId) {
@@ -112,6 +152,38 @@ async function attachFileToVectorStore(vectorStoreId, fileId) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ file_id: fileId }),
   });
+}
+
+async function listVectorStoreFiles(vectorStoreId) {
+  const data = await openaiFetch(`/vector_stores/${vectorStoreId}/files?limit=100`);
+  return Array.isArray(data.data) ? data.data : [];
+}
+
+async function waitForVectorStoreFiles(vectorStoreId, expectedFileIds) {
+  const pending = new Set(expectedFileIds);
+  const deadline = Date.now() + 180_000;
+  let lastStatuses = [];
+
+  while (Date.now() < deadline) {
+    const files = await listVectorStoreFiles(vectorStoreId);
+    lastStatuses = files
+      .filter((file) => expectedFileIds.includes(file.id))
+      .map((file) => ({ id: file.id, status: file.status }));
+
+    for (const file of files) {
+      if (expectedFileIds.includes(file.id) && file.status === "completed") {
+        pending.delete(file.id);
+      }
+    }
+
+    if (pending.size === 0) {
+      return { ok: true, statuses: lastStatuses };
+    }
+
+    await sleep(3000);
+  }
+
+  return { ok: false, pending: Array.from(pending), statuses: lastStatuses };
 }
 
 async function check() {
@@ -125,7 +197,9 @@ async function check() {
     mode: "check",
     vectorStoreName: VECTOR_STORE_NAME,
     vectorStore: matchingStore || null,
+    expectedFileCount: expectedNames.length,
     expectedFilenames: expectedNames,
+    matchingFileCount: matchingFiles.length,
     matchingFiles: matchingFiles.map((file) => ({ id: file.id, filename: file.filename, purpose: file.purpose, bytes: file.bytes })),
     next: matchingStore
       ? `Set OPENAI_PASSAGES_VECTOR_STORE_ID=${matchingStore.id}`
@@ -139,7 +213,7 @@ async function upload() {
   const attached = [];
 
   for (const filePath of filesToUpload) {
-    const { file, uploaded } = await uploadFileIfNeeded(filePath, existingFiles);
+    const { file, uploaded, reusedBy } = await uploadFileIfNeeded(filePath, existingFiles);
     existingFiles = uploaded ? [...existingFiles, file] : existingFiles;
 
     const vectorStoreFile = await attachFileToVectorStore(vectorStore.id, file.id);
@@ -148,16 +222,24 @@ async function upload() {
       fileId: file.id,
       filename: file.filename,
       uploaded,
+      reusedBy,
       vectorStoreFileId: vectorStoreFile.id,
       status: vectorStoreFile.status,
     });
   }
 
+  const waitResult = shouldWait
+    ? await waitForVectorStoreFiles(vectorStore.id, attached.map((item) => item.fileId))
+    : { ok: true, skipped: true };
+
   console.log(JSON.stringify({
     ok: true,
     mode: "upload",
     vectorStore: { id: vectorStore.id, name: vectorStore.name },
+    uploadedFileCount: attached.filter((item) => item.uploaded).length,
+    attachedFileCount: attached.length,
     attached,
+    waitResult,
     env: `OPENAI_PASSAGES_VECTOR_STORE_ID=${vectorStore.id}`,
     vercel: `vercel env add OPENAI_PASSAGES_VECTOR_STORE_ID production`,
   }, null, 2));
@@ -165,6 +247,10 @@ async function upload() {
 
 async function main() {
   assertEnv();
+
+  if (filesToUpload.length === 0) {
+    throw new Error("No files selected for Passages knowledge upload.");
+  }
 
   if (shouldCheck && !shouldUpload) {
     await check();

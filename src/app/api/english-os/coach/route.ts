@@ -705,22 +705,12 @@ export async function POST(request: Request) {
       context?.learnerId ||
       email;
 
-    console.log("COURSE_CLASS_INDEX_DETECTOR_INPUT", {
-      message,
-      currentUnit,
-      isClassListQuestion: isCourseClassListQuestion(message),
-    });
-
     const directCourseClassReply = await getDirectCourseClassIndexReply(
       message,
       currentUnit
     );
 
     if (directCourseClassReply) {
-      console.log("COURSE_CLASS_INDEX_DETERMINISTIC_REPLY", {
-        message,
-        currentUnit,
-      });
       await logDailySession({
         userEmail: email,
         learnerId,

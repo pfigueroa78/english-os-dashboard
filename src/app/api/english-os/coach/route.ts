@@ -671,6 +671,23 @@ function extractRequestedClassNumber(message: string): string {
   return match?.[1] || "";
 }
 
+function resolveCourseClassNumber(unit: string, classNumber: string): string {
+  if (!classNumber) return "";
+
+  const unitNumber = Number(unit);
+  const requestedClass = Number(classNumber);
+
+  // If the learner says "class 1 of unit 4", they mean the first class inside Unit 4.
+  // English OS stores classes globally: Unit 1 = 1-7, Unit 2 = 8-14, etc.
+  if (unitNumber && requestedClass >= 1 && requestedClass <= 7) {
+    return String((unitNumber - 1) * 7 + requestedClass);
+  }
+
+  // If the learner says a global class number, keep it as-is.
+  return classNumber;
+}
+
+
 async function callEnglishOSAction(action: string, params: Record<string, string>) {
   if (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN) {
     return null;
@@ -1197,7 +1214,8 @@ export async function POST(request: Request) {
 
     if (isGiveClassQuestion(message)) {
       const requestedUnit = extractRequestedUnitNumber(message);
-      const requestedClass = extractRequestedClassNumber(message);
+      const rawRequestedClass = extractRequestedClassNumber(message);
+      const requestedClass = resolveCourseClassNumber(requestedUnit, rawRequestedClass);
 
       const classContent = requestedClass || requestedUnit
         ? await callEnglishOSAction("getClassContent", {

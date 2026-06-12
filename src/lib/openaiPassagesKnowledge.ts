@@ -56,15 +56,17 @@ export function buildPassagesKnowledgeInput(params: {
     : null;
 
   const requestedUnit =
-    learningState.currentUnit ||
     classIndex.unit ||
     params.classContent?.unit ||
+    bookContent?.unit ||
+    learningState.currentUnit ||
     "";
 
   const requestedClass =
-    learningState.currentClass ||
     classIndex.classNumber ||
     params.classContent?.classNumber ||
+    bookContent?.classNumber ||
+    learningState.currentClass ||
     "";
 
   const pdfPages =

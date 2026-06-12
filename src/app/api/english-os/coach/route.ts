@@ -420,6 +420,80 @@ async function fetchCourseClassIndexUnit(unit: string) {
   return data.items;
 }
 
+
+function isCurrentClassQuestion(message: string): boolean {
+  const normalized = message
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[¿?¡!.,;:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const asksCurrent =
+    normalized.includes("actual") ||
+    normalized.includes("estoy viendo") ||
+    normalized.includes("viendo") ||
+    normalized.includes("current");
+
+  const mentionsClass =
+    normalized.includes("clase") ||
+    normalized.includes("class");
+
+  return asksCurrent && mentionsClass;
+}
+
+function buildCurrentClassReply(context: any): string {
+  const learningState = context?.learningState || {};
+  const classIndex = context?.currentClassIndex || {};
+  const bookContent = Array.isArray(context?.bookContentIndex)
+    ? context.bookContentIndex[0]
+    : null;
+
+  const unit = learningState.currentUnit || classIndex.unit || "";
+  const classNumber = learningState.currentClass || classIndex.classNumber || "";
+  const status = learningState.currentClassStatus || "not_started";
+  const mode = learningState.classMode || "viewing_current_class";
+
+  const pdfPages =
+    classIndex.pdfInitialPage && classIndex.pdfFinalPage
+      ? `${classIndex.pdfInitialPage}–${classIndex.pdfFinalPage}`
+      : bookContent?.pdfPages || "—";
+
+  const bookPages =
+    classIndex.bookInitialPage && classIndex.bookFinalPage
+      ? `${classIndex.bookInitialPage}–${classIndex.bookFinalPage}`
+      : bookContent?.bookPages || "—";
+
+  const summary = bookContent?.classSummary || "";
+  const grammar = bookContent?.grammarFocus || "";
+  const vocabulary = bookContent?.vocabularyFocus || "";
+  const guidance = bookContent?.exerciseGuidance || "";
+
+  return `
+Estás viendo actualmente:
+
+| Campo | Valor |
+|---|---|
+| Unidad actual | Unit ${unit || "—"} |
+| Clase actual | Class ${classNumber || "—"} |
+| Estado | ${status} |
+| Modo | ${mode} |
+| Páginas PDF | ${pdfPages} |
+| Páginas del libro | ${bookPages} |
+
+${summary ? `### Base de la clase\n${summary}\n` : ""}
+
+${grammar ? `### Grammar focus\n${grammar}\n` : ""}
+
+${vocabulary ? `### Vocabulary focus\n${vocabulary}\n` : ""}
+
+${guidance ? `### Regla de avance\n${guidance}\n` : ""}
+
+No voy a avanzar automáticamente de clase. Solo avanzaré cuando tú lo indiques explícitamente o cuando apruebes los ejercicios de esta clase.
+`.trim();
+}
+
 async function getDirectCourseClassIndexReply(message: string, currentUnit: string) {
   if (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN) return "";
 
@@ -704,6 +778,28 @@ export async function POST(request: Request) {
       user["Learner ID"] ||
       context?.learnerId ||
       email;
+
+    if (isCurrentClassQuestion(message)) {
+      const currentClassReply = buildCurrentClassReply(context);
+
+      await logDailySession({
+        userEmail: email,
+        learnerId,
+        userMessage: message,
+        coachReply: currentClassReply,
+        currentUnit,
+        currentLesson,
+        currentCEFR,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        agent: "coach",
+        reply: currentClassReply,
+        source: "Learning State",
+        deterministic: true,
+      });
+    }
 
     const directCourseClassReply = await getDirectCourseClassIndexReply(
       message,

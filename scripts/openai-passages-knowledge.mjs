@@ -10,6 +10,7 @@ const DEFAULT_FILES = [
   process.env.PASSAGES_PDF_PATH || "knowledge/passages-level-1-students-book.pdf",
   process.env.PASSAGES_INDEX_PATH || "knowledge/passages-students-book-index.xlsx",
   process.env.PASSAGES_PAGE_MAP_PATH || "knowledge/passages-level-1-students-book-page-map.md",
+  process.env.PASSAGES_CLASS_PACKS_PATH || "knowledge/passages-class-packs.md",
 ].filter(Boolean);
 
 const args = new Set(process.argv.slice(2));
@@ -128,7 +129,7 @@ async function check() {
     matchingFiles: matchingFiles.map((file) => ({ id: file.id, filename: file.filename, purpose: file.purpose, bytes: file.bytes })),
     next: matchingStore
       ? `Set OPENAI_PASSAGES_VECTOR_STORE_ID=${matchingStore.id}`
-      : "Run with --upload after placing the PDF/XLSX/Page Map locally.",
+      : "Run with --upload after placing the PDF/XLSX/Page Map/Class Packs locally.",
   }, null, 2));
 }
 

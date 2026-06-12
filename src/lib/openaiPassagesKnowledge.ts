@@ -1,7 +1,19 @@
 import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
+
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_PASSAGES_VECTOR_STORE_ID = process.env.OPENAI_PASSAGES_VECTOR_STORE_ID;
+
+function pad2(value: string | number) {
+  return String(value || "").padStart(2, "0");
+}
+
+function normalizeRangeKey(value: string) {
+  return String(value || "")
+    .replace(/[–—]/g, "-")
+    .replace(/[^0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
 
 export function hasPassagesKnowledgeBase() {
   return Boolean(OPENAI_API_KEY && OPENAI_PASSAGES_VECTOR_STORE_ID);
@@ -69,6 +81,13 @@ export function buildPassagesKnowledgeInput(params: {
     learningState.currentClass ||
     "";
 
+  const unitNumber = Number(requestedUnit || 0);
+  const globalClassNumber = Number(requestedClass || 0);
+  const localClassNumber =
+    unitNumber && globalClassNumber
+      ? globalClassNumber - (unitNumber - 1) * 7
+      : 0;
+
   const pdfPages =
     classIndex.pdfInitialPage && classIndex.pdfFinalPage
       ? `${classIndex.pdfInitialPage}-${classIndex.pdfFinalPage}`
@@ -79,32 +98,58 @@ export function buildPassagesKnowledgeInput(params: {
       ? `${classIndex.bookInitialPage}-${classIndex.bookFinalPage}`
       : bookContent?.bookPages || "";
 
+  const classPackId =
+    unitNumber && globalClassNumber
+      ? `CLASS_PACK_UNIT_${pad2(unitNumber)}_CLASS_${pad2(globalClassNumber)}`
+      : "";
+
+  const localClassPackAlias =
+    unitNumber && localClassNumber
+      ? `UNIT_${pad2(unitNumber)}_LOCAL_CLASS_${pad2(localClassNumber)}`
+      : "";
+
+  const classPackFilename =
+    unitNumber && localClassNumber && globalClassNumber
+      ? `unit-${pad2(unitNumber)}-local-class-${pad2(localClassNumber)}-global-class-${pad2(globalClassNumber)}-class-pack-unit-${pad2(unitNumber)}-class-${pad2(globalClassNumber)}.md`
+      : "";
+
+  const bookPagesKey = bookPages ? `BOOK_PAGES_${normalizeRangeKey(bookPages)}` : "";
+  const pdfPagesKey = pdfPages ? `PDF_PAGES_${normalizeRangeKey(pdfPages)}` : "";
+
   return [
     {
       role: "system",
       content: `
-${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}\n\n${PASSAGES_TEACHER_STYLE_GUIDANCE}\n\nYou are now teaching with Passages file_search.
+${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}
 
-Use the Passages Student's Book and Course Class Index available through file_search.
-Teach the requested class using retrieved book content, not generic knowledge.
-Do not invent sections, page content, exercises, grammar points, or vocabulary.
-If file_search cannot retrieve enough content, say exactly what is missing and ask the learner to confirm the page/class.
-Do not advance the learner automatically.
-Review mode is temporary and must not change the persistent current class.
+${PASSAGES_TEACHER_STYLE_GUIDANCE}
 
-Teacher response format:
-1. Start naturally: “Great, let’s work on Unit X, Class Y.”
-2. Give one compact identity line: Unit, Class, book pages, PDF pages.
-3. Teach the class in stages, not as a list:
-   - Objective
-   - Key language
-   - Mini explanation
-   - Teacher model
-   - Learner practice
-4. Ask exactly one main question and wait for the learner.
-5. Do not give a full worksheet unless the learner asks for it.
-6. Do not produce a retrieval report or a book dump.
-7. Do not advance automatically.
+You are now teaching with Passages file_search.
+
+Critical source rule:
+- Search first for the exact requested class-pack filename and ID.
+- Use the exact class pack as the primary source of truth.
+- Do not substitute content from another class.
+- Ignore retrieved results from other units, other classes, unrelated book pages, or the general PDF if they conflict with the exact class pack.
+- If the first retrieved result is the correct exact class pack, do not say the content is missing.
+- Do not produce a retrieval report.
+- Do not ask the learner to send page images when the exact class pack is retrieved.
+- Do not invent content that is not supported by the retrieved class pack.
+- Do not advance the learner automatically.
+
+Teacher response format for “Dame la clase”:
+1. Warm opening.
+2. Compact class identity line.
+3. Main focus.
+4. Warm-up.
+5. Teacher explanation of key grammar / key language.
+6. Controlled practice with 4 to 6 frames.
+7. Vocabulary with simple definitions.
+8. Speaking practice with 2 to 3 questions.
+9. One model answer.
+10. End with “Now you answer: ...”.
+
+Do not stop after only one question when the learner asks for the class.
       `.trim(),
     },
     {
@@ -113,12 +158,18 @@ Teacher response format:
 Learner request:
 ${params.message}
 
-Persistent Learning State:
-${JSON.stringify(learningState, null, 2)}
+Exact class-pack retrieval query:
+${classPackFilename}
+${classPackId}
+${localClassPackAlias}
+GLOBAL_CLASS_${globalClassNumber || "unknown"}
+${bookPagesKey || ""}
+${pdfPagesKey || ""}
 
 Requested class coordinates:
 - Unit: ${requestedUnit || "unknown"}
-- Class: ${requestedClass || "unknown"}
+- Local class inside unit: ${localClassNumber || "unknown"}
+- Global English OS class: ${requestedClass || "unknown"}
 - Book pages: ${bookPages || "unknown"}
 - PDF pages: ${pdfPages || "unknown"}
 
@@ -129,11 +180,11 @@ Recent conversation history:
 ${JSON.stringify(params.conversationHistory || []).slice(0, 2500)}
 
 Instructions:
-Retrieve the relevant Passages Student's Book content for the coordinates above.
-If pages are provided, search for those page markers, headings, and nearby content.
-Then teach like a live teacher: model the language, give one guided task, and ask the learner to answer.
-Do not dump all recovered content.
-If the class is Grammar Plus or Video Class, teach it as a review class using the available retrieved content.
+1. Use file_search to retrieve the exact class pack using the filename and ID above.
+2. If you retrieve ${classPackFilename || "the exact class pack"}, teach from it directly.
+3. Do not use content from adjacent classes unless the exact class pack explicitly references it.
+4. If other retrieved results mention unrelated topics, ignore them.
+5. Deliver the full teacher-led class requested by the learner.
       `.trim(),
     },
   ];
@@ -161,12 +212,12 @@ export async function createPassagesKnowledgeResponse(params: {
     body: JSON.stringify({
       model: params.model,
       input: params.input,
-      max_output_tokens: params.maxOutputTokens,
+      max_output_tokens: Math.max(params.maxOutputTokens, 1400),
       tools: [
         {
           type: "file_search",
           vector_store_ids: [OPENAI_PASSAGES_VECTOR_STORE_ID],
-          max_num_results: 6,
+          max_num_results: 12,
         },
       ],
       include: ["file_search_call.results"],

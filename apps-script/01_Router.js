@@ -156,6 +156,10 @@ function doGet(e) {
       });
     }
 
+    if (action === 'getCourseClassIndex') {
+      return jsonResponse_(getCourseClassIndex_(ss, params));
+    }
+
     if (action === 'createGrammarWorkbook') {
       return jsonResponse_(createGrammarWorkbook(ss, params));
     }

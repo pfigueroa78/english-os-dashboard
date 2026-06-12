@@ -492,11 +492,15 @@ export default function CoachPage() {
       setLastCost(data.usage?.estimatedCostUSD ?? null);
       setLastTokens(data.usage?.totalTokens ?? null);
 
+      const diagnosticPrefix = data.deterministic
+        ? `✅ Deterministic response from: ${data.source || "unknown"}\\n\\n`
+        : "";
+
       setMessages((current) => [
         ...current,
         {
           role: "coach",
-          content: data.reply || "No response returned.",
+          content: `${diagnosticPrefix}${data.reply || "No response returned."}`,
           usage: data.usage,
         },
       ]);

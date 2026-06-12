@@ -34,12 +34,45 @@ type DriveUnitResource = {
   order?: number;
 };
 
-type GrammarWorkbook = {
+type Workbook = {
   title: string;
   fileUrl: string;
   exportUrl: string;
   generatedAt?: string;
 };
+
+type AgentId = "grammar_corrector" | "speaking_partner" | "english_evaluator";
+
+type SpecialistAgent = {
+  id: AgentId;
+  name: string;
+  description: string;
+  defaultPrompt: string;
+};
+
+const SPECIALIST_AGENTS: SpecialistAgent[] = [
+  {
+    id: "grammar_corrector",
+    name: "Grammar Corrector",
+    description: "Corrige gramática, estructura, artículos, preposiciones y naturalidad.",
+    defaultPrompt:
+      "Please correct my English. Focus on grammar, sentence structure, articles, prepositions, fluency, and natural professional phrasing.",
+  },
+  {
+    id: "speaking_partner",
+    name: "Speaking Partner",
+    description: "Practica conversación, fluidez y respuestas profesionales.",
+    defaultPrompt:
+      "Let's practice speaking in a business context. Ask me one realistic question and correct important mistakes after my answer.",
+  },
+  {
+    id: "english_evaluator",
+    name: "English Evaluator",
+    description: "Evalúa nivel CEFR, precisión, fluidez, vocabulario y próximos pasos.",
+    defaultPrompt:
+      "Please evaluate my English objectively using CEFR criteria. Give me a score, weaknesses, recurring patterns, and targeted exercises.",
+  },
+];
 
 export default function CoachPage() {
   const { isLoaded, isSignedIn, user } = useUser();
@@ -48,15 +81,19 @@ export default function CoachPage() {
     {
       role: "coach",
       content:
-        "Hi Pedro. I’m your English OS Coach. Tell me what you want to practice today, or ask me what your next recommended activity is.",
+        "Hi Pedro. I’m your English OS Coach. Tell me what you want to practice today, or choose a specialist agent.",
     },
   ]);
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [agentLoading, setAgentLoading] = useState(false);
   const [lastCost, setLastCost] = useState<number | null>(null);
   const [lastTokens, setLastTokens] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [agentError, setAgentError] = useState("");
+
+  const [activeAgentId, setActiveAgentId] = useState<AgentId>("grammar_corrector");
 
   const [currentUnit, setCurrentUnit] = useState("");
   const [currentLesson, setCurrentLesson] = useState("");
@@ -67,16 +104,23 @@ export default function CoachPage() {
   const [resourcesLoading, setResourcesLoading] = useState(false);
   const [resourcesError, setResourcesError] = useState("");
 
-  const [grammarWorkbook, setGrammarWorkbook] =
-    useState<GrammarWorkbook | null>(null);
+  const [grammarWorkbook, setGrammarWorkbook] = useState<Workbook | null>(null);
   const [grammarWorkbookLoading, setGrammarWorkbookLoading] = useState(false);
   const [grammarWorkbookError, setGrammarWorkbookError] = useState("");
 
+  const [vocabularyWorkbook, setVocabularyWorkbook] = useState<Workbook | null>(null);
+  const [vocabularyWorkbookLoading, setVocabularyWorkbookLoading] = useState(false);
+  const [vocabularyWorkbookError, setVocabularyWorkbookError] = useState("");
+
   const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  const activeAgent =
+    SPECIALIST_AGENTS.find((agent) => agent.id === activeAgentId) ||
+    SPECIALIST_AGENTS[0];
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, agentLoading]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
@@ -105,10 +149,7 @@ export default function CoachPage() {
       }
 
       const missionControl =
-        data.context?.missionControl ||
-        data.missionControl ||
-        data.context ||
-        {};
+        data.context?.missionControl || data.missionControl || data.context || {};
 
       const unit =
         missionControl.currentUnit ||
@@ -122,13 +163,8 @@ export default function CoachPage() {
         missionControl.lesson ||
         "";
 
-      if (unit) {
-        setCurrentUnit(unit);
-      }
-
-      if (lesson) {
-        setCurrentLesson(lesson);
-      }
+      if (unit) setCurrentUnit(unit);
+      if (lesson) setCurrentLesson(lesson);
     } catch (err) {
       setContextError(
         err instanceof Error ? err.message : "Unknown context error"
@@ -145,10 +181,7 @@ export default function CoachPage() {
     setResourcesError("");
 
     try {
-      const params = new URLSearchParams({
-        unit,
-      });
-
+      const params = new URLSearchParams({ unit });
       const response = await fetch(
         `/api/english-os/drive-unit-resources?${params.toString()}`,
         {
@@ -173,11 +206,21 @@ export default function CoachPage() {
     }
   }
 
-  async function downloadGrammarWorkbook() {
-    if (!currentUnit || grammarWorkbookLoading) return;
+  async function createWorkbook(kind: "grammar" | "vocabulary") {
+    const isGrammar = kind === "grammar";
 
-    setGrammarWorkbookLoading(true);
-    setGrammarWorkbookError("");
+    if (!currentUnit) return;
+
+    if (isGrammar) {
+      if (grammarWorkbookLoading) return;
+      setGrammarWorkbookLoading(true);
+      setGrammarWorkbookError("");
+    } else {
+      if (vocabularyWorkbookLoading) return;
+      setVocabularyWorkbookLoading(true);
+      setVocabularyWorkbookError("");
+    }
+
     setError("");
 
     try {
@@ -186,28 +229,37 @@ export default function CoachPage() {
         lesson: currentLesson,
       });
 
-      const response = await fetch(
-        `/api/english-os/grammar-workbook?${params.toString()}`,
-        {
-          method: "GET",
-          cache: "no-store",
-        }
-      );
+      const endpoint = isGrammar
+        ? "/api/english-os/grammar-workbook"
+        : "/api/english-os/vocabulary-workbook";
+
+      const response = await fetch(`${endpoint}?${params.toString()}`, {
+        method: "GET",
+        cache: "no-store",
+      });
 
       const data = await response.json();
 
       if (!response.ok || !data.ok) {
-        throw new Error(data.error || "Failed to create grammar workbook.");
+        throw new Error(
+          data.error ||
+            `Failed to create ${isGrammar ? "grammar" : "vocabulary"} workbook.`
+        );
       }
 
-      const workbook = {
+      const workbook: Workbook = {
         title: data.title,
         fileUrl: data.fileUrl,
         exportUrl: data.exportUrl,
         generatedAt: data.generatedAt,
       };
 
-      setGrammarWorkbook(workbook);
+      if (isGrammar) {
+        setGrammarWorkbook(workbook);
+      } else {
+        setVocabularyWorkbook(workbook);
+      }
+
       window.open(data.exportUrl || data.fileUrl, "_blank", "noopener,noreferrer");
 
       setMessages((current) => [
@@ -215,7 +267,7 @@ export default function CoachPage() {
         {
           role: "coach",
           content:
-            `Listo. Generé el Excel de gramática para tu unidad actual.\n\n` +
+            `Listo. Generé el Excel de ${isGrammar ? "gramática" : "vocabulario"} para tu unidad actual.\n\n` +
             `Archivo: ${workbook.title}\n` +
             `Descarga Excel: ${workbook.exportUrl}\n` +
             `Abrir en Google Sheets: ${workbook.fileUrl}`,
@@ -223,11 +275,77 @@ export default function CoachPage() {
       ]);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Unknown grammar workbook error";
-      setGrammarWorkbookError(message);
+        err instanceof Error ? err.message : "Unknown workbook error";
+
+      if (isGrammar) {
+        setGrammarWorkbookError(message);
+      } else {
+        setVocabularyWorkbookError(message);
+      }
+
       setError(message);
     } finally {
-      setGrammarWorkbookLoading(false);
+      if (isGrammar) {
+        setGrammarWorkbookLoading(false);
+      } else {
+        setVocabularyWorkbookLoading(false);
+      }
+    }
+  }
+
+  async function sendAgentMessage(customMessage?: string) {
+    const message = (customMessage || input || activeAgent.defaultPrompt).trim();
+
+    if (!message || agentLoading) return;
+
+    setError("");
+    setAgentError("");
+    setInput("");
+    setAgentLoading(true);
+
+    setMessages((current) => [
+      ...current,
+      {
+        role: "user",
+        content: `[${activeAgent.name}] ${message}`,
+      },
+    ]);
+
+    try {
+      const response = await fetch("/api/english-os/agents", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          agentId: activeAgent.id,
+          message,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Specialist agent request failed.");
+      }
+
+      setLastCost(data.usage?.estimatedCostUSD ?? null);
+      setLastTokens(data.usage?.totalTokens ?? null);
+
+      setMessages((current) => [
+        ...current,
+        {
+          role: "coach",
+          content: `${data.agent?.name || activeAgent.name}\n\n${data.reply || "No response returned."}`,
+          usage: data.usage,
+        },
+      ]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown agent error";
+      setAgentError(message);
+      setError(message);
+    } finally {
+      setAgentLoading(false);
     }
   }
 
@@ -254,9 +372,7 @@ export default function CoachPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          message,
-        }),
+        body: JSON.stringify({ message }),
       });
 
       const data = await response.json();
@@ -266,10 +382,7 @@ export default function CoachPage() {
       }
 
       const missionControl =
-        data.context?.missionControl ||
-        data.missionControl ||
-        data.context ||
-        {};
+        data.context?.missionControl || data.missionControl || data.context || {};
 
       const unit =
         missionControl.currentUnit ||
@@ -283,13 +396,8 @@ export default function CoachPage() {
         missionControl.lesson ||
         "";
 
-      if (unit) {
-        setCurrentUnit(unit);
-      }
-
-      if (lesson) {
-        setCurrentLesson(lesson);
-      }
+      if (unit) setCurrentUnit(unit);
+      if (lesson) setCurrentLesson(lesson);
 
       setLastCost(data.usage?.estimatedCostUSD ?? null);
       setLastTokens(data.usage?.totalTokens ?? null);
@@ -337,6 +445,49 @@ export default function CoachPage() {
 
     sendMessage(
       `Vamos a trabajar con este recurso de mi unidad actual.\n\n${details}\n\nCrea una actividad completa para estudiar este recurso. Incluye: preparación antes de escuchar/ver, vocabulario clave, preguntas de comprensión, práctica oral, errores comunes que debo evitar y una tarea final. Explícame en español y dame ejemplos en inglés.`
+    );
+  }
+
+  function renderWorkbookCard(kind: "grammar" | "vocabulary", workbook: Workbook | null) {
+    if (!workbook) return null;
+
+    const label = kind === "grammar" ? "gramática" : "vocabulario";
+    const colorClass =
+      kind === "grammar"
+        ? "border-emerald-800 bg-emerald-950/60 text-emerald-100"
+        : "border-cyan-800 bg-cyan-950/60 text-cyan-100";
+    const buttonClass =
+      kind === "grammar"
+        ? "bg-emerald-600 hover:bg-emerald-500"
+        : "bg-cyan-600 hover:bg-cyan-500";
+    const outlineClass =
+      kind === "grammar"
+        ? "border-emerald-700 hover:bg-emerald-900"
+        : "border-cyan-700 hover:bg-cyan-900";
+
+    return (
+      <div className={`mb-3 rounded-xl border p-3 text-sm ${colorClass}`}>
+        <p className="font-semibold">Excel de {label} generado</p>
+        <p className="mt-1 text-xs opacity-90">{workbook.title}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <a
+            href={workbook.exportUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={`rounded-lg px-3 py-2 text-xs font-semibold text-white ${buttonClass}`}
+          >
+            Descargar XLSX
+          </a>
+          <a
+            href={workbook.fileUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={`rounded-lg border px-3 py-2 text-xs font-semibold ${outlineClass}`}
+          >
+            Abrir en Sheets
+          </a>
+        </div>
+      </div>
     );
   }
 
@@ -481,9 +632,11 @@ export default function CoachPage() {
                 </article>
               ))}
 
-              {loading && (
+              {(loading || agentLoading) && (
                 <div className="mr-auto max-w-5xl rounded-2xl bg-slate-800 p-5 text-slate-300">
-                  Coach is thinking...
+                  {agentLoading
+                    ? `${activeAgent.name} is thinking...`
+                    : "Coach is thinking..."}
                 </div>
               )}
 
@@ -491,6 +644,65 @@ export default function CoachPage() {
             </div>
 
             <footer className="border-t border-slate-800 bg-slate-950/80 p-4">
+              <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      Specialist Agent
+                    </p>
+                    <p className="mt-1 text-sm text-slate-300">
+                      {activeAgent.description}
+                    </p>
+                  </div>
+
+                  <select
+                    value={activeAgentId}
+                    onChange={(event) =>
+                      setActiveAgentId(event.target.value as AgentId)
+                    }
+                    className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+                  >
+                    {SPECIALIST_AGENTS.map((agent) => (
+                      <option key={agent.id} value={agent.id}>
+                        {agent.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => sendAgentMessage()}
+                    disabled={agentLoading}
+                    className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-50"
+                  >
+                    {agentLoading ? "Running agent..." : "Usar agente"}
+                  </button>
+
+                  {SPECIALIST_AGENTS.map((agent) => (
+                    <button
+                      key={agent.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveAgentId(agent.id);
+                        sendAgentMessage(agent.defaultPrompt);
+                      }}
+                      disabled={agentLoading}
+                      className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                    >
+                      {agent.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {agentError && (
+                <div className="mb-3 rounded-xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
+                  {agentError}
+                </div>
+              )}
+
               <div className="mb-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -503,7 +715,7 @@ export default function CoachPage() {
 
                 <button
                   type="button"
-                  onClick={downloadGrammarWorkbook}
+                  onClick={() => createWorkbook("grammar")}
                   disabled={grammarWorkbookLoading || !currentUnit}
                   className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
                 >
@@ -520,6 +732,17 @@ export default function CoachPage() {
                 >
                   Agregar vocabulario de la unidad
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => createWorkbook("vocabulary")}
+                  disabled={vocabularyWorkbookLoading || !currentUnit}
+                  className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50"
+                >
+                  {vocabularyWorkbookLoading
+                    ? "Generando Excel..."
+                    : "Descargar Excel de vocabulario"}
+                </button>
               </div>
 
               {grammarWorkbookError && (
@@ -528,29 +751,14 @@ export default function CoachPage() {
                 </div>
               )}
 
-              {grammarWorkbook && (
-                <div className="mb-3 rounded-xl border border-emerald-800 bg-emerald-950/60 p-3 text-sm text-emerald-100">
-                  <p className="font-semibold">Excel de gramática generado</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <a
-                      href={grammarWorkbook.exportUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500"
-                    >
-                      Descargar XLSX
-                    </a>
-                    <a
-                      href={grammarWorkbook.fileUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="rounded-lg border border-emerald-700 px-3 py-2 text-xs font-semibold hover:bg-emerald-900"
-                    >
-                      Abrir en Sheets
-                    </a>
-                  </div>
+              {vocabularyWorkbookError && (
+                <div className="mb-3 rounded-xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
+                  {vocabularyWorkbookError}
                 </div>
               )}
+
+              {renderWorkbookCard("grammar", grammarWorkbook)}
+              {renderWorkbookCard("vocabulary", vocabularyWorkbook)}
 
               <div className="flex flex-col gap-3 md:flex-row">
                 <textarea
@@ -576,7 +784,7 @@ export default function CoachPage() {
               </div>
 
               <p className="mt-2 text-xs text-slate-500">
-                Enter sends. Shift + Enter creates a new line.
+                Enter sends with the general coach. Use the specialist agent panel for Grammar, Speaking or Evaluation.
               </p>
             </footer>
           </section>

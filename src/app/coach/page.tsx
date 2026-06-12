@@ -716,7 +716,7 @@ export default function CoachPage() {
                       sendMessage();
                     }
                   }}
-                  placeholder="Example: answer the diagnostic question from today's class."
+                  placeholder="Example: answer the diagnostic question from today class."
                   className="min-h-28 flex-1 resize-none rounded-xl border border-slate-700 bg-slate-900 p-4 text-base text-white outline-none focus:border-blue-500"
                 />
 
@@ -749,7 +749,7 @@ export default function CoachPage() {
 
             <section className="rounded-2xl border border-blue-900 bg-blue-950/40 p-4">
               <p className="text-xs uppercase tracking-wide text-blue-300">
-                Today's Class
+                Today Class
               </p>
               <p className="mt-1 text-sm font-semibold text-white">
                 {currentLesson || "Clase guiada de English OS"}

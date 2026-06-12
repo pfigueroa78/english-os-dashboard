@@ -343,6 +343,78 @@ async function logDailySession(params: {
   });
 }
 
+
+function isCourseClassListQuestion(message: string): boolean {
+  const normalized = message.toLowerCase();
+
+  const asksForClasses =
+    /clases|classes|class sequence|secuencia de clases|lista de clases/.test(normalized);
+
+  const mentionsUnit =
+    /unidad\s*\d{1,2}|unit\s*\d{1,2}/.test(normalized);
+
+  const asksWhat =
+    /cu[aá]les|what|lista|list|dime|mu[eé]strame|show/.test(normalized);
+
+  return asksForClasses && mentionsUnit && asksWhat;
+}
+
+async function getDirectCourseClassIndexReply(message: string, currentUnit: string) {
+  if (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN) return "";
+
+  if (!isCourseClassListQuestion(message)) return "";
+
+  const unit = extractRequestedUnit(message, currentUnit);
+  if (!unit) return "";
+
+  const url = new URL(ENGLISH_OS_BASE_URL);
+  url.searchParams.set("token", ENGLISH_OS_TOKEN);
+  url.searchParams.set("action", "getCourseClassIndex");
+  url.searchParams.set("unit", unit);
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.ok || !Array.isArray(data.items) || data.items.length === 0) {
+    return "";
+  }
+
+  const rows = data.items
+    .map((item: any) => {
+      const type = item.specialClass || "Student's Book";
+      const pdfPages =
+        item.pdfInitialPage && item.pdfFinalPage
+          ? `${item.pdfInitialPage}–${item.pdfFinalPage}`
+          : "—";
+      const bookPages =
+        item.bookInitialPage && item.bookFinalPage
+          ? `${item.bookInitialPage}–${item.bookFinalPage}`
+          : "—";
+      const notes = item.notes || "";
+
+      return `| Class ${item.classNumber} | ${type} | ${pdfPages} | ${bookPages} | ${notes || "—"} |`;
+    })
+    .join("\n");
+
+  return `
+Sí. La Unidad ${unit} tiene ${data.items.length} clases en English OS.
+
+| Clase | Tipo | Páginas PDF | Páginas del libro | Notas |
+|---|---|---:|---:|---|
+${rows}
+
+Importante: estas son las **clases del curso**, no solamente las lecciones del libro. El libro puede organizar la unidad en Lesson A / Lesson B, pero English OS la trabaja como una secuencia de clases.
+
+Fuente usada: **Course Class Index**, basada en el índice del Student's Book de Passages.
+
+Next action: dime “Dame la clase 1 de la unidad ${unit}” y te la preparo como clase guiada.
+`.trim();
+}
+
 function buildCoachPrompt(
   context: any,
   message: string,
@@ -553,6 +625,31 @@ export async function POST(request: Request) {
       user["Learner ID"] ||
       context?.learnerId ||
       email;
+
+    const directCourseClassReply = await getDirectCourseClassIndexReply(
+      message,
+      currentUnit
+    );
+
+    if (directCourseClassReply) {
+      await logDailySession({
+        userEmail: email,
+        learnerId,
+        userMessage: message,
+        coachReply: directCourseClassReply,
+        currentUnit,
+        currentLesson,
+        currentCEFR,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        agent: "coach",
+        reply: directCourseClassReply,
+        source: "Course Class Index",
+        deterministic: true,
+      });
+    }
 
     const courseClassIndexContext = await getCourseClassIndexContext(
       message,

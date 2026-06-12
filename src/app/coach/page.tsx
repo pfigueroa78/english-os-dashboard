@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import Link from "next/link";
+import { MarkdownMessage } from "@/components/MarkdownMessage";
 
 type Message = {
   role: "user" | "coach";
@@ -73,31 +74,6 @@ const SPECIALIST_AGENTS: SpecialistAgent[] = [
       "Please evaluate my English objectively using CEFR criteria. Give me a score, weaknesses, recurring patterns, and targeted exercises.",
   },
 ];
-
-function renderFormattedText(content: string) {
-  const lines = content.split("\n");
-
-  return lines.map((line, lineIndex) => {
-    const parts = line.split(/(\*\*[^*]+\*\*)/g);
-
-    return (
-      <span key={lineIndex}>
-        {parts.map((part, partIndex) => {
-          if (part.startsWith("**") && part.endsWith("**")) {
-            return (
-              <strong key={partIndex} className="font-bold text-white">
-                {part.slice(2, -2)}
-              </strong>
-            );
-          }
-
-          return <span key={partIndex}>{part}</span>;
-        })}
-        {lineIndex < lines.length - 1 ? <br /> : null}
-      </span>
-    );
-  });
-}
 
 function buildTodayClassMessage(unit: string, lesson: string) {
   const safeUnit = unit || "tu unidad actual";
@@ -745,7 +721,7 @@ export default function CoachPage() {
                   </div>
 
                   <div className="prose prose-invert max-w-none whitespace-pre-wrap text-base leading-8 text-slate-100 md:text-lg">
-                    {renderFormattedText(message.content)}
+                    <MarkdownMessage content={message.content} />
                   </div>
                 </article>
               ))}

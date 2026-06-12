@@ -345,18 +345,18 @@ async function logDailySession(params: {
 
 
 function isCourseClassListQuestion(message: string): boolean {
-  const normalized = message.toLowerCase();
+  const normalized = message
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 
   const asksForClasses =
-    /clases|classes|class sequence|secuencia de clases|lista de clases/.test(normalized);
+    /clase|clases|class|classes|class sequence|secuencia de clases|lista de clases/.test(normalized);
 
   const mentionsUnit =
     /unidad\s*\d{1,2}|unit\s*\d{1,2}/.test(normalized);
 
-  const asksWhat =
-    /cu[aá]les|what|lista|list|dime|mu[eé]strame|show/.test(normalized);
-
-  return asksForClasses && mentionsUnit && asksWhat;
+  return asksForClasses && mentionsUnit;
 }
 
 async function getDirectCourseClassIndexReply(message: string, currentUnit: string) {
@@ -632,6 +632,10 @@ export async function POST(request: Request) {
     );
 
     if (directCourseClassReply) {
+      console.log("COURSE_CLASS_INDEX_DETERMINISTIC_REPLY", {
+        message,
+        currentUnit,
+      });
       await logDailySession({
         userEmail: email,
         learnerId,

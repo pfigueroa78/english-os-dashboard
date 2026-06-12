@@ -50,6 +50,7 @@ function ensureLearningStateSheet_(ss) {
 }
 
 function findLearningState_(ss, userEmail, learnerId) {
+  ensureLearningStateSheet_(ss);
   const rows = sheetRowsAsObjectsWithRow_(ss, LEARNING_STATE_SHEET_NAME);
   const email = normalizeEmail_(userEmail || '');
   const learner = String(learnerId || '').trim();
@@ -126,4 +127,152 @@ function createDefaultLearningState_(ss, userEmail, learnerId, user) {
 function extractUnitNumberFromText_(value) {
   const match = String(value || '').match(/Unit\s*(\d{1,2})|Unidad\s*(\d{1,2})/i);
   return match ? String(match[1] || match[2] || '') : '';
+}
+
+function updateLearningState_(ss, userEmail, learnerId, patch) {
+  const sheet = ensureLearningStateSheet_(ss);
+  let state = findLearningState_(ss, userEmail, learnerId);
+
+  if (!state) {
+    const user = findUser_(ss, userEmail, learnerId);
+    state = createDefaultLearningState_(ss, userEmail, learnerId, user);
+  }
+
+  const rowNumber = state.rowNumber;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const currentValues = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
+  const currentObject = {};
+
+  headers.forEach((header, index) => {
+    currentObject[header] = currentValues[index];
+  });
+
+  Object.keys(patch || {}).forEach(key => {
+    currentObject[key] = patch[key];
+  });
+
+  currentObject['Updated At'] = today_();
+
+  const nextRow = headers.map(header => currentObject[header] === undefined ? '' : currentObject[header]);
+  sheet.getRange(rowNumber, 1, 1, nextRow.length).setValues([nextRow]);
+
+  return findLearningState_(ss, userEmail, learnerId);
+}
+
+function approveCurrentClassExercises_(ss, params) {
+  const userEmail = normalizeEmail_(params.userEmail || '');
+  const learnerId = String(params.learnerId || userEmail).trim();
+  const state = getLearningState_(ss, params).learningState;
+
+  const updated = updateLearningState_(ss, userEmail, learnerId, {
+    'Current Class Status': 'approved',
+    'Exercise Approval Status': 'approved',
+    'Last Approved Unit': state.currentUnit,
+    'Last Approved Class': state.currentClass,
+    'Last Approved At': today_(),
+    'Source': 'exercise_approval',
+    'Notes': params.notes || 'Current class exercises approved.'
+  });
+
+  return {
+    ok: true,
+    action: 'approveCurrentClassExercises',
+    learningState: updated,
+    canAdvance: true
+  };
+}
+
+function advanceToNextClass_(ss, params) {
+  const userEmail = normalizeEmail_(params.userEmail || '');
+  const learnerId = String(params.learnerId || userEmail).trim();
+  const state = getLearningState_(ss, params).learningState;
+  const force = String(params.force || '').toLowerCase() === 'true';
+
+  const requiresApproval = String(state.advanceRequiresApproval || 'TRUE').toLowerCase() !== 'false';
+  const approved = state.currentClassStatus === 'approved' || state.exerciseApprovalStatus === 'approved';
+
+  if (requiresApproval && !approved && !force) {
+    return {
+      ok: false,
+      action: 'advanceToNextClass',
+      error: 'Current class is not approved. Approve exercises or pass force=true.',
+      learningState: state,
+      canAdvance: false
+    };
+  }
+
+  const nextClassNumber = String(Number(state.currentClass || 0) + 1);
+  const nextIndex = getCourseClassIndex_(ss, { classNumber: nextClassNumber });
+
+  if (!nextIndex.items || !nextIndex.items.length) {
+    return {
+      ok: false,
+      action: 'advanceToNextClass',
+      error: 'Next class not found in Course Class Index.',
+      learningState: state,
+      attemptedNextClass: nextClassNumber
+    };
+  }
+
+  const nextClass = nextIndex.items[0];
+  const updated = updateLearningState_(ss, userEmail, learnerId, {
+    'Current Unit': nextClass.unit,
+    'Current Class': nextClass.classNumber,
+    'Current Class Status': 'not_started',
+    'Class Mode': 'viewing_current_class',
+    'Review Unit': '',
+    'Review Class': '',
+    'Exercise Approval Status': 'pending',
+    'Source': force ? 'forced_advance' : 'approved_advance',
+    'Notes': 'Advanced to next class from English OS.'
+  });
+
+  return {
+    ok: true,
+    action: 'advanceToNextClass',
+    previousLearningState: state,
+    learningState: updated,
+    nextClassIndex: nextClass
+  };
+}
+
+function setReviewMode_(ss, params) {
+  const userEmail = normalizeEmail_(params.userEmail || '');
+  const learnerId = String(params.learnerId || userEmail).trim();
+
+  const reviewUnit = String(params.reviewUnit || params.unit || '').trim();
+  const reviewClass = String(params.reviewClass || params.classNumber || '').trim();
+
+  const updated = updateLearningState_(ss, userEmail, learnerId, {
+    'Class Mode': 'reviewing',
+    'Review Unit': reviewUnit,
+    'Review Class': reviewClass,
+    'Source': 'review_mode',
+    'Notes': params.notes || 'Temporary review mode enabled. Persistent current class unchanged.'
+  });
+
+  return {
+    ok: true,
+    action: 'setReviewMode',
+    learningState: updated
+  };
+}
+
+function clearReviewMode_(ss, params) {
+  const userEmail = normalizeEmail_(params.userEmail || '');
+  const learnerId = String(params.learnerId || userEmail).trim();
+
+  const updated = updateLearningState_(ss, userEmail, learnerId, {
+    'Class Mode': 'viewing_current_class',
+    'Review Unit': '',
+    'Review Class': '',
+    'Source': 'clear_review_mode',
+    'Notes': params.notes || 'Returned to persistent current class.'
+  });
+
+  return {
+    ok: true,
+    action: 'clearReviewMode',
+    learningState: updated
+  };
 }

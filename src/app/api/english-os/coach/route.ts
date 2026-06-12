@@ -401,7 +401,7 @@ async function getDirectCourseClassIndexReply(message: string, currentUnit: stri
     .join("\n");
 
   return `
-Sí. La Unidad ${unit} tiene ${data.items.length} clases en English OS.
+✅ RESPUESTA DESDE COURSE CLASS INDEX. La Unidad ${unit} tiene ${data.items.length} clases en English OS.
 
 | Clase | Tipo | Páginas PDF | Páginas del libro | Notas |
 |---|---|---:|---:|---|

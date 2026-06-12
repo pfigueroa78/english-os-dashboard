@@ -15,6 +15,7 @@ function doGet(e) {
 
     if (action === 'getLearningState') return jsonResponse_(getLearningState_(ss, params));
     if (action === 'getBookContentIndex') return jsonResponse_(getBookContentIndex_(ss, params));
+    if (action === 'populateBookContentIndex') return jsonResponse_(populateBookContentIndex_(ss, params));
     if (action === 'getCurrentClassContent') return jsonResponse_(getCurrentClassContent_(ss, params));
     if (action === 'getClassContent') return jsonResponse_(getClassContent_(ss, params));
     if (action === 'approveCurrentClassExercises') return jsonResponse_(approveCurrentClassExercises_(ss, params));

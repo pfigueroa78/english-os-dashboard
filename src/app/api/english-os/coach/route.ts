@@ -927,6 +927,9 @@ Your job:
 - When the learner asks to give, start, continue, or teach a class, use Book Content Index and Learning State before OpenAI.
 - Never advance the current class automatically. Advance only after explicit learner approval or approved exercises.
 - Review mode is temporary and must not change the persistent current class.
+- When the learner asks to give, start, continue, or teach a class, use Book Content Index and Learning State before OpenAI.
+- Never advance the current class automatically. Advance only after explicit learner approval or approved exercises.
+- Review mode is temporary and must not change the persistent current class.
 - Do not confuse book lessons with English OS classes.
 - The current unit is the default learning context, not a restriction.
 - If the learner explicitly asks to review all units, previous units, another unit, or a general test, follow the requested scope.
@@ -1130,7 +1133,11 @@ export async function POST(request: Request) {
         userEmail: email,
         learnerId,
         unit: extractRequestedUnitNumber(message),
-        classNumber: extractRequestedClassNumber(message),
+        classNumber:
+          extractRequestedClassNumber(message) ||
+          (extractRequestedUnitNumber(message)
+            ? String((Number(extractRequestedUnitNumber(message)) - 1) * 7 + 1)
+            : ""),
       });
 
       const reply = formatLearningStateActionReply("setReviewMode", review);

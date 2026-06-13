@@ -48,3 +48,29 @@ body {
   margin-top: 0.75rem;
   margin-bottom: 0.35rem;
 }
+
+article.bg-slate-800:has(.prose) {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0;
+}
+
+article.bg-slate-800:has(.prose) .prose,
+article.bg-slate-800:has(.prose) .prose :where(p, li, ul, ol, h1, h2, h3, h4, strong, em, span):not(:where([class~="not-prose"] *)) {
+  color: #0f172a !important;
+}
+
+article.bg-slate-800:has(.prose) .prose :where(blockquote):not(:where([class~="not-prose"] *)) {
+  background: #f1f5f9 !important;
+  border-left-color: #3b82f6 !important;
+  color: #0f172a !important;
+}
+
+article.bg-slate-800:has(.prose) .prose :where(hr):not(:where([class~="not-prose"] *)) {
+  border-color: #e2e8f0 !important;
+}
+
+article.bg-slate-800:has(.prose) .prose :where(code):not(:where([class~="not-prose"] *)) {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}

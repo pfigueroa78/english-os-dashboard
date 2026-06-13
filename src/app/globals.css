@@ -55,19 +55,43 @@ article.bg-slate-800:has(.prose) {
   border: 1px solid #e2e8f0;
 }
 
-article.bg-slate-800:has(.prose) .prose,
-article.bg-slate-800:has(.prose) .prose :where(p, li, ul, ol, h1, h2, h3, h4, strong, em, span):not(:where([class~="not-prose"] *)) {
+article.bg-slate-800:has(.prose) .prose {
   color: #0f172a !important;
+  font-size: 0.94rem !important;
+  line-height: 1.55 !important;
+}
+
+article.bg-slate-800:has(.prose) .prose :where(p, li, ul, ol, strong, em, span):not(:where([class~="not-prose"] *)) {
+  color: #0f172a !important;
+  line-height: 1.55 !important;
+}
+
+article.bg-slate-800:has(.prose) .prose :where(h1, h2):not(:where([class~="not-prose"] *)) {
+  color: #0f172a !important;
+  font-size: 1.15rem !important;
+  line-height: 1.35 !important;
+}
+
+article.bg-slate-800:has(.prose) .prose :where(h3, h4):not(:where([class~="not-prose"] *)) {
+  color: #0f172a !important;
+  font-size: 1rem !important;
+  line-height: 1.35 !important;
 }
 
 article.bg-slate-800:has(.prose) .prose :where(blockquote):not(:where([class~="not-prose"] *)) {
   background: #f1f5f9 !important;
   border-left-color: #3b82f6 !important;
   color: #0f172a !important;
+  font-size: 0.92rem !important;
+  line-height: 1.5 !important;
+  margin-top: 0.45rem !important;
+  margin-bottom: 0.45rem !important;
 }
 
 article.bg-slate-800:has(.prose) .prose :where(hr):not(:where([class~="not-prose"] *)) {
   border-color: #e2e8f0 !important;
+  margin-top: 0.75rem !important;
+  margin-bottom: 0.75rem !important;
 }
 
 article.bg-slate-800:has(.prose) .prose :where(code):not(:where([class~="not-prose"] *)) {

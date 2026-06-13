@@ -137,6 +137,27 @@ function safeJsonFromText(text) {
   return JSON.parse(withoutFence.slice(first, last + 1));
 }
 
+function normalizeAnalysis(raw) {
+  const analysis = raw && typeof raw === "object" ? raw : {};
+
+  return {
+    lessonTitle: analysis.lessonTitle || null,
+    mainFocus: analysis.mainFocus || null,
+    centralGrammar: analysis.centralGrammar || null,
+    centralFunction: analysis.centralFunction || null,
+    centralStructureFormula: analysis.centralStructureFormula || null,
+    requiredPracticeFrames: Array.isArray(analysis.requiredPracticeFrames) ? analysis.requiredPracticeFrames : [],
+    avoidPatterns: Array.isArray(analysis.avoidPatterns) ? analysis.avoidPatterns : [],
+    targetStructures: Array.isArray(analysis.targetStructures) ? analysis.targetStructures : [],
+    vocabulary: Array.isArray(analysis.vocabulary) ? analysis.vocabulary : [],
+    exerciseTypes: Array.isArray(analysis.exerciseTypes) ? analysis.exerciseTypes : [],
+    speakingTasks: Array.isArray(analysis.speakingTasks) ? analysis.speakingTasks : [],
+    visualLayoutNotes: analysis.visualLayoutNotes || null,
+    sourceConfidence: analysis.sourceConfidence || null,
+    evidenceNotes: analysis.evidenceNotes || null,
+  };
+}
+
 async function analyzeWithVision(pack, imagePaths) {
   if (!OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY.");
 
@@ -148,8 +169,13 @@ async function analyzeWithVision(pack, imagePaths) {
         "Return JSON only. Do not quote long copyrighted text. Paraphrase.",
         "Infer the pedagogical target from the page layout, titles, grammar boxes, prompts, examples, and exercises.",
         "Use the text preview only as supporting metadata; the images are the main evidence.",
+        "Prioritize the central grammar/function that learners must produce, not just the topic.",
+        "If a grammar box, function box, repeated sentence frame, or controlled practice pattern appears, extract the reusable formula.",
         "Required JSON fields:",
-        "lessonTitle, mainFocus, centralGrammar, centralFunction, targetStructures, vocabulary, exerciseTypes, speakingTasks, visualLayoutNotes, sourceConfidence, evidenceNotes.",
+        "lessonTitle, mainFocus, centralGrammar, centralFunction, centralStructureFormula, requiredPracticeFrames, avoidPatterns, targetStructures, vocabulary, exerciseTypes, speakingTasks, visualLayoutNotes, sourceConfidence, evidenceNotes.",
+        "centralStructureFormula: one clean reusable formula learners can use, or null if there is no formula.",
+        "requiredPracticeFrames: array of 3 to 6 sentence frames that directly practice the central structure/function.",
+        "avoidPatterns: array of common malformed structures or misleading patterns the coach should avoid.",
         "targetStructures must be an array of objects with name, meaning, form, exampleIdeas, likelyMistakes.",
         "vocabulary must be an array of objects with item, meaning, usefulness.",
         "Do not include full page transcriptions.",
@@ -188,7 +214,7 @@ async function analyzeWithVision(pack, imagePaths) {
           content,
         },
       ],
-      max_output_tokens: 1800,
+      max_output_tokens: 2000,
     }),
   });
 
@@ -196,7 +222,7 @@ async function analyzeWithVision(pack, imagePaths) {
   if (!response.ok) throw new Error(data?.error?.message || "OpenAI vision request failed.");
 
   const outputText = data.output_text || data.output?.flatMap((item) => item.content || []).map((item) => item.text || "").join("\n") || "";
-  return safeJsonFromText(outputText);
+  return normalizeAnalysis(safeJsonFromText(outputText));
 }
 
 async function main() {
@@ -221,7 +247,7 @@ async function main() {
     }
 
     const payload = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       generatedAt: new Date().toISOString(),
       model: MODEL,
       classPack: {

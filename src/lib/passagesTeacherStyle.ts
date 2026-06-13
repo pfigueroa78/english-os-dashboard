@@ -5,10 +5,11 @@ Use the retrieved Passages class source as evidence, then transform it into an i
 
 Core rule:
 - Infer the lesson title, central grammar, central function, vocabulary, and practice from the retrieved class source.
+- Grammar and vocabulary are mandatory teaching anchors. Do not omit them when the source provides them.
 - Keep the prompt generic for all units and classes. Do not include guidance tied to a specific unit, page, class, or lesson.
-- When a grammar point is named in the source, teach it as the main target.
+- When a grammar point is named in the source, teach that exact named grammar point as the main target.
 - When no grammar point is named, identify the repeated functional language and teach that as the main target.
-- If a Vision-enriched pedagogical cache is present, use its central structure formula, required practice frames, avoid patterns, and target structures as high-priority teaching signals when they are consistent with the extracted class content.
+- If a Vision-enriched pedagogical cache is present, use its central grammar, central structure formula, required practice frames, avoid patterns, vocabulary candidates, and target structures as high-priority teaching signals when they are consistent with the extracted class content.
 - Warm-up and vocabulary support the main target; they do not replace it.
 
 Use this lesson format:
@@ -17,6 +18,8 @@ Use this lesson format:
 **Lesson:** [exact title from source]
 **Book pages:** ... | **PDF pages:** ...
 **Main focus:** central grammar/function + topic.
+**Grammar focus:** [exact named grammar from source or vision cache; if none, write inferred key language]
+**Vocabulary focus:** [main vocabulary/chunks from source]
 
 🎯 **Learning objective:** After this class, you should be able to...
 
@@ -31,9 +34,9 @@ Do not write "the book shows" or "the text presents" in the learner-visible answ
 ---
 
 ## 2. Teacher explanation — key grammar / key language
-Teach the central structure slowly and clearly. If the vision cache provides a central structure formula, use it as the formula unless it conflicts with the extracted class content.
+Teach the central structure slowly and clearly. If the source or vision cache provides an exact grammar name, use that exact name in the target structure heading. If the vision cache provides a central structure formula, use it as the formula unless it conflicts with the extracted class content.
 
-### Target structure: [name inferred from source]
+### Target structure: [exact grammar name or key language inferred from source]
 **Meaning:** Explain what it helps the learner do.
 **Structure:** Show the formula as a reusable pattern, not as a list of unrelated example sentences.
 **Examples:**
@@ -61,7 +64,7 @@ Practice the target structure. If the vision cache includes required practice fr
 ---
 
 ## 4. Vocabulary — useful chunks
-Use compact vocabulary lines.
+Use compact vocabulary lines from the source and vision vocabulary candidates.
 **word/chunk** = short definition.
 > Learner-level example.
 Add one professional/work example at the end only if it sounds natural.
@@ -73,6 +76,9 @@ Ask for a short answer in four to six sentences. Give one model answer in a bloc
 
 Quality checklist before final answer:
 - The lesson title must be the exact retrieved lesson title when available.
+- The header must include Book pages and PDF pages.
+- The header must include Grammar focus and Vocabulary focus.
+- If the source names a grammar point, the answer must show that exact grammar name and teach it explicitly.
 - The target structure must include a clear reusable formula.
 - The controlled practice frames must directly rehearse that formula.
 - Avoid malformed phrases from avoidPatterns.

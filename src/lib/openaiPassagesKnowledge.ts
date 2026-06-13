@@ -295,6 +295,12 @@ Identity rule:
 - Never replace the local class with the global class in the unit header.
 - Do not mention internal filenames, class packs, retrieval keys, vector stores, or file_search in the learner-visible response.
 
+Grammar and vocabulary rule:
+- If the class source includes an exact grammar label, show it in the header as Grammar focus and teach it explicitly.
+- Grammar focus and Vocabulary focus are required in the visible header.
+- If vision cache and extracted content disagree, prefer the exact named grammar label from the extracted class content.
+- Do not replace a named grammar point with a broad topic such as family, stress, or advice.
+
 Personalization rule:
 - The class content must come from the requested Passages class pack.
 - The teaching choices must adapt to the learner context.
@@ -375,14 +381,171 @@ Instructions:
 5. If other retrieved results mention unrelated topics, ignore them.
 6. Deliver a teacher-led lesson with examples, explanation, guided practice, and one production task.
 7. Include a learning objective using "After this class, you should be able to...".
-8. Use the learner personalization context to adapt examples, common mistakes, vocabulary, and speaking task.
-9. Use a short real-life story or scenario before explaining patterns.
-10. Remind the learner that progress only advances after practice is approved.
-11. Keep the response compact with no excessive blank lines.
-12. Do not mention class packs, retrieval, internal source names, vector stores, or file search in the learner-visible response.
+8. Include Grammar focus and Vocabulary focus in the visible header.
+9. If the source names a grammar point, teach that exact grammar point explicitly.
+10. Use the learner personalization context to adapt examples, common mistakes, vocabulary, and speaking task.
+11. Use a short real-life story or scenario before explaining patterns.
+12. Remind the learner that progress only advances after practice is approved.
+13. Keep the response compact with no excessive blank lines.
+14. Do not mention class packs, retrieval, internal source names, vector stores, or file search in the learner-visible response.
       `.trim(),
     },
   ];
+}
+
+function collectStrings(value: any, output: string[] = []): string[] {
+  if (typeof value === "string") {
+    output.push(value);
+    return output;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectStrings(item, output));
+    return output;
+  }
+
+  if (value && typeof value === "object") {
+    Object.values(value).forEach((item) => collectStrings(item, output));
+  }
+
+  return output;
+}
+
+function firstCleanMatch(text: string, patterns: RegExp[]) {
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const value = match?.[1]?.trim();
+    if (value && !/^not (identified|specified|available)|^unknown|^none$/i.test(value)) {
+      return value.replace(/["“”]+/g, "").replace(/\.$/, "").trim();
+    }
+  }
+
+  return "";
+}
+
+function extractVisibleListAfterHeading(text: string, heading: string) {
+  const index = text.toLowerCase().indexOf(heading.toLowerCase());
+  if (index < 0) return "";
+  const slice = text.slice(index + heading.length);
+  const next = slice.search(/\n#{2,3}\s|\n<!--|\n\n[A-Z][A-Za-z ]+:/);
+  const section = next >= 0 ? slice.slice(0, next) : slice.slice(0, 800);
+  return section
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("- "))
+    .slice(0, 6)
+    .join("; ");
+}
+
+function extractContractMetadata(data: any, input: any[]) {
+  const inputText = collectStrings(input).join("\n");
+  const sourceText = collectStrings(data).join("\n");
+  const allText = `${inputText}\n${sourceText}`;
+
+  const bookPages = firstCleanMatch(inputText, [
+    /Book pages from initial index row:\s*([^\n]+)/i,
+    /"bookPages"\s*:\s*"([^"]+)"/i,
+  ]);
+
+  const pdfPages = firstCleanMatch(inputText, [
+    /PDF pages from initial index row:\s*([^\n]+)/i,
+    /"pdfPages"\s*:\s*"([^"]+)"/i,
+  ]);
+
+  const grammarFocus = firstCleanMatch(allText, [
+    /Vision central grammar:\s*([^\n]+)/i,
+    /"grammarFocus"\s*:\s*"([^"]+)"/i,
+    /"centralGrammar"\s*:\s*"([^"]+)"/i,
+    /Grammar focus:\s*([^\n]+)/i,
+    /Grammar:\s*([^\n]+)/i,
+  ]);
+
+  const vocabularyFocus = firstCleanMatch(allText, [
+    /"vocabularyFocus"\s*:\s*"([^"]+)"/i,
+    /"centralVocabulary"\s*:\s*"([^"]+)"/i,
+    /Vocabulary focus:\s*([^\n]+)/i,
+    /Vocabulary:\s*([^\n]+)/i,
+  ]) || extractVisibleListAfterHeading(sourceText, "### Vision vocabulary candidates");
+
+  const structureFormula = firstCleanMatch(sourceText, [
+    /Vision central structure formula:\s*([^\n]+)/i,
+    /"centralStructureFormula"\s*:\s*"([^"]+)"/i,
+  ]);
+
+  return {
+    bookPages,
+    pdfPages,
+    grammarFocus,
+    vocabularyFocus,
+    structureFormula,
+  };
+}
+
+function insertAfterLine(reply: string, linePattern: RegExp, insertion: string) {
+  const lines = reply.split("\n");
+  const index = lines.findIndex((line) => linePattern.test(line));
+  if (index < 0) return `${insertion}\n${reply}`;
+  lines.splice(index + 1, 0, insertion);
+  return lines.join("\n");
+}
+
+function ensureHeaderLine(reply: string, labelPattern: RegExp, line: string) {
+  if (!line.trim() || labelPattern.test(reply)) return reply;
+
+  if (/\*\*Book pages:\*\*/i.test(reply)) {
+    return insertAfterLine(reply, /\*\*Book pages:\*\*/i, line);
+  }
+
+  if (/^Book pages:/im.test(reply)) {
+    return insertAfterLine(reply, /^Book pages:/i, line);
+  }
+
+  if (/\*\*Lesson:\*\*/i.test(reply)) {
+    return insertAfterLine(reply, /\*\*Lesson:\*\*/i, line);
+  }
+
+  return insertAfterLine(reply, /^Lesson:/i, line);
+}
+
+function ensurePassagesLessonContract(data: any, input: any[]) {
+  const outputText =
+    data.output_text ||
+    data.output?.flatMap((item: any) => item.content || []).map((item: any) => item.text || "").join("\n") ||
+    "";
+
+  if (!outputText) return data;
+
+  const metadata = extractContractMetadata(data, input);
+  let reply = outputText;
+
+  if ((metadata.bookPages || metadata.pdfPages) && !/(\*\*)?Book pages/i.test(reply)) {
+    const pagesLine = `**Book pages:** ${metadata.bookPages || "—"} | **PDF pages:** ${metadata.pdfPages || "—"}`;
+    reply = ensureHeaderLine(reply, /\*\*Book pages:\*\*|^Book pages:/im, pagesLine);
+  }
+
+  if (metadata.grammarFocus && !/\*\*Grammar focus:\*\*|^Grammar focus:/im.test(reply)) {
+    reply = ensureHeaderLine(reply, /\*\*Grammar focus:\*\*|^Grammar focus:/im, `**Grammar focus:** ${metadata.grammarFocus}`);
+  }
+
+  if (metadata.vocabularyFocus && !/\*\*Vocabulary focus:\*\*|^Vocabulary focus:/im.test(reply)) {
+    reply = ensureHeaderLine(reply, /\*\*Vocabulary focus:\*\*|^Vocabulary focus:/im, `**Vocabulary focus:** ${metadata.vocabularyFocus}`);
+  }
+
+  if (metadata.structureFormula && /\*\*Structure:\*\*/i.test(reply) && !reply.includes(metadata.structureFormula)) {
+    reply = reply.replace(/\*\*Structure:\*\*\s*\n/i, `**Structure:**\n${metadata.structureFormula}\n\n`);
+  }
+
+  reply = reply
+    .replace(/Practice Gate\s+Before we continue/gi, "Before we continue")
+    .replace(/\bThe book shows\b/gi, "We use these examples to practice")
+    .replace(/\bThe text presents\b/gi, "This class works with")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return {
+    ...data,
+    output_text: reply,
+  };
 }
 
 export async function createPassagesKnowledgeResponse(params: {
@@ -425,5 +588,5 @@ export async function createPassagesKnowledgeResponse(params: {
     throw new Error(data?.error?.message || "OpenAI Passages file_search request failed.");
   }
 
-  return data;
+  return ensurePassagesLessonContract(data, params.input);
 }

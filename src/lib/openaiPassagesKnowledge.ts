@@ -25,6 +25,92 @@ function normalizeMessage(message: string) {
     .trim();
 }
 
+function clipJson(value: any, max = 1200) {
+  if (!value) return "";
+
+  try {
+    return JSON.stringify(value, null, 2).slice(0, max);
+  } catch {
+    return String(value).slice(0, max);
+  }
+}
+
+function summarizeLearnerPersonalizationContext(learnerContext: any) {
+  const user = learnerContext?.user || {};
+  const missionControl = learnerContext?.missionControl || {};
+  const learningState = learnerContext?.learningState || {};
+
+  const learnerName =
+    user.Name ||
+    user["Name"] ||
+    learnerContext?.name ||
+    "the learner";
+
+  const currentCEFR =
+    user["Current CEFR"] ||
+    learnerContext?.currentCEFR ||
+    missionControl.currentCEFR ||
+    "B1/B2";
+
+  const currentUnit =
+    user["Current Unit"] ||
+    learnerContext?.currentUnit ||
+    missionControl.currentUnit ||
+    learningState.currentUnit ||
+    "";
+
+  const currentLesson =
+    user["Current Lesson"] ||
+    learnerContext?.currentLesson ||
+    missionControl.currentLesson ||
+    learningState.currentClass ||
+    "";
+
+  const nextRecommendedAction =
+    learnerContext?.nextRecommendedAction ||
+    missionControl?.nextRecommendedAction ||
+    user["Next Recommended Action"] ||
+    "";
+
+  const recentDailyLogs =
+    learnerContext?.recentDailyLogs ||
+    learnerContext?.dailyLogs ||
+    [];
+
+  const recurringMistakes =
+    learnerContext?.recurringMistakes ||
+    learnerContext?.mistakes ||
+    [];
+
+  const vocabulary =
+    learnerContext?.vocabulary ||
+    learnerContext?.vocabularyIntelligence ||
+    learnerContext?.newVocabulary ||
+    [];
+
+  return `
+Learner personalization context:
+- Learner name: ${learnerName}
+- CEFR level: ${currentCEFR}
+- Current English OS unit: ${currentUnit || "not specified"}
+- Current English OS lesson/class: ${currentLesson || "not specified"}
+- Next recommended action: ${typeof nextRecommendedAction === "string" ? nextRecommendedAction : clipJson(nextRecommendedAction, 500) || "not specified"}
+- Professional context to prioritize when useful: consulting, enterprise architecture, software architecture, AI, digital transformation, business meetings, executive communication.
+
+Recent learning evidence to adapt the class:
+- Recent daily logs: ${clipJson(recentDailyLogs, 1400) || "not available"}
+- Recurring mistakes / weak patterns: ${clipJson(recurringMistakes, 1400) || "not available"}
+- Vocabulary intelligence / weak vocabulary / new chunks: ${clipJson(vocabulary, 1400) || "not available"}
+
+Personalization instructions:
+- Adapt the class to the learner's CEFR level.
+- Use the learner's recurring mistakes to choose the common mistake and the quick correction.
+- Use weak vocabulary and recent chunks when selecting examples and practice frames.
+- Connect examples to the learner's professional context only when it feels natural.
+- Do not expose raw logs or say "your logs show". Turn the context into helpful teaching choices.
+`.trim();
+}
+
 function extractExplicitUnitFromMessage(message: string): number | null {
   const normalized = normalizeMessage(message);
   const match = normalized.match(/(?:unidad|unit)\s+(\d{1,2})/);
@@ -180,6 +266,8 @@ export function buildPassagesKnowledgeInput(params: {
     .map((reference) => `- Unit ${reference.unit}, local class ${reference.localClass}, global class ${reference.globalClass}`)
     .join("\n");
 
+  const learnerPersonalizationContext = summarizeLearnerPersonalizationContext(params.learnerContext);
+
   return [
     {
       role: "system",
@@ -206,6 +294,14 @@ Identity rule:
 - Correct header format: "Unit 4 — Class 2" on one line and "Global Class 23" on the next line.
 - Never write "Unit 4 — Class 23" when the learner asked for local Class 2 of Unit 4.
 - Do not mention internal filenames, class packs, retrieval keys, vector stores, or file_search in the learner-visible response.
+
+Personalization rule:
+- The class content must come from the requested Passages class pack.
+- The teaching choices must adapt to the learner context.
+- Adapt difficulty, examples, common mistakes, vocabulary emphasis, and production tasks to the learner's CEFR level, recurring mistakes, weak vocabulary, recent daily logs, and professional context.
+- If the learner has recurring mistakes related to the target structure, make that the common mistake.
+- If the learner is preparing for professional fluency, include one natural consulting/business/architecture example when it fits.
+- Do not expose private logs or say "your logs show". Say "Personal focus" only if it helps the class.
 
 Learning objective rule:
 - Every class must include a learning objective after the identity header.
@@ -243,13 +339,14 @@ Single-class response format:
 1. Natural opening sentence.
 2. Compact identity: Unit X — Class Y; Global Class Z; Lesson; Book/PDF pages.
 3. Learning objective: After this class, you should be able to...
-4. Real-life story or scenario.
-5. Key language / grammar: meaning, form, examples, common mistake, guided practice.
-6. Vocabulary in context: definition + example + work/professional connection.
-7. Controlled practice with 4 to 6 frames.
-8. Speaking practice with 2 to 3 questions.
-9. One model answer.
-10. End with “Now you answer: ...”.
+4. Personal focus, only if useful and short.
+5. Real-life story or scenario.
+6. Key language / grammar: meaning, form, examples, common mistake, guided practice.
+7. Vocabulary in context: definition + example + work/professional connection.
+8. Controlled practice with 4 to 6 frames.
+9. Speaking practice with 2 to 3 questions.
+10. One model answer.
+11. End with “Now you answer: ...”.
 
 Multi-class requests:
 - If the learner asks for several classes in one message, do NOT teach all classes fully in one response.
@@ -285,6 +382,8 @@ Requested class coordinates for active class:
 - Book pages from initial index row: ${bookPages || "unknown"}
 - PDF pages from initial index row: ${pdfPages || "unknown"}
 
+${learnerPersonalizationContext}
+
 Structured Course Class Index / Book Content Index context:
 ${JSON.stringify(params.classContent, null, 2).slice(0, 5000)}
 
@@ -299,10 +398,11 @@ Instructions:
 5. If other retrieved results mention unrelated topics, ignore them.
 6. Deliver a teacher-led lesson with examples, explanation, guided practice, and one production task.
 7. Include a learning objective using "After this class, you should be able to...".
-8. Use a short real-life story or scenario before explaining patterns.
-9. Remind the learner that progress only advances after practice is approved.
-10. Keep the response compact with no excessive blank lines.
-11. Do not mention class packs, retrieval, internal source names, vector stores, or file search in the learner-visible response.
+8. Use the learner personalization context to adapt examples, common mistakes, vocabulary, and speaking task.
+9. Use a short real-life story or scenario before explaining patterns.
+10. Remind the learner that progress only advances after practice is approved.
+11. Keep the response compact with no excessive blank lines.
+12. Do not mention class packs, retrieval, internal source names, vector stores, or file search in the learner-visible response.
       `.trim(),
     },
   ];

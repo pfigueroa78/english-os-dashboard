@@ -5,33 +5,44 @@ type MarkdownMessageProps = {
   content: string;
 };
 
+function normalizeMarkdownContent(content: string) {
+  return String(content || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\n[ \t]+\n/g, "\n\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\n\s*\n(?=\s*[-*]\s+)/g, "\n")
+    .replace(/\n\s*\n(?=\s*\d+[.)]\s+)/g, "\n")
+    .replace(/\n\s*\n(?=\s*>\s+)/g, "\n")
+    .trim();
+}
+
 export function MarkdownMessage({ content }: MarkdownMessageProps) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
         h1: ({ children }) => (
-          <h1 className="mb-4 mt-6 text-3xl font-bold text-white first:mt-0">
+          <h1 className="mb-2 mt-4 text-2xl font-bold text-white first:mt-0">
             {children}
           </h1>
         ),
         h2: ({ children }) => (
-          <h2 className="mb-3 mt-5 text-2xl font-bold text-white first:mt-0">
+          <h2 className="mb-2 mt-4 text-xl font-bold text-white first:mt-0">
             {children}
           </h2>
         ),
         h3: ({ children }) => (
-          <h3 className="mb-2 mt-4 text-xl font-bold text-white first:mt-0">
+          <h3 className="mb-1.5 mt-3 text-lg font-bold text-white first:mt-0">
             {children}
           </h3>
         ),
         h4: ({ children }) => (
-          <h4 className="mb-2 mt-3 text-lg font-semibold text-white first:mt-0">
+          <h4 className="mb-1 mt-2 text-base font-semibold text-white first:mt-0">
             {children}
           </h4>
         ),
         p: ({ children }) => (
-          <p className="mb-3 leading-8 text-slate-100 last:mb-0">
+          <p className="mb-2 leading-7 text-slate-100 last:mb-0">
             {children}
           </p>
         ),
@@ -40,18 +51,18 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
         ),
         em: ({ children }) => <em className="italic text-slate-100">{children}</em>,
         ul: ({ children }) => (
-          <ul className="mb-4 ml-6 list-disc space-y-2 text-slate-100">
+          <ul className="mb-2 ml-5 list-disc space-y-0.5 text-slate-100">
             {children}
           </ul>
         ),
         ol: ({ children }) => (
-          <ol className="mb-4 ml-6 list-decimal space-y-2 text-slate-100">
+          <ol className="mb-2 ml-5 list-decimal space-y-0.5 text-slate-100">
             {children}
           </ol>
         ),
         li: ({ children }) => <li className="leading-7">{children}</li>,
         blockquote: ({ children }) => (
-          <blockquote className="my-4 border-l-4 border-blue-500 bg-slate-900/70 px-4 py-3 text-slate-200">
+          <blockquote className="my-3 border-l-4 border-blue-500 bg-slate-900/70 px-3 py-2 text-slate-200">
             {children}
           </blockquote>
         ),
@@ -60,7 +71,7 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
 
           if (isBlock) {
             return (
-              <code className="block overflow-x-auto whitespace-pre rounded-xl bg-slate-950 p-4 text-sm leading-6 text-slate-100">
+              <code className="block overflow-x-auto whitespace-pre rounded-xl bg-slate-950 p-3 text-sm leading-6 text-slate-100">
                 {children}
               </code>
             );
@@ -73,12 +84,12 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
           );
         },
         pre: ({ children }) => (
-          <pre className="my-4 overflow-x-auto rounded-xl bg-slate-950 p-0">
+          <pre className="my-3 overflow-x-auto rounded-xl bg-slate-950 p-0">
             {children}
           </pre>
         ),
         table: ({ children }) => (
-          <div className="my-4 overflow-x-auto rounded-xl border border-slate-700">
+          <div className="my-3 overflow-x-auto rounded-xl border border-slate-700">
             <table className="min-w-full border-collapse text-sm text-slate-100">
               {children}
             </table>
@@ -109,10 +120,10 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
             {children}
           </a>
         ),
-        hr: () => <hr className="my-6 border-slate-700" />,
+        hr: () => <hr className="my-4 border-slate-700" />,
       }}
     >
-      {content}
+      {normalizeMarkdownContent(content)}
     </ReactMarkdown>
   );
 }

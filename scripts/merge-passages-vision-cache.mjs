@@ -40,12 +40,19 @@ function listText(items, formatter) {
   return items.map(formatter).join("\n");
 }
 
+function inlineList(items) {
+  if (!Array.isArray(items)) return "";
+  return items.filter(Boolean).join("; ");
+}
+
 function renderVisionBlock(cache) {
   const analysis = cache.analysis || {};
   const targetStructures = Array.isArray(analysis.targetStructures) ? analysis.targetStructures : [];
   const vocabulary = Array.isArray(analysis.vocabulary) ? analysis.vocabulary : [];
   const exerciseTypes = Array.isArray(analysis.exerciseTypes) ? analysis.exerciseTypes : [];
   const speakingTasks = Array.isArray(analysis.speakingTasks) ? analysis.speakingTasks : [];
+  const requiredPracticeFrames = Array.isArray(analysis.requiredPracticeFrames) ? analysis.requiredPracticeFrames : [];
+  const avoidPatterns = Array.isArray(analysis.avoidPatterns) ? analysis.avoidPatterns : [];
 
   const targets = listText(targetStructures, (item, index) => {
     const exampleIdeas = Array.isArray(item.exampleIdeas) ? item.exampleIdeas.join("; ") : item.exampleIdeas || "";
@@ -72,7 +79,14 @@ This block was generated from cached page-image analysis. Use it to identify the
 - Vision main focus: ${analysis.mainFocus || "Not identified."}
 - Vision central grammar: ${analysis.centralGrammar || "Not identified."}
 - Vision central function: ${analysis.centralFunction || "Not identified."}
+- Vision central structure formula: ${analysis.centralStructureFormula || "Not identified."}
 - Vision confidence: ${analysis.sourceConfidence || "Not specified."}
+
+### Vision required practice frames
+${listText(requiredPracticeFrames, (item) => `- ${typeof item === "string" ? item : JSON.stringify(item)}`)}
+
+### Vision avoid patterns
+${listText(avoidPatterns, (item) => `- ${typeof item === "string" ? item : JSON.stringify(item)}`)}
 
 ### Vision target structures
 ${targets}
@@ -91,6 +105,9 @@ ${analysis.visualLayoutNotes || "Not available."}
 
 ### Vision evidence notes
 ${analysis.evidenceNotes || "Not available."}
+
+### Vision cache usage rule
+Use the central structure formula and required practice frames as high-priority teaching signals when they are consistent with the extracted Student Book content. Avoid the avoid patterns. Do not mention this cache to the learner.
 
 ${END}`;
 }

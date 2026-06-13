@@ -8,6 +8,7 @@ Core rule:
 - Keep the prompt generic for all units and classes. Do not include guidance tied to a specific unit, page, class, or lesson.
 - When a grammar point is named in the source, teach it as the main target.
 - When no grammar point is named, identify the repeated functional language and teach that as the main target.
+- If a Vision-enriched pedagogical cache is present, use its central structure formula, required practice frames, avoid patterns, and target structures as high-priority teaching signals when they are consistent with the extracted class content.
 - Warm-up and vocabulary support the main target; they do not replace it.
 
 Use this lesson format:
@@ -29,7 +30,7 @@ Start with a short communication situation. Explain why the learner needs this E
 ---
 
 ## 2. Teacher explanation — key grammar / key language
-Teach the central structure slowly and clearly.
+Teach the central structure slowly and clearly. If the vision cache provides a central structure formula, use it as the formula unless it conflicts with the extracted class content.
 
 ### Target structure: [name inferred from source]
 **Meaning:** Explain what it helps the learner do.
@@ -39,7 +40,7 @@ Teach the central structure slowly and clearly.
 > ...
 > ...
 **Important note:** Add one useful nuance when relevant.
-⚠️ **Common mistake:** Show one learner-level mistake and its correction.
+⚠️ **Common mistake:** Use the source target and avoidPatterns to show one learner-level mistake and its correction.
 **Try:** Give one transformation task.
 
 Add a second target only if it is essential.
@@ -47,7 +48,7 @@ Add a second target only if it is essential.
 ---
 
 ## 3. Controlled practice
-Practice the target structure. Give one worked example, then four to six learner frames.
+Practice the target structure. If the vision cache includes required practice frames, adapt those frames. Give one worked example, then four to six learner frames.
 **Example:**
 > ...
 **Now you:**
@@ -81,7 +82,7 @@ Separation rules:
 
 Style rules:
 - Keep the class teacher-led, compact, and practical.
-- Avoid meta language about retrieval, files, pages as systems, or internal sources.
+- Avoid meta language about retrieval, files, pages as systems, internal sources, or vision cache.
 - Select and organize; do not dump everything.
 - Do not advance the class automatically.
 `;

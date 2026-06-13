@@ -138,14 +138,17 @@ export function buildPassagesKnowledgeInput(params: {
       : 0;
 
   const explicitLocalClasses = extractRequestedLocalClasses(params.message);
-  const classReferences =
+  const allClassReferences =
     unitNumber && explicitLocalClasses.length > 1
       ? explicitLocalClasses.map((localClass) => buildClassPackReference(unitNumber, localClass))
       : unitNumber && (fallbackLocalClassNumber || explicitLocalClasses[0])
         ? [buildClassPackReference(unitNumber, explicitLocalClasses[0] || fallbackLocalClassNumber)]
         : [];
 
-  const primaryReference = classReferences[0];
+  const multiClassMode = allClassReferences.length > 1;
+  const activeClassReferences = multiClassMode ? allClassReferences.slice(0, 1) : allClassReferences;
+  const primaryReference = activeClassReferences[0] || allClassReferences[0];
+  const remainingClassReferences = multiClassMode ? allClassReferences.slice(1) : [];
 
   const pdfPages =
     classIndex.pdfInitialPage && classIndex.pdfFinalPage
@@ -159,16 +162,23 @@ export function buildPassagesKnowledgeInput(params: {
 
   const bookPagesKey = bookPages ? `BOOK_PAGES_${normalizeRangeKey(bookPages)}` : "";
   const pdfPagesKey = pdfPages ? `PDF_PAGES_${normalizeRangeKey(pdfPages)}` : "";
-  const multiClassMode = classReferences.length > 1;
-  const classReferenceLines = classReferences
+  const classReferenceLines = activeClassReferences
     .map((reference, index) => [
-      `Class ${index + 1} in requested sequence:`,
+      `Active class ${index + 1}:`,
       `- Filename: ${reference.classPackFilename}`,
       `- ID: ${reference.classPackId}`,
       `- Local class: ${reference.localClassPackAlias}`,
       `- Global class: ${reference.globalClassAlias}`,
     ].join("\n"))
     .join("\n\n");
+
+  const sequenceLines = allClassReferences
+    .map((reference) => `- Unit ${reference.unit}, local class ${reference.localClass}, global class ${reference.globalClass}: ${reference.classPackId}`)
+    .join("\n");
+
+  const remainingLines = remainingClassReferences
+    .map((reference) => `- Unit ${reference.unit}, local class ${reference.localClass}, global class ${reference.globalClass}`)
+    .join("\n");
 
   return [
     {
@@ -191,32 +201,41 @@ Critical source rule:
 - Do not invent content that is not supported by the retrieved class pack.
 - Do not advance the learner automatically.
 
+Pedagogy rules:
+- Do not just describe what the lesson contains; actually teach it.
+- For each grammar pattern or useful phrase, include: meaning, form, 2 examples, 1 common mistake, and 1 learner transformation task.
+- Use teacher moves: explain, model, check, let the learner try.
+- Include short examples before asking the learner to produce language.
+- For vocabulary, include a simple definition, a learner-level example, and one professional/work example when useful.
+- End with a concrete task that the learner can answer now.
+
 Style rules:
 - Start naturally. Never write labels like “Warm opening:”.
+- Do not write meta phrases such as “the book asks”, “the page asks”, “the retrieved content says”, or “based on the file”.
 - Use “Lesson B: Every family is different” when that title is retrieved, not generic labels like “Lesson title: Different types of families”.
 - Use clean compact Markdown without excessive blank lines.
 - Prefer “Grammar focus / Key language” over “Mini explanation” when teaching a real class.
 - If a retrieved class pack includes a grammar pattern, teach it explicitly.
 
-Teacher response format for “Dame la clase”:
+Single-class response format:
 1. Natural opening sentence.
 2. Compact class identity line.
 3. Main focus.
-4. Warm-up.
-5. Grammar focus / key language.
-6. Controlled practice with 4 to 6 frames.
-7. Vocabulary with simple definitions.
+4. Warm-up with one teacher model and one short question.
+5. Grammar focus / key language: meaning, form, examples, common mistake, guided practice.
+6. Vocabulary: definition + example + work/professional connection.
+7. Controlled practice with 4 to 6 frames.
 8. Speaking practice with 2 to 3 questions.
 9. One model answer.
 10. End with “Now you answer: ...”.
 
 Multi-class requests:
-- If the learner asks for several classes in one message, retrieve each exact class pack in the requested order.
-- Teach the requested classes as a sequence, but keep each class compact.
-- After each class, include a short “Practice gate” with 2 or 3 items.
-- Make clear that English OS progress will not advance automatically.
-- The learner advances only after they complete and approve the practice for each class.
+- If the learner asks for several classes in one message, do NOT teach all classes fully in one response.
+- Present the requested sequence briefly, then teach only the first class in full.
+- After the first class, include a Practice Gate with 3 items.
+- Explain that the next class will be taught after the learner completes and approves the practice.
 - Do not mark exercises as approved and do not call any advancement action from this response.
+- This prevents truncation and keeps the lesson didactic.
       `.trim(),
     },
     {
@@ -225,18 +244,22 @@ Multi-class requests:
 Learner request:
 ${params.message}
 
-Exact class-pack retrieval query:
+Exact class-pack retrieval query for the active class only:
 ${classReferenceLines || "No exact class-pack reference could be built."}
 ${bookPagesKey || ""}
 ${pdfPagesKey || ""}
 
-Requested class coordinates:
+Requested sequence:
+${sequenceLines || "No sequence detected."}
+
+Classes to keep pending after this response:
+${remainingLines || "None."}
+
+Requested class coordinates for active class:
 - Unit: ${unitNumber || "unknown"}
 - Local class inside unit: ${primaryReference?.localClass || fallbackLocalClassNumber || "unknown"}
 - Global English OS class: ${primaryReference?.globalClass || requestedClass || "unknown"}
 - Multiple classes requested: ${multiClassMode ? "yes" : "no"}
-- Requested local classes: ${classReferences.map((reference) => reference.localClass).join(", ") || "unknown"}
-- Requested global classes: ${classReferences.map((reference) => reference.globalClass).join(", ") || "unknown"}
 - Book pages from initial index row: ${bookPages || "unknown"}
 - PDF pages from initial index row: ${pdfPages || "unknown"}
 
@@ -247,12 +270,12 @@ Recent conversation history:
 ${JSON.stringify(params.conversationHistory || []).slice(0, 2500)}
 
 Instructions:
-1. Use file_search to retrieve the exact class pack or packs listed above.
-2. If several class packs are listed, retrieve and teach all of them in order.
-3. If you retrieve ${primaryReference?.classPackFilename || "the exact class pack"}, teach from it directly.
-4. Do not use content from adjacent classes unless the exact class pack explicitly references it.
+1. Use file_search to retrieve the exact class pack listed for the active class.
+2. Teach only the active class fully.
+3. If several classes were requested, list the remaining classes as pending and explain they require practice approval before continuing.
+4. Do not use content from adjacent classes unless the active class pack explicitly references it.
 5. If other retrieved results mention unrelated topics, ignore them.
-6. Deliver the teacher-led class or class sequence requested by the learner.
+6. Deliver a teacher-led lesson with examples, explanation, guided practice, and one production task.
 7. Remind the learner that progress only advances after practice is approved.
       `.trim(),
     },
@@ -286,7 +309,7 @@ export async function createPassagesKnowledgeResponse(params: {
         {
           type: "file_search",
           vector_store_ids: [OPENAI_PASSAGES_VECTOR_STORE_ID],
-          max_num_results: 18,
+          max_num_results: 10,
         },
       ],
       include: ["file_search_call.results"],

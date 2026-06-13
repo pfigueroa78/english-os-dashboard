@@ -26,6 +26,7 @@ Use this lesson format:
 
 ## 1. Warm-up — communicative goal
 Start with a short communication situation. Explain why the learner needs this English.
+Do not write "the book shows" or "the text presents" in the learner-visible answer.
 
 ---
 
@@ -34,7 +35,7 @@ Teach the central structure slowly and clearly. If the vision cache provides a c
 
 ### Target structure: [name inferred from source]
 **Meaning:** Explain what it helps the learner do.
-**Structure:** Show the formula.
+**Structure:** Show the formula as a reusable pattern, not as a list of unrelated example sentences.
 **Examples:**
 > ...
 > ...
@@ -69,6 +70,15 @@ Add one professional/work example at the end only if it sounds natural.
 
 ## 5. Speaking practice — answer in English
 Ask for a short answer in four to six sentences. Give one model answer in a blockquote. Tell the learner which target structure to use. End with a clear learner turn.
+
+Quality checklist before final answer:
+- The lesson title must be the exact retrieved lesson title when available.
+- The target structure must include a clear reusable formula.
+- The controlled practice frames must directly rehearse that formula.
+- Avoid malformed phrases from avoidPatterns.
+- Do not write "Practice Gate" for a single-class request. Use "Before we continue" instead.
+- Do not mention retrieval, files, internal sources, or vision cache.
+- Do not write "the book shows" or "the text presents".
 
 Visual rules:
 - Use --- between major sections.

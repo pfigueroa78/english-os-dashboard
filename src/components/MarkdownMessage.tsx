@@ -5,21 +5,46 @@ type MarkdownMessageProps = {
   content: string;
 };
 
+const LABELS_RE =
+  /(Learning objective|Personal focus|Real-life context|Pattern|Meaning|Form|Examples|Common mistake|Try|Example|Now you|Model answer|Progress note|Important):/g;
+
 function normalizeMarkdownContent(content: string) {
-  return String(content || "")
+  let normalized = String(content || "")
     .replace(/\r\n/g, "\n")
     .replace(/\n[ \t]+\n/g, "\n\n")
-    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\n{3,}/g, "\n\n");
+
+  normalized = normalized
+    .replace(/\s+(Personal focus:)/g, "\n\n$1")
+    .replace(/\s+(Real-life context:)/g, "\n\n$1")
+    .replace(/\s+(Pattern\s+\d+:)/g, "\n\n### $1")
+    .replace(/(?<!\n)(#{2,3}\s+)/g, "\n\n$1")
+    .replace(/([^\n])\s+(Pattern:)/g, "$1\n\n$2")
+    .replace(/([^\n])\s+(Meaning:)/g, "$1\n\n$2")
+    .replace(/([^\n])\s+(Form:)/g, "$1\n\n$2")
+    .replace(/([^\n])\s+(Examples:)/g, "$1\n\n$2")
+    .replace(/([^\n])\s+(⚠️\s*Common mistake:)/g, "$1\n\n$2")
+    .replace(/([^\n])\s+(Common mistake:)/g, "$1\n\n⚠️ $2")
+    .replace(/([^\n])\s+(Try:)/g, "$1\n\n$2")
+    .replace(/([^\n])\s+(Now you:)/g, "$1\n\n$2")
+    .replace(/([^\n])\s+(Model answer:)/g, "$1\n\n$2")
+    .replace(/^>\s*([^\n]+?)\s+(⚠️\s*Common mistake:)/gm, "> $1\n\n$2")
+    .replace(/^>\s*([^\n]+?)\s+(Common mistake:)/gm, "> $1\n\n⚠️ $2")
+    .replace(/^>\s*([^\n]+?)\s+(Try:)/gm, "> $1\n\n$2")
+    .replace(LABELS_RE, "**$1:**")
     .replace(/\n\s*\n(?=\s*[-*]\s+)/g, "\n")
     .replace(/\n\s*\n(?=\s*\d+[.)]\s+)/g, "\n")
     .replace(/\n\s*\n(?=\s*>\s+)/g, "\n")
-    .replace(/\n\s*\n(?=\s*\*\*)/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+  return normalized;
 }
 
 export function MarkdownMessage({ content }: MarkdownMessageProps) {
   return (
     <ReactMarkdown
+      className="english-os-message-markdown"
       remarkPlugins={[remarkGfm]}
       components={{
         h1: ({ children }) => (

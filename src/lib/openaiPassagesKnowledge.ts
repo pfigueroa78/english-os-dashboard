@@ -335,11 +335,15 @@ function collectStrings(value: any, output: string[] = []): string[] {
   return output;
 }
 
+function isPlaceholderContractValue(value: string) {
+  return /\[|\]|e\.g\.|extract exact|sections taught now|from student book|^\*\*/i.test(value || "");
+}
+
 function firstCleanMatch(text: string, patterns: RegExp[]) {
   for (const pattern of patterns) {
     const match = text.match(pattern);
     const value = match?.[1]?.trim();
-    if (value && !/^not (identified|specified|available)|^unknown|^none$/i.test(value)) {
+    if (value && !/^not (identified|specified|available)|^unknown|^none$/i.test(value) && !isPlaceholderContractValue(value)) {
       return value.replace(/["“”]+/g, "").replace(/\.$/, "").trim();
     }
   }
@@ -370,7 +374,7 @@ function extractContractMetadata(data: any, input: any[]) {
 
   const bookPages = firstCleanMatch(inputText, [/Book pages from initial index row:\s*([^\n]+)/i, /"bookPages"\s*:\s*"([^"]+)"/i]);
   const pdfPages = firstCleanMatch(inputText, [/PDF pages from initial index row:\s*([^\n]+)/i, /"pdfPages"\s*:\s*"([^"]+)"/i]);
-  const classSections = normalizeContractValue(firstCleanMatch(allText, [/Active class section names:\s*([^\n]+)/i, /Class sections:\s*([^\n]+)/i]));
+  const classSections = normalizeContractValue(firstCleanMatch(allText, [/Active class section names:\s*([^\n]+)/i]));
   const grammarFocus = firstCleanMatch(allText, [
     /Active class grammar focus:\s*([^\n]+)/i,
     /Lesson grammar focus:\s*([^\n]+)/i,

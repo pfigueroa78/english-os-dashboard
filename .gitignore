@@ -42,3 +42,24 @@ next-env.d.ts
 
 # English OS local knowledge files
 knowledge/
+
+# -------------------------------------------------------------------
+# English OS / Passages knowledge pipeline
+# -------------------------------------------------------------------
+
+# Keep most generated/local knowledge artifacts out of git by default.
+knowledge/*
+knowledge/page-images/
+knowledge/vision-cache/
+knowledge/unit-lesson-vision-cache/
+knowledge/class-packs/
+knowledge/*.pdf
+knowledge/*.xlsx
+knowledge/passages-class-packs.md
+knowledge/passages-level-1-students-book-page-map.md
+
+# Commit only the final lesson-vision class packs used by GitHub Actions.
+!knowledge/
+!knowledge/class-packs-lesson-vision/
+!knowledge/class-packs-lesson-vision/*.md
+!knowledge/class-packs-lesson-vision/.gitkeep

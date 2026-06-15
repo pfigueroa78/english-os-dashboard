@@ -1,0 +1,187 @@
+name: Refresh Passages Vector Store
+on:
+  workflow_dispatch:
+    inputs:
+      knowledge_path:
+        description: "Folder containing final Passages class packs"
+        required: true
+        default: "knowledge/class-packs-lesson-vision"
+      diagnostic_unit:
+        description: "Unit number to verify after deploy"
+        required: true
+        default: "1"
+      diagnostic_class:
+        description: "Local class number to verify after deploy"
+        required: true
+        default: "4"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-passages-vector-store
+  cancel-in-progress: false
+
+jobs:
+  refresh-vector-store:
+    runs-on: ubuntu-latest
+
+    env:
+      KNOWLEDGE_PATH: ${{ github.event.inputs.knowledge_path }}
+      DIAGNOSTIC_UNIT: ${{ github.event.inputs.diagnostic_unit }}
+      DIAGNOSTIC_CLASS: ${{ github.event.inputs.diagnostic_class }}
+      PRODUCTION_DOMAIN: english-os-dashboard.vercel.app
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -n "${OPENAI_API_KEY}" || { echo "Missing OPENAI_API_KEY"; exit 1; }
+          test -n "${VERCEL_TOKEN}" || { echo "Missing VERCEL_TOKEN"; exit 1; }
+          test -n "${VERCEL_ORG_ID}" || { echo "Missing VERCEL_ORG_ID"; exit 1; }
+          test -n "${VERCEL_PROJECT_ID}" || { echo "Missing VERCEL_PROJECT_ID"; exit 1; }
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate class packs folder
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -d "${KNOWLEDGE_PATH}" ]; then
+            echo "Knowledge path does not exist: ${KNOWLEDGE_PATH}"
+            exit 1
+          fi
+
+          PACK_COUNT="$(find "${KNOWLEDGE_PATH}" -maxdepth 1 -type f -name "*.md" | wc -l | tr -d ' ')"
+          echo "Found ${PACK_COUNT} markdown class packs in ${KNOWLEDGE_PATH}"
+
+          if [ "${PACK_COUNT}" -lt 80 ]; then
+            echo "Expected around 84 class packs. Found only ${PACK_COUNT}."
+            exit 1
+          fi
+
+          EXPECTED_FILE="unit-01-local-class-04-global-class-04-class-pack-unit-01-class-04.md"
+          if [ ! -f "${KNOWLEDGE_PATH}/${EXPECTED_FILE}" ]; then
+            echo "Missing expected verification file: ${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
+            exit 1
+          fi
+
+          grep -n "Active class teaching contract" "${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
+          grep -n "Active class section names" "${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
+          grep -n "Active class grammar focus" "${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
+
+      - name: Build fresh OpenAI vector store
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node scripts/openai-passages-knowledge.mjs --fresh "${KNOWLEDGE_PATH}" | tee /tmp/passages-vector-store.log
+
+          NEW_VECTOR_STORE_ID="$(grep -oE 'vs_[A-Za-z0-9_]+' /tmp/passages-vector-store.log | tail -1)"
+
+          if [ -z "${NEW_VECTOR_STORE_ID}" ]; then
+            echo "Could not extract vector store id from script output."
+            cat /tmp/passages-vector-store.log
+            exit 1
+          fi
+
+          echo "NEW_VECTOR_STORE_ID=${NEW_VECTOR_STORE_ID}" >> "${GITHUB_ENV}"
+          echo "Created vector store: ${NEW_VECTOR_STORE_ID}"
+
+      - name: Link Vercel project
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p .vercel
+          cat > .vercel/project.json <<EOF
+          {
+            "orgId": "${VERCEL_ORG_ID}",
+            "projectId": "${VERCEL_PROJECT_ID}"
+          }
+          EOF
+
+      - name: Update Vercel production env
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          npx vercel@latest env rm OPENAI_PASSAGES_VECTOR_STORE_ID production --yes --token "${VERCEL_TOKEN}" || true
+
+          printf "%s" "${NEW_VECTOR_STORE_ID}" | npx vercel@latest env add OPENAI_PASSAGES_VECTOR_STORE_ID production --token "${VERCEL_TOKEN}"
+
+      - name: Deploy production to Vercel
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          npx vercel@latest deploy --prod --yes --token "${VERCEL_TOKEN}" | tee /tmp/vercel-deploy.log
+
+          DEPLOYMENT_URL="$(grep -oE 'https://[^ ]+\\.vercel\\.app' /tmp/vercel-deploy.log | tail -1 || true)"
+          echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> "${GITHUB_ENV}"
+          echo "Deployment URL: ${DEPLOYMENT_URL}"
+
+      - name: Wait for production alias
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 20
+
+      - name: Run diagnostic endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DIAGNOSTIC_URL="https://${PRODUCTION_DOMAIN}/api/english-os/debug/passages?unit=${DIAGNOSTIC_UNIT}&class=${DIAGNOSTIC_CLASS}"
+
+          echo "Calling diagnostic endpoint:"
+          echo "${DIAGNOSTIC_URL}"
+
+          curl -sS "${DIAGNOSTIC_URL}" | tee /tmp/passages-diagnostic.json
+
+          echo ""
+          echo "Diagnostic summary:"
+          jq '.diagnosis' /tmp/passages-diagnostic.json
+          jq '.env.vectorStoreIdMasked' /tmp/passages-diagnostic.json
+          jq '.fileSearch.expectedFileFound' /tmp/passages-diagnostic.json
+          jq '.fileSearch.contractFound' /tmp/passages-diagnostic.json
+          jq '.fileSearch.detected.activeClassSectionNames' /tmp/passages-diagnostic.json
+          jq '.fileSearch.detected.activeClassGrammarFocus' /tmp/passages-diagnostic.json
+
+          EXPECTED_FOUND="$(jq -r '.fileSearch.expectedFileFound' /tmp/passages-diagnostic.json)"
+          CONTRACT_FOUND="$(jq -r '.fileSearch.contractFound' /tmp/passages-diagnostic.json)"
+          ACTIVE_SECTIONS="$(jq -r '.fileSearch.detected.activeClassSectionNames' /tmp/passages-diagnostic.json)"
+
+          if [ "${EXPECTED_FOUND}" != "true" ]; then
+            echo "Expected class pack was not found in production vector store."
+            exit 1
+          fi
+
+          if [ "${CONTRACT_FOUND}" != "true" ]; then
+            echo "Active class contract was not found in production vector store."
+            exit 1
+          fi
+
+          if [ -z "${ACTIVE_SECTIONS}" ] || [ "${ACTIVE_SECTIONS}" = "null" ]; then
+            echo "Active class section names were not detected."
+            exit 1
+          fi
+
+          echo "Passages vector store refresh completed successfully."

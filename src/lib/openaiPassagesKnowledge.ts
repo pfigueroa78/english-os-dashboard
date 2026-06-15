@@ -27,7 +27,6 @@ function normalizeMessage(message: string) {
 
 function clipJson(value: any, max = 1200) {
   if (!value) return "";
-
   try {
     return JSON.stringify(value, null, 2).slice(0, max);
   } catch {
@@ -40,53 +39,14 @@ function summarizeLearnerPersonalizationContext(learnerContext: any) {
   const missionControl = learnerContext?.missionControl || {};
   const learningState = learnerContext?.learningState || {};
 
-  const learnerName =
-    user.Name ||
-    user["Name"] ||
-    learnerContext?.name ||
-    "the learner";
-
-  const currentCEFR =
-    user["Current CEFR"] ||
-    learnerContext?.currentCEFR ||
-    missionControl.currentCEFR ||
-    "B1/B2";
-
-  const currentUnit =
-    user["Current Unit"] ||
-    learnerContext?.currentUnit ||
-    missionControl.currentUnit ||
-    learningState.currentUnit ||
-    "";
-
-  const currentLesson =
-    user["Current Lesson"] ||
-    learnerContext?.currentLesson ||
-    missionControl.currentLesson ||
-    learningState.currentClass ||
-    "";
-
-  const nextRecommendedAction =
-    learnerContext?.nextRecommendedAction ||
-    missionControl?.nextRecommendedAction ||
-    user["Next Recommended Action"] ||
-    "";
-
-  const recentDailyLogs =
-    learnerContext?.recentDailyLogs ||
-    learnerContext?.dailyLogs ||
-    [];
-
-  const recurringMistakes =
-    learnerContext?.recurringMistakes ||
-    learnerContext?.mistakes ||
-    [];
-
-  const vocabulary =
-    learnerContext?.vocabulary ||
-    learnerContext?.vocabularyIntelligence ||
-    learnerContext?.newVocabulary ||
-    [];
+  const learnerName = user.Name || user["Name"] || learnerContext?.name || "the learner";
+  const currentCEFR = user["Current CEFR"] || learnerContext?.currentCEFR || missionControl.currentCEFR || "B1/B2";
+  const currentUnit = user["Current Unit"] || learnerContext?.currentUnit || missionControl.currentUnit || learningState.currentUnit || "";
+  const currentLesson = user["Current Lesson"] || learnerContext?.currentLesson || missionControl.currentLesson || learningState.currentClass || "";
+  const nextRecommendedAction = learnerContext?.nextRecommendedAction || missionControl?.nextRecommendedAction || user["Next Recommended Action"] || "";
+  const recentDailyLogs = learnerContext?.recentDailyLogs || learnerContext?.dailyLogs || [];
+  const recurringMistakes = learnerContext?.recurringMistakes || learnerContext?.mistakes || [];
+  const vocabulary = learnerContext?.vocabulary || learnerContext?.vocabularyIntelligence || learnerContext?.newVocabulary || [];
 
   return `
 Learner personalization context:
@@ -125,9 +85,7 @@ function extractRequestedLocalClasses(message: string): number[] {
   for (const match of rangeMatches) {
     const start = Number(match[1]);
     const end = Number(match[2]);
-    const min = Math.min(start, end);
-    const max = Math.max(start, end);
-    for (let value = min; value <= max; value += 1) {
+    for (let value = Math.min(start, end); value <= Math.max(start, end); value += 1) {
       if (value >= 1 && value <= 7) classes.add(value);
     }
   }
@@ -146,7 +104,6 @@ function extractRequestedLocalClasses(message: string): number[] {
 
 function buildClassPackReference(unit: number, localClass: number) {
   const globalClass = (unit - 1) * 7 + localClass;
-
   return {
     unit,
     localClass,
@@ -164,7 +121,6 @@ export function hasPassagesKnowledgeBase() {
 
 export function shouldUsePassagesKnowledge(message: string) {
   const normalized = normalizeMessage(message);
-
   return (
     normalized.includes("dame la clase") ||
     normalized.includes("dame las clases") ||
@@ -195,33 +151,15 @@ export function buildPassagesKnowledgeInput(params: {
   classContent: any;
   conversationHistory?: Array<{ role: "user" | "coach"; content: string }>;
 }) {
-  const classIndex =
-    params.classContent?.currentClassIndex ||
-    (Array.isArray(params.classContent?.courseClassIndex)
-      ? params.classContent.courseClassIndex[0]
-      : null) ||
-    {};
-
+  const classIndex = params.classContent?.currentClassIndex || (Array.isArray(params.classContent?.courseClassIndex) ? params.classContent.courseClassIndex[0] : null) || {};
   const learningState = params.classContent?.learningState || params.learnerContext?.learningState || {};
-  const bookContent = Array.isArray(params.classContent?.bookContentIndex)
-    ? params.classContent.bookContentIndex[0]
-    : null;
+  const bookContent = Array.isArray(params.classContent?.bookContentIndex) ? params.classContent.bookContentIndex[0] : null;
 
-  const requestedUnit =
-    extractExplicitUnitFromMessage(params.message) ||
-    Number(classIndex.unit || params.classContent?.unit || bookContent?.unit || learningState.currentUnit || 0) ||
-    0;
-
-  const requestedClass =
-    Number(classIndex.classNumber || params.classContent?.classNumber || bookContent?.classNumber || learningState.currentClass || 0) ||
-    0;
-
+  const requestedUnit = extractExplicitUnitFromMessage(params.message) || Number(classIndex.unit || params.classContent?.unit || bookContent?.unit || learningState.currentUnit || 0) || 0;
+  const requestedClass = Number(classIndex.classNumber || params.classContent?.classNumber || bookContent?.classNumber || learningState.currentClass || 0) || 0;
   const unitNumber = Number(requestedUnit || 0);
   const globalClassNumber = Number(requestedClass || 0);
-  const fallbackLocalClassNumber =
-    unitNumber && globalClassNumber
-      ? globalClassNumber - (unitNumber - 1) * 7
-      : 0;
+  const fallbackLocalClassNumber = unitNumber && globalClassNumber ? globalClassNumber - (unitNumber - 1) * 7 : 0;
 
   const explicitLocalClasses = extractRequestedLocalClasses(params.message);
   const allClassReferences =
@@ -236,16 +174,8 @@ export function buildPassagesKnowledgeInput(params: {
   const primaryReference = activeClassReferences[0] || allClassReferences[0];
   const remainingClassReferences = multiClassMode ? allClassReferences.slice(1) : [];
 
-  const pdfPages =
-    classIndex.pdfInitialPage && classIndex.pdfFinalPage
-      ? `${classIndex.pdfInitialPage}-${classIndex.pdfFinalPage}`
-      : bookContent?.pdfPages || "";
-
-  const bookPages =
-    classIndex.bookInitialPage && classIndex.bookFinalPage
-      ? `${classIndex.bookInitialPage}-${classIndex.bookFinalPage}`
-      : bookContent?.bookPages || "";
-
+  const pdfPages = classIndex.pdfInitialPage && classIndex.pdfFinalPage ? `${classIndex.pdfInitialPage}-${classIndex.pdfFinalPage}` : bookContent?.pdfPages || "";
+  const bookPages = classIndex.bookInitialPage && classIndex.bookFinalPage ? `${classIndex.bookInitialPage}-${classIndex.bookFinalPage}` : bookContent?.bookPages || "";
   const bookPagesKey = bookPages ? `BOOK_PAGES_${normalizeRangeKey(bookPages)}` : "";
   const pdfPagesKey = pdfPages ? `PDF_PAGES_${normalizeRangeKey(pdfPages)}` : "";
   const classReferenceLines = activeClassReferences
@@ -258,14 +188,8 @@ export function buildPassagesKnowledgeInput(params: {
     ].join("\n"))
     .join("\n\n");
 
-  const sequenceLines = allClassReferences
-    .map((reference) => `- Unit ${reference.unit}, local class ${reference.localClass}, global class ${reference.globalClass}: ${reference.classPackId}`)
-    .join("\n");
-
-  const remainingLines = remainingClassReferences
-    .map((reference) => `- Unit ${reference.unit}, local class ${reference.localClass}, global class ${reference.globalClass}`)
-    .join("\n");
-
+  const sequenceLines = allClassReferences.map((reference) => `- Unit ${reference.unit}, local class ${reference.localClass}, global class ${reference.globalClass}: ${reference.classPackId}`).join("\n");
+  const remainingLines = remainingClassReferences.map((reference) => `- Unit ${reference.unit}, local class ${reference.localClass}, global class ${reference.globalClass}`).join("\n");
   const learnerPersonalizationContext = summarizeLearnerPersonalizationContext(params.learnerContext);
 
   return [
@@ -294,6 +218,11 @@ Identity rule:
 - Generic header format: "Unit [unit] — Class [local class]" on one line and "Global Class [global class]" on the next line.
 - Never replace the local class with the global class in the unit header.
 - Do not mention internal filenames, class packs, retrieval keys, vector stores, or file_search in the learner-visible response.
+
+Active class contract rule:
+- If the retrieved class pack contains "Active class section names", the learner-visible "Class sections" line MUST copy that value exactly.
+- If the retrieved class pack contains "Active class grammar focus", the learner-visible "Grammar focus" line MUST copy that value exactly.
+- If the retrieved class pack contains "Active class vocabulary focus", the learner-visible "Vocabulary focus" line should prioritize that value.
 
 Grammar and vocabulary rule:
 - If the class source includes an exact grammar label, show it in the header as Grammar focus and teach it explicitly.
@@ -398,16 +327,11 @@ function collectStrings(value: any, output: string[] = []): string[] {
     output.push(value);
     return output;
   }
-
   if (Array.isArray(value)) {
     value.forEach((item) => collectStrings(item, output));
     return output;
   }
-
-  if (value && typeof value === "object") {
-    Object.values(value).forEach((item) => collectStrings(item, output));
-  }
-
+  if (value && typeof value === "object") Object.values(value).forEach((item) => collectStrings(item, output));
   return output;
 }
 
@@ -419,7 +343,6 @@ function firstCleanMatch(text: string, patterns: RegExp[]) {
       return value.replace(/["“”]+/g, "").replace(/\.$/, "").trim();
     }
   }
-
   return "";
 }
 
@@ -429,12 +352,15 @@ function extractVisibleListAfterHeading(text: string, heading: string) {
   const slice = text.slice(index + heading.length);
   const next = slice.search(/\n#{2,3}\s|\n<!--|\n\n[A-Z][A-Za-z ]+:/);
   const section = next >= 0 ? slice.slice(0, next) : slice.slice(0, 800);
-  return section
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("- "))
-    .slice(0, 6)
-    .join("; ");
+  return section.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("- ")).slice(0, 6).join("; ");
+}
+
+function normalizeContractValue(value: string) {
+  return String(value || "")
+    .replace(/\s*;\s*/g, " + ")
+    .replace(/\s*\+\s*/g, " + ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function extractContractMetadata(data: any, input: any[]) {
@@ -442,95 +368,70 @@ function extractContractMetadata(data: any, input: any[]) {
   const sourceText = collectStrings(data).join("\n");
   const allText = `${inputText}\n${sourceText}`;
 
-  const bookPages = firstCleanMatch(inputText, [
-    /Book pages from initial index row:\s*([^\n]+)/i,
-    /"bookPages"\s*:\s*"([^"]+)"/i,
-  ]);
-
-  const pdfPages = firstCleanMatch(inputText, [
-    /PDF pages from initial index row:\s*([^\n]+)/i,
-    /"pdfPages"\s*:\s*"([^"]+)"/i,
-  ]);
-
+  const bookPages = firstCleanMatch(inputText, [/Book pages from initial index row:\s*([^\n]+)/i, /"bookPages"\s*:\s*"([^"]+)"/i]);
+  const pdfPages = firstCleanMatch(inputText, [/PDF pages from initial index row:\s*([^\n]+)/i, /"pdfPages"\s*:\s*"([^"]+)"/i]);
+  const classSections = normalizeContractValue(firstCleanMatch(allText, [/Active class section names:\s*([^\n]+)/i, /Class sections:\s*([^\n]+)/i]));
   const grammarFocus = firstCleanMatch(allText, [
+    /Active class grammar focus:\s*([^\n]+)/i,
+    /Lesson grammar focus:\s*([^\n]+)/i,
     /Vision central grammar:\s*([^\n]+)/i,
     /"grammarFocus"\s*:\s*"([^"]+)"/i,
     /"centralGrammar"\s*:\s*"([^"]+)"/i,
     /Grammar focus:\s*([^\n]+)/i,
     /Grammar:\s*([^\n]+)/i,
   ]);
-
   const vocabularyFocus = firstCleanMatch(allText, [
+    /Active class vocabulary focus:\s*([^\n]+)/i,
     /"vocabularyFocus"\s*:\s*"([^"]+)"/i,
     /"centralVocabulary"\s*:\s*"([^"]+)"/i,
     /Vocabulary focus:\s*([^\n]+)/i,
     /Vocabulary:\s*([^\n]+)/i,
   ]) || extractVisibleListAfterHeading(sourceText, "### Vision vocabulary candidates");
+  const structureFormula = firstCleanMatch(sourceText, [/Vision central structure formula:\s*([^\n]+)/i, /"centralStructureFormula"\s*:\s*"([^"]+)"/i]);
 
-  const structureFormula = firstCleanMatch(sourceText, [
-    /Vision central structure formula:\s*([^\n]+)/i,
-    /"centralStructureFormula"\s*:\s*"([^"]+)"/i,
-  ]);
-
-  return {
-    bookPages,
-    pdfPages,
-    grammarFocus,
-    vocabularyFocus,
-    structureFormula,
-  };
+  return { bookPages, pdfPages, classSections, grammarFocus, vocabularyFocus, structureFormula };
 }
 
-function insertAfterLine(reply: string, linePattern: RegExp, insertion: string) {
+function replaceOrInsertHeaderLine(reply: string, labelPattern: RegExp, line: string) {
+  if (!line.trim()) return reply;
   const lines = reply.split("\n");
-  const index = lines.findIndex((line) => linePattern.test(line));
-  if (index < 0) return `${insertion}\n${reply}`;
-  lines.splice(index + 1, 0, insertion);
-  return lines.join("\n");
-}
-
-function ensureHeaderLine(reply: string, labelPattern: RegExp, line: string) {
-  if (!line.trim() || labelPattern.test(reply)) return reply;
-
-  if (/\*\*Book pages:\*\*/i.test(reply)) {
-    return insertAfterLine(reply, /\*\*Book pages:\*\*/i, line);
+  const existing = lines.findIndex((current) => labelPattern.test(current));
+  if (existing >= 0) {
+    lines[existing] = line;
+    return lines.join("\n");
   }
 
-  if (/^Book pages:/im.test(reply)) {
-    return insertAfterLine(reply, /^Book pages:/i, line);
+  const anchors = [/^Book pages:/i, /^\*\*Book pages:\*\*/i, /^Lesson:/i, /^\*\*Lesson:\*\*/i];
+  for (const anchor of anchors) {
+    const index = lines.findIndex((current) => anchor.test(current));
+    if (index >= 0) {
+      lines.splice(index + 1, 0, line);
+      return lines.join("\n");
+    }
   }
 
-  if (/\*\*Lesson:\*\*/i.test(reply)) {
-    return insertAfterLine(reply, /\*\*Lesson:\*\*/i, line);
-  }
-
-  return insertAfterLine(reply, /^Lesson:/i, line);
+  return `${line}\n${reply}`;
 }
 
 function ensurePassagesLessonContract(data: any, input: any[]) {
-  const outputText =
-    data.output_text ||
-    data.output?.flatMap((item: any) => item.content || []).map((item: any) => item.text || "").join("\n") ||
-    "";
-
+  const outputText = data.output_text || data.output?.flatMap((item: any) => item.content || []).map((item: any) => item.text || "").join("\n") || "";
   if (!outputText) return data;
 
   const metadata = extractContractMetadata(data, input);
   let reply = outputText;
 
-  if ((metadata.bookPages || metadata.pdfPages) && !/(\*\*)?Book pages/i.test(reply)) {
-    const pagesLine = `**Book pages:** ${metadata.bookPages || "—"} | **PDF pages:** ${metadata.pdfPages || "—"}`;
-    reply = ensureHeaderLine(reply, /\*\*Book pages:\*\*|^Book pages:/im, pagesLine);
+  if (metadata.bookPages || metadata.pdfPages) {
+    reply = replaceOrInsertHeaderLine(reply, /(\*\*)?Book pages:|^Book pages:/im, `Book pages: ${metadata.bookPages || "—"} | PDF pages: ${metadata.pdfPages || "—"}`);
   }
-
-  if (metadata.grammarFocus && !/\*\*Grammar focus:\*\*|^Grammar focus:/im.test(reply)) {
-    reply = ensureHeaderLine(reply, /\*\*Grammar focus:\*\*|^Grammar focus:/im, `**Grammar focus:** ${metadata.grammarFocus}`);
+  if (metadata.classSections) {
+    reply = replaceOrInsertHeaderLine(reply, /(\*\*)?Class sections:|^Class sections:/im, `Class sections: ${metadata.classSections}`);
   }
-
-  if (metadata.vocabularyFocus && !/\*\*Vocabulary focus:\*\*|^Vocabulary focus:/im.test(reply)) {
-    reply = ensureHeaderLine(reply, /\*\*Vocabulary focus:\*\*|^Vocabulary focus:/im, `**Vocabulary focus:** ${metadata.vocabularyFocus}`);
+  if (metadata.grammarFocus) {
+    reply = replaceOrInsertHeaderLine(reply, /(\*\*)?Grammar focus:|^Grammar focus:/im, `Grammar focus: ${metadata.grammarFocus}`);
   }
-
+  if (metadata.vocabularyFocus) {
+    reply = replaceOrInsertHeaderLine(reply, /(\*\*)?Vocabulary focus:|^Vocabulary focus:/im, `Vocabulary focus: ${metadata.vocabularyFocus}`);
+  }
   if (metadata.structureFormula && /\*\*Structure:\*\*/i.test(reply) && !reply.includes(metadata.structureFormula)) {
     reply = reply.replace(/\*\*Structure:\*\*\s*\n/i, `**Structure:**\n${metadata.structureFormula}\n\n`);
   }
@@ -542,10 +443,7 @@ function ensurePassagesLessonContract(data: any, input: any[]) {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  return {
-    ...data,
-    output_text: reply,
-  };
+  return { ...data, output_text: reply };
 }
 
 export async function createPassagesKnowledgeResponse(params: {
@@ -553,40 +451,22 @@ export async function createPassagesKnowledgeResponse(params: {
   input: any[];
   maxOutputTokens: number;
 }) {
-  if (!OPENAI_API_KEY) {
-    throw new Error("Missing OPENAI_API_KEY.");
-  }
-
-  if (!OPENAI_PASSAGES_VECTOR_STORE_ID) {
-    throw new Error("Missing OPENAI_PASSAGES_VECTOR_STORE_ID.");
-  }
+  if (!OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY.");
+  if (!OPENAI_PASSAGES_VECTOR_STORE_ID) throw new Error("Missing OPENAI_PASSAGES_VECTOR_STORE_ID.");
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: params.model,
       input: params.input,
       max_output_tokens: Math.max(params.maxOutputTokens, 1800),
-      tools: [
-        {
-          type: "file_search",
-          vector_store_ids: [OPENAI_PASSAGES_VECTOR_STORE_ID],
-          max_num_results: 10,
-        },
-      ],
+      tools: [{ type: "file_search", vector_store_ids: [OPENAI_PASSAGES_VECTOR_STORE_ID], max_num_results: 10 }],
       include: ["file_search_call.results"],
     }),
   });
 
   const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data?.error?.message || "OpenAI Passages file_search request failed.");
-  }
-
+  if (!response.ok) throw new Error(data?.error?.message || "OpenAI Passages file_search request failed.");
   return ensurePassagesLessonContract(data, params.input);
 }

@@ -75,6 +75,10 @@ function valueList(items) {
   return items.map((item) => (typeof item === "string" ? item : JSON.stringify(item))).join("; ");
 }
 
+function uniqueValues(items) {
+  return Array.from(new Set(items.filter(Boolean).map((item) => String(item).trim()).filter(Boolean)));
+}
+
 function loadUnitMap(unit) {
   const filePath = path.join(UNIT_LESSON_CACHE_DIR, `unit-${pad2(unit)}-lesson-map.json`);
   if (!fs.existsSync(filePath)) return null;
@@ -125,12 +129,28 @@ function renderSection(section) {
 function renderLessonContextBlock(pack, lesson) {
   const activeSections = activeSectionsForPack(pack, lesson);
   const activePlan = activePlanForPack(pack, lesson);
+  const activeSectionNames = uniqueValues(activeSections.map((section) => section.sectionName || section.name));
+  const activeGrammar = uniqueValues(activeSections.map((section) => section.centralGrammar));
+  const activeFunctions = uniqueValues(activeSections.map((section) => section.centralFunction));
+  const activeVocabulary = uniqueValues(activeSections.flatMap((section) => Array.isArray(section.vocabulary) ? section.vocabulary : []));
+  const activeTargets = uniqueValues(activeSections.flatMap((section) => Array.isArray(section.targetStructures) ? section.targetStructures : []));
 
   return `${START}
 
 ## Unit-level lesson vision context
 This block was generated from full-unit page-image analysis. It provides the full lesson context. Teach only the active class sections.
 
+### Active class teaching contract
+- Active class: Unit ${pack.unit}, local class ${pack.localClass}, global class ${pack.globalClass}
+- Active class book pages: ${pack.bookPages || "not specified"}
+- Active class PDF pages: ${pack.pdfPages || "not specified"}
+- Active class section names: ${activeSectionNames.length ? activeSectionNames.join(" + ") : "Not identified"}
+- Active class grammar focus: ${activeGrammar.length ? activeGrammar.join("; ") : lesson?.grammarFocus || "Not identified"}
+- Active class functions: ${activeFunctions.length ? activeFunctions.join("; ") : "Not identified"}
+- Active class vocabulary focus: ${activeVocabulary.length ? activeVocabulary.slice(0, 18).join("; ") : "Not identified"}
+- Active class target structures: ${activeTargets.length ? activeTargets.slice(0, 10).join("; ") : "Not identified"}
+
+### Full lesson context
 - Unit theme: ${lesson?.unitTheme || "See unit map."}
 - Lesson label: ${lesson?.lessonLabel || "not identified"}
 - Lesson title: ${lesson?.lessonTitle || "not identified"}
@@ -141,17 +161,17 @@ This block was generated from full-unit page-image analysis. It provides the ful
 - Lesson vocabulary focus: ${valueList(lesson?.vocabularyFocus)}
 - Lesson functions: ${valueList(lesson?.functions)}
 
-### Full lesson sections
-${listText(lesson?.sections || [], renderSection)}
-
 ### Active class sections to teach now
 ${listText(activeSections, renderSection)}
 
 ### Active class teaching plan
 ${listText(activePlan, (plan) => `- Class plan: ${typeof plan === "string" ? plan : JSON.stringify(plan)}`)}
 
+### Full lesson sections
+${listText(lesson?.sections || [], renderSection)}
+
 ### Unit-level lesson context rule
-Use the full lesson context to understand continuity across Starting point, Listening, Grammar, Discussion, Vocabulary, Speaking, and Writing. Teach only the active class sections and do not teach sections assigned to later classes unless needed as short context.
+Use the full lesson context to understand continuity across Starting point, Listening, Grammar, Discussion, Vocabulary, Speaking, and Writing. Teach only the active class sections and do not teach sections assigned to later classes unless needed as short context. In the learner-visible header, the Class sections line must match Active class section names exactly.
 
 ${END}`;
 }

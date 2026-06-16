@@ -52,19 +52,35 @@ jobs:
             EXTRA_ARGS="--fail-on-warnings"
           fi
 
-          npm run passages:audit-contracts -- \
+          set +e
+          node scripts/audit-passages-contracts.mjs \
             --knowledge-path "${KNOWLEDGE_PATH}" \
             --unit "${UNIT}" \
             --json \
             ${EXTRA_ARGS} > passages-contract-audit.json
           AUDIT_EXIT="$?"
 
-          npm run passages:audit-contracts -- \
+          node scripts/audit-passages-contracts.mjs \
             --knowledge-path "${KNOWLEDGE_PATH}" \
             --unit "${UNIT}" \
-            ${EXTRA_ARGS} > passages-contract-audit.md || true
+            ${EXTRA_ARGS} > passages-contract-audit.md
+          MARKDOWN_EXIT="$?"
+          set -e
 
           echo "AUDIT_EXIT=${AUDIT_EXIT}" >> "${GITHUB_ENV}"
+          echo "MARKDOWN_EXIT=${MARKDOWN_EXIT}" >> "${GITHUB_ENV}"
+          echo "Audit exit code: ${AUDIT_EXIT}"
+          echo "Markdown exit code: ${MARKDOWN_EXIT}"
+
+          if [ ! -s passages-contract-audit.json ]; then
+            echo '{"ok":false,"error":"Audit JSON file was not created or is empty.","results":[]}' > passages-contract-audit.json
+          fi
+
+          if [ ! -s passages-contract-audit.md ]; then
+            echo "# Passages Contract Audit" > passages-contract-audit.md
+            echo "" >> passages-contract-audit.md
+            echo "Audit Markdown file was not created or is empty." >> passages-contract-audit.md
+          fi
 
       - name: Publish audit result to English OS sheet
         if: always()

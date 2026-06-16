@@ -4,6 +4,17 @@ import {
   getResponseOutputText,
   getResponseTokenUsage,
 } from "@/lib/openaiSdk";
+import {
+  McpAuthInfo,
+  OAUTH_READ_SCOPE,
+  OAUTH_WRITE_SCOPE,
+  getAuthorizationServerMetadataUrl,
+  getMcpResource,
+  getProtectedResourceMetadataUrl,
+  getRequestAuthInfo,
+  getWwwAuthenticateHeader,
+  hasScopes,
+} from "@/lib/mcpOAuth";
 
 export const runtime = "nodejs";
 
@@ -18,7 +29,7 @@ const OPENAI_ANALYSIS_MAX_OUTPUT_TOKENS = Number(
 
 const MCP_PROTOCOL_VERSION = "2024-11-05";
 const SERVER_NAME = "english-os-mcp";
-const SERVER_VERSION = "0.1.0";
+const SERVER_VERSION = "0.2.0";
 
 type JsonRpcRequest = {
   jsonrpc?: "2.0";
@@ -27,10 +38,19 @@ type JsonRpcRequest = {
   params?: any;
 };
 
+type OAuth2SecurityScheme = {
+  type: "oauth2";
+  scopes: string[];
+};
+
 type ToolDefinition = {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
+  securitySchemes: OAuth2SecurityScheme[];
+  _meta: {
+    securitySchemes: OAuth2SecurityScheme[];
+  };
 };
 
 class ToolError extends Error {
@@ -40,42 +60,42 @@ class ToolError extends Error {
   }
 }
 
+const READ_SECURITY: OAuth2SecurityScheme[] = [{ type: "oauth2", scopes: [OAUTH_READ_SCOPE] }];
+const WRITE_SECURITY: OAuth2SecurityScheme[] = [
+  { type: "oauth2", scopes: [OAUTH_READ_SCOPE, OAUTH_WRITE_SCOPE] },
+];
+
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": process.env.ENGLISH_OS_MCP_ALLOWED_ORIGIN || "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers":
       "authorization,content-type,mcp-session-id,x-english-os-mcp-token",
-    "Access-Control-Expose-Headers": "mcp-session-id",
+    "Access-Control-Expose-Headers": "mcp-session-id,www-authenticate",
   };
 }
 
-function json(data: unknown, status = 200) {
+function json(data: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
   return NextResponse.json(data, {
     status,
-    headers: corsHeaders(),
+    headers: {
+      ...corsHeaders(),
+      ...extraHeaders,
+    },
   });
 }
 
-function unauthorized() {
+function unauthorized(request: Request, requiredScopes = [OAUTH_READ_SCOPE]) {
   return json(
     {
       ok: false,
-      error: "Unauthorized MCP request. Provide Authorization: Bearer <ENGLISH_OS_MCP_TOKEN>.",
+      error: "Unauthorized MCP request. Connect English OS with OAuth or provide a valid bearer token.",
     },
-    401
+    401,
+    {
+      "WWW-Authenticate": getWwwAuthenticateHeader(request, requiredScopes),
+    }
   );
-}
-
-function getBearerToken(request: Request) {
-  const authorization = request.headers.get("authorization") || "";
-  const match = authorization.match(/^Bearer\s+(.+)$/i);
-  return match?.[1]?.trim() || request.headers.get("x-english-os-mcp-token") || "";
-}
-
-function isAuthorized(request: Request) {
-  if (!ENGLISH_OS_MCP_TOKEN) return false;
-  return getBearerToken(request) === ENGLISH_OS_MCP_TOKEN;
 }
 
 function result(id: JsonRpcRequest["id"], value: unknown) {
@@ -96,6 +116,28 @@ function error(id: JsonRpcRequest["id"], code: number, message: string, data?: u
       ...(data ? { data } : {}),
     },
   };
+}
+
+function authRequiredResult(id: JsonRpcRequest["id"], request: Request, requiredScopes: string[]) {
+  const challenge = getWwwAuthenticateHeader(
+    request,
+    requiredScopes,
+    "insufficient_scope",
+    "Connect English OS to continue."
+  );
+
+  return result(id, {
+    content: [
+      {
+        type: "text",
+        text: "Authentication required: connect English OS with OAuth to continue.",
+      },
+    ],
+    _meta: {
+      "mcp/www_authenticate": [challenge],
+    },
+    isError: true,
+  });
 }
 
 function textToolResult(text: string, structuredContent?: unknown) {
@@ -213,102 +255,140 @@ async function analyzeTranscript(args: any) {
   };
 }
 
+function withSecurity(tool: Omit<ToolDefinition, "securitySchemes" | "_meta">, securitySchemes: OAuth2SecurityScheme[]) {
+  return {
+    ...tool,
+    securitySchemes,
+    _meta: {
+      securitySchemes,
+    },
+  };
+}
+
 const MCP_TOOLS: ToolDefinition[] = [
-  {
-    name: "english_os_get_learner_context",
-    description: "Read-only. Get English OS learner context for a specific learner email.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        userEmail: { type: "string", description: "Learner email address." },
+  withSecurity(
+    {
+      name: "english_os_get_learner_context",
+      description: "Read-only. Get English OS learner context for a specific learner email.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          userEmail: { type: "string", description: "Learner email address." },
+        },
+        required: ["userEmail"],
+        additionalProperties: false,
       },
-      required: ["userEmail"],
-      additionalProperties: false,
     },
-  },
-  {
-    name: "english_os_get_current_class",
-    description: "Read-only. Get the learner's current English OS class, learning state, and class content.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        userEmail: { type: "string", description: "Learner email address." },
-        learnerId: { type: "string", description: "Optional learner ID. Defaults to userEmail." },
+    READ_SECURITY
+  ),
+  withSecurity(
+    {
+      name: "english_os_get_current_class",
+      description: "Read-only. Get the learner's current English OS class, learning state, and class content.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          userEmail: { type: "string", description: "Learner email address." },
+          learnerId: { type: "string", description: "Optional learner ID. Defaults to userEmail." },
+        },
+        required: ["userEmail"],
+        additionalProperties: false,
       },
-      required: ["userEmail"],
-      additionalProperties: false,
     },
-  },
-  {
-    name: "english_os_get_class_content",
-    description: "Read-only. Get content for a specific English OS class by unit and local or global class number.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        userEmail: { type: "string", description: "Learner email address." },
-        unit: { type: "number", description: "Unit number, 1-12." },
-        localClass: { type: "number", description: "Local class inside unit, 1-7." },
-        globalClass: { type: "number", description: "Global English OS class number. Optional if localClass is supplied." },
+    READ_SECURITY
+  ),
+  withSecurity(
+    {
+      name: "english_os_get_class_content",
+      description: "Read-only. Get content for a specific English OS class by unit and local or global class number.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          userEmail: { type: "string", description: "Learner email address." },
+          unit: { type: "number", description: "Unit number, 1-12." },
+          localClass: { type: "number", description: "Local class inside unit, 1-7." },
+          globalClass: { type: "number", description: "Global English OS class number. Optional if localClass is supplied." },
+        },
+        required: ["userEmail", "unit"],
+        additionalProperties: false,
       },
-      required: ["userEmail", "unit"],
-      additionalProperties: false,
     },
-  },
-  {
-    name: "passages_run_diagnostic",
-    description: "Read-only. Run the production Passages vector-store diagnostic for a unit and local class.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        unit: { type: "number", description: "Unit number, 1-12." },
-        localClass: { type: "number", description: "Local class inside unit, 1-7." },
+    READ_SECURITY
+  ),
+  withSecurity(
+    {
+      name: "passages_run_diagnostic",
+      description: "Read-only. Run the production Passages vector-store diagnostic for a unit and local class.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          unit: { type: "number", description: "Unit number, 1-12." },
+          localClass: { type: "number", description: "Local class inside unit, 1-7." },
+        },
+        required: ["unit", "localClass"],
+        additionalProperties: false,
       },
-      required: ["unit", "localClass"],
-      additionalProperties: false,
     },
-  },
-  {
-    name: "conversation_analyze",
-    description: "Read-only. Analyze a supplied transcript using OpenAI and optional English OS learner context.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        transcript: { type: "string", description: "Conversation transcript to analyze." },
-        focus: { type: "string", description: "Optional analysis focus." },
-        userEmail: { type: "string", description: "Optional learner email for English OS context." },
-        previousResponseId: { type: "string", description: "Optional OpenAI response ID to continue analysis." },
+    READ_SECURITY
+  ),
+  withSecurity(
+    {
+      name: "conversation_analyze",
+      description: "Read-only. Analyze a supplied transcript using OpenAI and optional English OS learner context.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          transcript: { type: "string", description: "Conversation transcript to analyze." },
+          focus: { type: "string", description: "Optional analysis focus." },
+          userEmail: { type: "string", description: "Optional learner email for English OS context." },
+          previousResponseId: { type: "string", description: "Optional OpenAI response ID to continue analysis." },
+        },
+        required: ["transcript"],
+        additionalProperties: false,
       },
-      required: ["transcript"],
-      additionalProperties: false,
     },
-  },
-  {
-    name: "english_os_approve_current_class_practice",
-    description: "Write action. Approve current class practice only when confirm is true.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        userEmail: { type: "string", description: "Learner email address." },
-        confirm: { type: "boolean", description: "Must be true to perform this write action." },
+    READ_SECURITY
+  ),
+  withSecurity(
+    {
+      name: "english_os_approve_current_class_practice",
+      description: "Write action. Approve current class practice only when confirm is true.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          userEmail: { type: "string", description: "Learner email address." },
+          confirm: { type: "boolean", description: "Must be true to perform this write action." },
+        },
+        required: ["userEmail", "confirm"],
+        additionalProperties: false,
       },
-      required: ["userEmail", "confirm"],
-      additionalProperties: false,
     },
-  },
-  {
-    name: "english_os_advance_to_next_class",
-    description: "Write action. Advance to the next class only when confirm is true.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        userEmail: { type: "string", description: "Learner email address." },
-        confirm: { type: "boolean", description: "Must be true to perform this write action." },
+    WRITE_SECURITY
+  ),
+  withSecurity(
+    {
+      name: "english_os_advance_to_next_class",
+      description: "Write action. Advance to the next class only when confirm is true.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          userEmail: { type: "string", description: "Learner email address." },
+          confirm: { type: "boolean", description: "Must be true to perform this write action." },
+        },
+        required: ["userEmail", "confirm"],
+        additionalProperties: false,
       },
-      required: ["userEmail", "confirm"],
-      additionalProperties: false,
     },
-  },
+    WRITE_SECURITY
+  ),
 ];
+
+function requiredScopesForTool(name: string) {
+  if (["english_os_approve_current_class_practice", "english_os_advance_to_next_class"].includes(name)) {
+    return [OAUTH_READ_SCOPE, OAUTH_WRITE_SCOPE];
+  }
+  return [OAUTH_READ_SCOPE];
+}
 
 async function callTool(name: string, args: any, request: Request) {
   if (name === "english_os_get_learner_context") {
@@ -388,7 +468,7 @@ async function callTool(name: string, args: any, request: Request) {
   throw new ToolError(`Unknown tool: ${name}`);
 }
 
-async function handleJsonRpc(payload: JsonRpcRequest, request: Request) {
+async function handleJsonRpc(payload: JsonRpcRequest, request: Request, authInfo: McpAuthInfo) {
   const id = payload?.id ?? null;
   const method = payload?.method || "";
 
@@ -434,6 +514,12 @@ async function handleJsonRpc(payload: JsonRpcRequest, request: Request) {
       const name = String(payload.params?.name || "");
       const args = payload.params?.arguments || {};
       if (!name) return error(id, -32602, "Missing tool name.");
+
+      const requiredScopes = requiredScopesForTool(name);
+      if (!hasScopes(authInfo, requiredScopes)) {
+        return authRequiredResult(id, request, requiredScopes);
+      }
+
       const toolResult = await callTool(name, args, request);
       return result(id, toolResult);
     }
@@ -453,7 +539,7 @@ export async function OPTIONS() {
 }
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) return unauthorized();
+  const authInfo = getRequestAuthInfo(request, ENGLISH_OS_MCP_TOKEN);
 
   return json({
     ok: true,
@@ -461,14 +547,15 @@ export async function GET(request: Request) {
     version: SERVER_VERSION,
     protocolVersion: MCP_PROTOCOL_VERSION,
     endpoint: new URL("/api/mcp", request.url).toString(),
-    auth: "Authorization: Bearer <ENGLISH_OS_MCP_TOKEN>",
+    resource: getMcpResource(request),
+    protectedResourceMetadata: getProtectedResourceMetadataUrl(request),
+    authorizationServerMetadata: getAuthorizationServerMetadataUrl(request),
+    auth: authInfo.ok ? authInfo.type : "oauth2 required for tools/call",
     tools: MCP_TOOLS.map((tool) => tool.name),
   });
 }
 
 export async function POST(request: Request) {
-  if (!isAuthorized(request)) return unauthorized();
-
   let body: JsonRpcRequest | JsonRpcRequest[];
 
   try {
@@ -477,15 +564,17 @@ export async function POST(request: Request) {
     return json(error(null, -32700, "Parse error."), 400);
   }
 
+  const authInfo = getRequestAuthInfo(request, ENGLISH_OS_MCP_TOKEN);
+
   if (Array.isArray(body)) {
-    const responses = (await Promise.all(body.map((item) => handleJsonRpc(item, request)))).filter(Boolean);
+    const responses = (await Promise.all(body.map((item) => handleJsonRpc(item, request, authInfo)))).filter(Boolean);
     if (!responses.length) {
       return new Response(null, { status: 202, headers: corsHeaders() });
     }
     return json(responses);
   }
 
-  const response = await handleJsonRpc(body, request);
+  const response = await handleJsonRpc(body, request, authInfo);
   if (!response) {
     return new Response(null, { status: 202, headers: corsHeaders() });
   }

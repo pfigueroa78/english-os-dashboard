@@ -264,7 +264,7 @@ Style rules:
 Multi-class requests:
 - If the learner asks for several classes in one message, do NOT teach all classes fully in one response.
 - Present the requested sequence briefly, then teach only the first class in full.
-- After the first class, include a Practice Gate with 3 items.
+- After the first class, include an Evaluation gate with 3 items.
 - Explain that the next class will be taught after the learner completes and approves the practice.
 - Do not mark exercises as approved and do not call any advancement action from this response.
       `.trim(),
@@ -510,7 +510,8 @@ function ensurePassagesLessonContract(data: any, input: any[]) {
   }
 
   reply = applyHeaderHardBreaks(reply)
-    .replace(/Practice Gate\s+Before we continue/gi, "Before we continue")
+    .replace(/\n\s*(Quick practice|Practice Gate)\s*\n/gi, "\nEvaluation gate\n")
+    .replace(/Practice Gate\s+Before we continue/gi, "Evaluation gate\n\nBefore we continue")
     .replace(/\bThe book asks\b:?/gi, "Focus questions:")
     .replace(/\bThe book shows\b/gi, "We use these examples to practice")
     .replace(/\bThe text presents\b/gi, "This class works with")

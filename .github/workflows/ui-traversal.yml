@@ -7,10 +7,6 @@ on:
         description: "URL to test"
         required: false
         default: "https://english-os-dashboard.vercel.app"
-      run_authenticated:
-        description: "Run authenticated traversal if E2E_AUTH_STATE_JSON secret exists"
-        required: false
-        default: "false"
   pull_request:
     branches:
       - main
@@ -32,24 +28,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Restore authenticated storage state when available
-        if: ${{ secrets.E2E_AUTH_STATE_JSON != '' }}
-        shell: bash
-        run: |
-          printf '%s' '${{ secrets.E2E_AUTH_STATE_JSON }}' > auth.json
-
       - name: Run UI traversal tests
         env:
           E2E_BASE_URL: ${{ github.event.inputs.base_url || 'https://english-os-dashboard.vercel.app' }}
-          E2E_AUTH_STATE: ${{ secrets.E2E_AUTH_STATE_JSON != '' && 'auth.json' || '' }}
         run: npm run test:e2e
 
       - name: Upload Playwright report
@@ -59,6 +47,7 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+          if-no-files-found: ignore
 
       - name: Upload Playwright test results
         if: always()
@@ -67,3 +56,4 @@ jobs:
           name: test-results
           path: test-results/
           retention-days: 7
+          if-no-files-found: ignore

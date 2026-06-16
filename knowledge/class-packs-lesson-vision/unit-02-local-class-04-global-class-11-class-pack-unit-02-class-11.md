@@ -10,6 +10,21 @@ PDF pages retrieval key: PDF_PAGES_23_24
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+### Active class teaching contract
+- Active class: Unit 2, local class 4, global class 11
+- Active class book pages: 14-15
+- Active class PDF pages: 23-24
+- Active class section names: Starting point + Reading + Grammar + Discussion
+- Active class grammar focus: modals and adverbs for speculating; must have; may have; might have; could have; must; may; might; could
+- Active class vocabulary focus: mysterious artist; graffiti artist; controversial work; identity; disguise; clues; hoax; claim; reveal; document; publicity
+- Active class functions: speculate about mysteries; react to an article; express certainty and uncertainty; give possible explanations
+- Active class target structures: He must be...; It may have been...; He could have been...; People might know...; I'm sure...; Nobody is sure.
+- Expected learner production: explain a mystery using at least two speculation structures and one uncertainty phrase
+
+### Unit-level lesson vision context
+Use this context to teach the active class only. This class should develop reading comprehension and speculation language. If the source text is not fully visible to the learner, provide a teacher reading input based on the available extracted article and do not claim it is the full book text.
+
+---
 
 Aliases: CLASS_PACK_UNIT_02_CLASS_11 | UNIT_02_LOCAL_CLASS_04 | GLOBAL_CLASS_11 | UNIT_2_CLASS_11 | UNIT_2_CLASS_4_LOCAL | PDF_PAGE_RANGE_23_24 | BOOK_PAGE_RANGE_14_15
 
@@ -68,4 +83,4 @@ BOOK_PAGE: 14
             "The people who worked on his movie might know who Banksy is. "
             "Well, maybe, but I'm sure his family must know he is the mysterious artist."
 
- 14   lll~liFJ   Mistake s and mysteries
+14   lll~liFJ   Mistake s and mysteries

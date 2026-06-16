@@ -34,15 +34,48 @@ function clipJson(value: any, max = 1200) {
   }
 }
 
+function firstNonEmptyString(...values: any[]) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function normalizeFocusPunctuation(value: string) {
+  return String(value || "")
+    .replace(/\bused to\.\s*but now\.?/gi, "used to... but now...")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function summarizeLearnerPersonalizationContext(learnerContext: any) {
   const user = learnerContext?.user || {};
   const missionControl = learnerContext?.missionControl || {};
   const learningState = learnerContext?.learningState || {};
 
-  const learnerName = user.Name || user["Name"] || learnerContext?.name || "the learner";
-  const currentCEFR = user["Current CEFR"] || learnerContext?.currentCEFR || missionControl.currentCEFR || "B1/B2";
-  const currentUnit = user["Current Unit"] || learnerContext?.currentUnit || missionControl.currentUnit || learningState.currentUnit || "";
-  const currentLesson = user["Current Lesson"] || learnerContext?.currentLesson || missionControl.currentLesson || learningState.currentClass || "";
+  const learnerName = firstNonEmptyString(user.Name, user["Name"], learnerContext?.name) || "the learner";
+  const currentCEFR = firstNonEmptyString(user["Current CEFR"], learnerContext?.currentCEFR, missionControl.currentCEFR) || "not specified";
+  const currentUnit = firstNonEmptyString(user["Current Unit"], learnerContext?.currentUnit, missionControl.currentUnit, learningState.currentUnit);
+  const currentLesson = firstNonEmptyString(user["Current Lesson"], learnerContext?.currentLesson, missionControl.currentLesson, learningState.currentClass);
+  const nativeLanguage = firstNonEmptyString(
+    user["Native Language"],
+    user["First Language"],
+    user["L1"],
+    learnerContext?.nativeLanguage,
+    learnerContext?.firstLanguage,
+    missionControl.nativeLanguage,
+  );
+  const learningGoal = firstNonEmptyString(user.Goal, user["Learning Goal"], learnerContext?.goal, learnerContext?.learningGoal, missionControl.goal);
+  const professionalContext = firstNonEmptyString(
+    user["Professional Context"],
+    user["Professional Goal"],
+    user.Profession,
+    user.Role,
+    learnerContext?.professionalContext,
+    learnerContext?.profession,
+    learnerContext?.role,
+    missionControl.professionalContext,
+  );
   const nextRecommendedAction = learnerContext?.nextRecommendedAction || missionControl?.nextRecommendedAction || user["Next Recommended Action"] || "";
   const recentDailyLogs = learnerContext?.recentDailyLogs || learnerContext?.dailyLogs || [];
   const recurringMistakes = learnerContext?.recurringMistakes || learnerContext?.mistakes || [];
@@ -52,10 +85,12 @@ function summarizeLearnerPersonalizationContext(learnerContext: any) {
 Learner personalization context:
 - Learner name: ${learnerName}
 - CEFR level: ${currentCEFR}
+- Native / first language: ${nativeLanguage || "not specified"}
+- Learning goal: ${learningGoal || "not specified"}
 - Current English OS unit: ${currentUnit || "not specified"}
 - Current English OS lesson/class: ${currentLesson || "not specified"}
 - Next recommended action: ${typeof nextRecommendedAction === "string" ? nextRecommendedAction : clipJson(nextRecommendedAction, 500) || "not specified"}
-- Professional context to prioritize when useful: consulting, enterprise architecture, software architecture, AI, digital transformation, business meetings, executive communication.
+- Professional context to prioritize when useful: ${professionalContext || "not specified"}
 
 Recent learning evidence to adapt the class:
 - Recent daily logs: ${clipJson(recentDailyLogs, 1400) || "not available"}
@@ -63,10 +98,11 @@ Recent learning evidence to adapt the class:
 - Vocabulary intelligence / weak vocabulary / new chunks: ${clipJson(vocabulary, 1400) || "not available"}
 
 Personalization instructions:
-- Adapt the class to the learner's CEFR level.
+- Adapt the class to the learner's CEFR level only when specified or inferable from reliable runtime context.
 - Use the learner's recurring mistakes to choose the common mistake and the quick correction.
 - Use weak vocabulary and recent chunks when selecting examples and practice frames.
-- Connect examples to the learner's professional context only when it feels natural.
+- Connect examples to the learner's professional context only when it is specified or clearly inferable from runtime context.
+- Use first-language support only when the learner's first language or transfer pattern is specified or clearly inferable from runtime context.
 - Do not expose raw logs or say "your logs show". Turn the context into helpful teaching choices.
 `.trim();
 }
@@ -233,10 +269,14 @@ Grammar and vocabulary rule:
 Personalization rule:
 - The class content must come from the requested Passages class pack.
 - The teaching choices must adapt to the learner context.
-- Adapt difficulty, examples, common mistakes, vocabulary emphasis, and production tasks to the learner's CEFR level, recurring mistakes, weak vocabulary, recent daily logs, and professional context.
+- Adapt difficulty, examples, common mistakes, vocabulary emphasis, and production tasks to runtime learner context only.
 - If the learner has recurring mistakes related to the target structure, make that the common mistake.
-- If the learner is preparing for professional fluency, include one natural consulting/business/architecture example when it fits.
+- Include professional examples only when a professional context is specified or clearly inferable from runtime context.
 - Do not expose private logs or say "your logs show". Say "Personal focus" only if it helps the class.
+
+Special class modes:
+- If the exact class pack is a Video Class, do not teach it as a normal Student Book class. Build a video-based lesson around the visible Drive Materials video resource when available. If no video link is visible, ask the learner to open the matching video from Drive Materials and do not invent a video transcript.
+- If the exact class pack is Grammar Plus and no direct Student Book content is indexed, teach it as a grammar lab. You may generate controlled examples and practice from the unit/lesson grammar context, but clearly keep it as supplemental practice and do not claim it is copied from the Student Book.
 
 Learning objective rule:
 - Every class must include a learning objective after the identity header.
@@ -252,7 +292,7 @@ Pedagogy rules:
 - Use teacher moves: explain, model, check, let the learner try.
 - Include short examples before asking the learner to produce language.
 - For vocabulary, include a simple definition and a learner-level example.
-- Add a professional/work example only when it sounds natural.
+- Add professional/work examples only when supported by runtime learner context.
 - End with a concrete task that the learner can answer now.
 
 Style rules:
@@ -344,7 +384,7 @@ function firstCleanMatch(text: string, patterns: RegExp[]) {
     const match = text.match(pattern);
     const value = match?.[1]?.trim();
     if (value && !/^not (identified|specified|available)|^unknown|^none$/i.test(value) && !isPlaceholderContractValue(value)) {
-      return value.replace(/["“”]+/g, "").replace(/\.$/, "").trim();
+      return normalizeFocusPunctuation(value.replace(/["“”]+/g, "").replace(/\.$/, "").trim());
     }
   }
   return "";
@@ -363,7 +403,7 @@ function dedupeFocusValue(value: string) {
   const seen = new Set<string>();
   return String(value || "")
     .split(/\s*;\s*/)
-    .map((item) => item.trim())
+    .map((item) => normalizeFocusPunctuation(item.trim()))
     .filter(Boolean)
     .filter((item) => {
       const key = item.toLowerCase();
@@ -375,11 +415,11 @@ function dedupeFocusValue(value: string) {
 }
 
 function normalizeContractValue(value: string) {
-  return String(value || "")
+  return normalizeFocusPunctuation(String(value || "")
     .replace(/\s*;\s*/g, " + ")
     .replace(/\s*\+\s*/g, " + ")
     .replace(/\s+/g, " ")
-    .trim();
+    .trim());
 }
 
 function extractContractMetadata(data: any, input: any[]) {
@@ -510,8 +550,11 @@ function ensurePassagesLessonContract(data: any, input: any[]) {
   }
 
   reply = applyHeaderHardBreaks(reply)
+    .replace(/\n\s*(#+\s*)?Section-by-section class\s*\n/gi, "\n")
     .replace(/\n\s*(Quick practice|Practice Gate)\s*\n/gi, "\nEvaluation gate\n")
     .replace(/Practice Gate\s+Before we continue/gi, "Evaluation gate\n\nBefore we continue")
+    .replace(/(\nWriting\s*\n[\s\S]{0,1400}?)Teacher reading input:/i, "$1Teacher writing model:")
+    .replace(/\bused to\.\s*but now\.?/gi, "used to... but now...")
     .replace(/\bThe book asks\b:?/gi, "Focus questions:")
     .replace(/\bThe book shows\b/gi, "We use these examples to practice")
     .replace(/\bThe text presents\b/gi, "This class works with")

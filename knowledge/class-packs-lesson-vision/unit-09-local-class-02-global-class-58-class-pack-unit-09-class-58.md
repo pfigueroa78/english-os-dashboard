@@ -10,6 +10,25 @@ PDF pages retrieval key: PDF_PAGES_81_82
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+<!-- PASSAGES_ACTIVE_CONTRACT_START -->
+### Active class teaching contract
+- Active class: Unit 9, local class 2, global class 58
+- Lesson title: Unit 9 Lesson A extension
+- Active class book pages: 72-73
+- Active class PDF pages: 81-82
+- Active class section names: Lesson A extension + Listening/Reading/Writing + Speaking
+- Active class skill focus: Listening, speaking, reading/writing
+- Active class grammar focus: Extract exact grammar focus from Unit 9 Lesson A extension indexed pages; do not infer unindexed wording.
+- Active class vocabulary focus: Extract vocabulary from Unit 9 Lesson A extension indexed pages; recycle only confirmed unit vocabulary.
+- Active class functions: Teach from the indexed page range, then ask controlled practice before advancing.
+- Active class target structures: Use the target language from the indexed page range. Do not invent structures outside the class pack.
+- Expected learner production: Controlled and personalized answers based on the indexed Student Book prompts.
+- Source status: Source extraction blocker: expected page marker(s) not found in existing extracted content: BOOK_PAGE 73; PDF_PAGE 82. Do not invent missing page text.
+
+### Safety rule
+Preserve the existing extracted Student Book content exactly as indexed. Do not fabricate missing page text, transcript text, answer keys, audio scripts, or exercises.
+<!-- PASSAGES_ACTIVE_CONTRACT_END -->
+
 ---
 
 # CLASS_PACK_UNIT_09_CLASS_58

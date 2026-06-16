@@ -27,6 +27,12 @@ Teacher instruction: Use this file as the primary source for this exact class. D
 
 ### Safety rule
 No direct Student Book page text is indexed for this class. Do not substitute Student Book content from another class or fabricate video content.
+
+### Video simulation rule
+If the learner cannot open the video, any teacher-created dialogue or monologue must be labeled as a simulation and must state: "This is not a transcript of the video." Use the simulation only to practice the confirmed review language.
+
+### Checkpoint pass criteria
+The learner passes this checkpoint only after producing: one summary sentence with "In the video, they talk about...", one reaction sentence with "I agree because...", and one connection sentence with "This reminds me of...".
 <!-- PASSAGES_ACTIVE_CONTRACT_END -->
 
 

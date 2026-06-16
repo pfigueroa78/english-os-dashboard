@@ -10,6 +10,8 @@ PDF pages retrieval key: PDF_PAGES_21_22
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+Lesson title: Life lessons
+
 ### Active class teaching contract
 - Active class: Unit 2, local class 2, global class 9
 - Active class book pages: 12-13
@@ -35,6 +37,7 @@ Metadata:
 - Local class inside unit: 2
 - Global English OS class: 9
 - Lesson type: Student Book class
+- Lesson title: Life lessons
 - Book pages: 12-13
 - PDF pages: 21-22
 - Notes: none

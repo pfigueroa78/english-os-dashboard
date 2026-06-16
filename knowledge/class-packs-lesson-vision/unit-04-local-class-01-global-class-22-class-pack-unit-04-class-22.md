@@ -18,15 +18,18 @@ Teacher instruction: Use this file as the primary source for this exact class. D
 - Active class PDF pages: 37-38
 - Active class section names: Lesson A + Vocabulary + Grammar + Speaking
 - Active class skill focus: Vocabulary, grammar, speaking
-- Active class grammar focus: Extract exact grammar focus from Unit 4 Lesson A indexed pages; do not infer unindexed wording.
-- Active class vocabulary focus: Extract vocabulary from Unit 4 Lesson A indexed pages; recycle only confirmed unit vocabulary.
-- Active class functions: Teach from the indexed page range, then ask controlled practice before advancing.
-- Active class target structures: Use the target language from the indexed page range. Do not invent structures outside the class pack.
-- Expected learner production: Controlled and personalized answers based on the indexed Student Book prompts.
-- Source status: Source extraction blocker: expected page marker(s) not found in existing extracted content: BOOK_PAGE 29; PDF_PAGE 38. Do not invent missing page text.
+- Active class grammar focus: Time clauses for routines and preferences: as soon as, after, before, until, when/whenever, ever since.
+- Active class vocabulary focus: morning person; late riser; grouch; approachable; spurt of energy; race off; head to; get much done; night owl.
+- Active class functions: Describe best time of day, routines, energy patterns, and productivity preferences using time clauses.
+- Active class target structures: As soon as I..., I...; After I..., I...; Before I..., I...; I don't... until...; Whenever I..., I...; Ever since I..., I've...
+- Expected learner production: Controlled and personalized answers describing daily routine, best time of day, and work habits.
+- Source status: Source extraction blocker: expected page marker(s) not found in existing extracted content: BOOK_PAGE 29; PDF_PAGE 38. Use only the visible extracted page content and do not invent missing page text.
 
 ### Safety rule
 Preserve the existing extracted Student Book content exactly as indexed. Do not fabricate missing page text, transcript text, answer keys, audio scripts, or exercises.
+
+### Teaching improvement rule
+Do not use an exercise instruction such as "Rewrite... with after" as the Grammar focus. The visible grammar focus for this class is the time-clause system listed above. Use the rewrite item only as controlled practice inside the Evaluation gate.
 <!-- PASSAGES_ACTIVE_CONTRACT_END -->
 
 
@@ -96,4 +99,3 @@ BOOK_PAGE: 28
 
 
                                 Get on social networking sites between               Energy levels drop between 1:00 and 4:00 P.M. , and
-                                8:00 and 9:00 A.M. , when people tend                sleepiness is at its peak around 2:00 P. M. This is a

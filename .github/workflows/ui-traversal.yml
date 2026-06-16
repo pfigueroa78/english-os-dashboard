@@ -36,27 +36,14 @@ jobs:
           CLERK_SECRET_KEY: "sk_test_dummy"
         run: npm run build
 
-      - name: Start app and run UI traversal tests
+      - name: Run UI traversal tests
         env:
-          E2E_BASE_URL: http://localhost:3000
+          E2E_BASE_URL: http://127.0.0.1:3000
+          E2E_USE_WEB_SERVER: "1"
           NEXT_PUBLIC_E2E_DEMO: "1"
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_Y2xlcmsuZGVtbyQ"
           CLERK_SECRET_KEY: "sk_test_dummy"
-        run: |
-          npm run start -- --hostname 0.0.0.0 > /tmp/english-os.log 2>&1 &
-          SERVER_PID=$!
-          npx --yes wait-on tcp:localhost:3000
-          npm run test:e2e
-          kill $SERVER_PID
-
-      - name: Upload app log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-log
-          path: /tmp/english-os.log
-          retention-days: 7
-          if-no-files-found: ignore
+        run: npm run test:e2e
 
       - name: Upload Playwright report
         if: always()

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
 
@@ -1048,7 +1048,7 @@ function CoachDrawer({
   input: string;
   loading: boolean;
   error: string;
-  bottomRef: React.RefObject<HTMLDivElement | null>;
+  bottomRef: RefObject<HTMLDivElement | null>;
   onInputChange: (value: string) => void;
   onClose: () => void;
   onSend: () => void;
@@ -1163,7 +1163,7 @@ function MistakeInbox({
             mistake={mistake}
             mastered={Boolean(masteredMistakes[mistake.id])}
             onPractice={() => onPractice(mistake)}
-            onMastered={() => onMastered(mistake.id)}
+            onMastered={(id) => setMasteredMistakes((current) => ({ ...current, [id]: true }))}
           />
         ))}
       </div>

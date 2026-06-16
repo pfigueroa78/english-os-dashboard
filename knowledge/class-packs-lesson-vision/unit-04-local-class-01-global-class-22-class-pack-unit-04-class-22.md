@@ -10,6 +10,25 @@ PDF pages retrieval key: PDF_PAGES_37_38
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+<!-- PASSAGES_ACTIVE_CONTRACT_START -->
+### Active class teaching contract
+- Active class: Unit 4, local class 1, global class 22
+- Lesson title: Unit 4 Lesson A
+- Active class book pages: 28-29
+- Active class PDF pages: 37-38
+- Active class section names: Lesson A + Vocabulary + Grammar + Speaking
+- Active class skill focus: Vocabulary, grammar, speaking
+- Active class grammar focus: Extract exact grammar focus from Unit 4 Lesson A indexed pages; do not infer unindexed wording.
+- Active class vocabulary focus: Extract vocabulary from Unit 4 Lesson A indexed pages; recycle only confirmed unit vocabulary.
+- Active class functions: Teach from the indexed page range, then ask controlled practice before advancing.
+- Active class target structures: Use the target language from the indexed page range. Do not invent structures outside the class pack.
+- Expected learner production: Controlled and personalized answers based on the indexed Student Book prompts.
+- Source status: Source extraction blocker: expected page marker(s) not found in existing extracted content: BOOK_PAGE 29; PDF_PAGE 38. Do not invent missing page text.
+
+### Safety rule
+Preserve the existing extracted Student Book content exactly as indexed. Do not fabricate missing page text, transcript text, answer keys, audio scripts, or exercises.
+<!-- PASSAGES_ACTIVE_CONTRACT_END -->
+
 
 Aliases: CLASS_PACK_UNIT_04_CLASS_22 | UNIT_04_LOCAL_CLASS_01 | GLOBAL_CLASS_22 | UNIT_4_CLASS_22 | UNIT_4_CLASS_1_LOCAL | PDF_PAGE_RANGE_37_38 | BOOK_PAGE_RANGE_28_29
 
@@ -78,19 +97,3 @@ BOOK_PAGE: 28
 
                                 Get on social networking sites between               Energy levels drop between 1:00 and 4:00 P.M. , and
                                 8:00 and 9:00 A.M. , when people tend                sleepiness is at its peak around 2:00 P. M. This is a
-                                to post more positive messages.                      good time for a short nap.
-
-                                Whenever you need to study for a test,               Exercise between 4:00 and 7:00 P.M. , when physical
-                                do it in the late morning, when most                 strength is at its greatest and risk of injury is at
-                                adults perform their best.                           its lowest.
-
-                                Whenever you have to work with                       People can be most creative when they are less focused.
-                                numbers, plan to do it around noon,                  Therefore, morning people are most creative in the
-                                when thinking power is at its peak.                  evening, and night owls are most creative in the morning.
-
-
-              B Pair work Do you prefer to do these things in the morning, the afternoon,
-                the evening, or at night? Why? Compare answers.
-                     1. exercise    2. listen to m usic     3. study      4. speak English
-
- 28     lli~lii(f       Early birds and night owls

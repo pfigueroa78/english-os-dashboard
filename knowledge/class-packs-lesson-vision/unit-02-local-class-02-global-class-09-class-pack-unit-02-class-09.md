@@ -10,6 +10,20 @@ PDF pages retrieval key: PDF_PAGES_21_22
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+### Active class teaching contract
+- Active class: Unit 2, local class 2, global class 9
+- Active class book pages: 12-13
+- Active class PDF pages: 21-22
+- Active class section names: Vocabulary + Listening
+- Active class grammar focus: problem-solving verb patterns and collocations; verbs for recognizing and dealing with problems
+- Active class vocabulary focus: aggravate; avoid; cause; deal with; identify; ignore; run into; solve; problem; recognizing problems; dealing with problems
+- Active class functions: describe problems; choose precise verbs for problem situations; listen for how people dealt with problems
+- Active class target structures: ignore a problem; identify the problem; deal with a difficult problem; aggravate a problem; avoid problems; run into problems; solve a problem; cause problems
+- Expected learner production: describe a real or simulated problem and say whether the person ignored it, dealt with it, aggravated it, avoided it, solved it, or caused it
+
+### Unit-level lesson vision context
+Use this context to teach the active class only. The unit theme is mistakes, problems, mysteries, explanations, and speculation. When audio is required, use Drive Materials if an audio resource is available; otherwise provide a teacher listening input without claiming it is the original audio.
+
 ---
 
 # CLASS_PACK_UNIT_02_CLASS_09
@@ -80,8 +94,8 @@ BOOK_PAGE: 12
          a4»> B Listen again. Briefly describe each person's problem.
                Ray: _ _ _ _ __ _ _ _ _ __ _ _ _ _ _ _ _ _ _ _ _ __ _ _ _~
 
-               F e l i p e : - - - - - - - - - - - - - - - - - - - - - - - - - -- - - --
-               Jennifer: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ __
+               F e l i p e : - - - - - - - - - - - - - - - - - - - - - - - - -- - - --
+               Jennifer: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ __
 
 
 12       dJ§liEJ    Mistakes a nd mysteries

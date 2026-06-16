@@ -52,6 +52,15 @@ jobs:
       - name: Run QA student journey
         run: npx playwright test tests/e2e/qa-student-flow.spec.ts --project=chromium
 
+      - name: Print Playwright failure context
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          echo "---- Playwright error-context.md ----"
+          find test-results -name error-context.md -print -exec sed -n '1,180p' {} \;
+          echo "---- End error context ----"
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4

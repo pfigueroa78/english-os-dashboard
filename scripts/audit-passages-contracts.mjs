@@ -1,0 +1,266 @@
+#!/usr/bin/env node
+
+import fs from "node:fs";
+import path from "node:path";
+
+const args = process.argv.slice(2);
+const argValue = (name, fallback = "") => {
+  const index = args.indexOf(name);
+  return index >= 0 ? args[index + 1] || fallback : fallback;
+};
+const hasArg = (name) => args.includes(name);
+
+const knowledgePath = argValue("--knowledge-path", "knowledge/class-packs-lesson-vision");
+const unitFilter = Number(argValue("--unit", "0")) || 0;
+const failOnWarnings = hasArg("--fail-on-warnings");
+const outputJson = hasArg("--json");
+
+const STANDARD_SECTION_RULES = [
+  { label: "Starting point", patterns: [/STARTING\s+POINT/i] },
+  { label: "Vocabulary", patterns: [/\bVOCABULARY\b/i, /VOCABULARY\s*&\s*SPEAKING/i, /VOCABULARY\s+PLUS/i] },
+  { label: "Vocabulary & Speaking", patterns: [/VOCABULARY\s*&\s*SPEAKING/i] },
+  { label: "Listening", patterns: [/\bLISTENING\b/i, /LISTENING\s*&\s*SPEAKING/i] },
+  { label: "Listening & Speaking", patterns: [/LISTENING\s*&\s*SPEAKING/i] },
+  { label: "Grammar", patterns: [/\bGRAMMAR\b/i] },
+  { label: "Discussion", patterns: [/\bDISCUSSION\b/i] },
+  { label: "Reading", patterns: [/\bREADING\b/i] },
+  { label: "Writing", patterns: [/\bWRITING\b/i] },
+  { label: "Speaking", patterns: [/\bSPEAKING\b/i] },
+];
+
+const SPECIAL_CLASS_TYPES = new Set(["grammar plus", "video class"]);
+
+function normalizeSpace(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function pad2(value) {
+  return String(value || "").padStart(2, "0");
+}
+
+function readFiles() {
+  const root = path.resolve(knowledgePath);
+  if (!fs.existsSync(root)) {
+    throw new Error(`Knowledge path does not exist: ${root}`);
+  }
+
+  return fs
+    .readdirSync(root)
+    .filter((filename) => filename.endsWith(".md"))
+    .filter((filename) => !unitFilter || filename.startsWith(`unit-${pad2(unitFilter)}-`))
+    .sort()
+    .map((filename) => ({ filename, fullPath: path.join(root, filename), text: fs.readFileSync(path.join(root, filename), "utf8") }));
+}
+
+function firstMatch(text, patterns) {
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const value = match?.[1]?.trim();
+    if (value) return normalizeSpace(value);
+  }
+  return "";
+}
+
+function allMatches(text, pattern) {
+  return Array.from(text.matchAll(pattern)).map((match) => normalizeSpace(match[1] || match[0]));
+}
+
+function parseMetadata(text) {
+  return {
+    unit: Number(firstMatch(text, [/^- Unit:\s*(\d+)/im])) || 0,
+    localClass: Number(firstMatch(text, [/^- Local class inside unit:\s*(\d+)/im])) || 0,
+    globalClass: Number(firstMatch(text, [/^- Global English OS class:\s*(\d+)/im])) || 0,
+    lessonType: firstMatch(text, [/^- Lesson type:\s*([^\n]+)/im]),
+    lessonTitle: firstMatch(text, [/^Lesson title:\s*([^\n]+)/im, /^- Lesson title:\s*([^\n]+)/im, /^Lesson\s+[A-Z]:\s*([^\n]+)/im]),
+    bookPages: firstMatch(text, [/^- Book pages:\s*([^\n]+)/im, /^- Active class book pages:\s*([^\n]+)/im]),
+    pdfPages: firstMatch(text, [/^- PDF pages:\s*([^\n]+)/im, /^- Active class PDF pages:\s*([^\n]+)/im]),
+  };
+}
+
+function parseContract(text) {
+  return {
+    exists: /Active class teaching contract/i.test(text),
+    sections: firstMatch(text, [/^- Active class section names:\s*([^\n]+)/im]),
+    grammarFocus: firstMatch(text, [/^- Active class grammar focus:\s*([^\n]+)/im]),
+    vocabularyFocus: firstMatch(text, [/^- Active class vocabulary focus:\s*([^\n]+)/im]),
+    targetStructures: firstMatch(text, [/^- Active class target structures:\s*([^\n]+)/im]),
+    expectedProduction: firstMatch(text, [/^- Expected learner production:\s*([^\n]+)/im]),
+    specialMode: firstMatch(text, [/^### Special class mode\s*\n([^#]+)/im]),
+  };
+}
+
+function extractedContent(text) {
+  const marker = "## Extracted Student Book content";
+  const index = text.indexOf(marker);
+  return index >= 0 ? text.slice(index + marker.length) : "";
+}
+
+function detectPdfPages(text) {
+  return Array.from(new Set(allMatches(text, /^PDF_PAGE:\s*(\d+)/gim)));
+}
+
+function detectBookPages(text) {
+  return Array.from(new Set(allMatches(text, /^BOOK_PAGE:\s*(\d+)/gim)));
+}
+
+function detectSections(sourceText) {
+  const found = new Set();
+  for (const rule of STANDARD_SECTION_RULES) {
+    if (rule.patterns.some((pattern) => pattern.test(sourceText))) {
+      found.add(rule.label);
+    }
+  }
+
+  // Prefer combined labels when present and remove redundant single labels only when the combined label is exact.
+  if (found.has("Vocabulary & Speaking")) found.delete("Vocabulary");
+  if (found.has("Listening & Speaking")) found.delete("Listening");
+
+  return Array.from(found);
+}
+
+function splitContractSections(sections) {
+  return String(sections || "")
+    .split(/\s*\+\s*/)
+    .map((item) => normalizeSpace(item))
+    .filter(Boolean);
+}
+
+function sectionCovered(detectedSection, contractSections) {
+  const normalizedDetected = detectedSection.toLowerCase();
+  return contractSections.some((section) => {
+    const normalizedContract = section.toLowerCase();
+    return normalizedContract === normalizedDetected || normalizedContract.includes(normalizedDetected) || normalizedDetected.includes(normalizedContract);
+  });
+}
+
+function expectedFilename(meta) {
+  if (!meta.unit || !meta.localClass || !meta.globalClass) return "";
+  return `unit-${pad2(meta.unit)}-local-class-${pad2(meta.localClass)}-global-class-${pad2(meta.globalClass)}-class-pack-unit-${pad2(meta.unit)}-class-${pad2(meta.globalClass)}.md`;
+}
+
+function auditFile(file) {
+  const meta = parseMetadata(file.text);
+  const contract = parseContract(file.text);
+  const source = extractedContent(file.text);
+  const detectedSections = detectSections(source);
+  const contractSections = splitContractSections(contract.sections);
+  const pdfPages = detectPdfPages(source);
+  const bookPages = detectBookPages(source);
+  const lessonType = meta.lessonType.toLowerCase();
+  const isSpecial = SPECIAL_CLASS_TYPES.has(lessonType);
+  const issues = [];
+  const warnings = [];
+
+  if (!contract.exists) issues.push("Missing Active class teaching contract.");
+  if (!contract.sections) issues.push("Missing Active class section names.");
+  if (!contract.grammarFocus) issues.push("Missing Active class grammar focus.");
+  if (!contract.vocabularyFocus) warnings.push("Missing Active class vocabulary focus.");
+  if (!contract.targetStructures) warnings.push("Missing Active class target structures.");
+  if (!meta.lessonTitle && !isSpecial) warnings.push("Missing Lesson title. This can cause the model to borrow a title from another retrieved class.");
+
+  const expected = expectedFilename(meta);
+  if (expected && expected !== file.filename) {
+    issues.push(`Filename mismatch. Expected ${expected} from metadata, got ${file.filename}.`);
+  }
+
+  if (!isSpecial) {
+    if (!source.trim()) issues.push("Student Book class has no extracted source text.");
+    if (!pdfPages.length) issues.push("Student Book class has no PDF_PAGE markers.");
+    if (!bookPages.length) issues.push("Student Book class has no BOOK_PAGE markers.");
+    if (!detectedSections.length) warnings.push("No visible section headings detected in extracted source text.");
+
+    for (const detectedSection of detectedSections) {
+      if (!sectionCovered(detectedSection, contractSections)) {
+        issues.push(`Detected section '${detectedSection}' in source, but it is missing from Active class section names.`);
+      }
+    }
+
+    if (/\bGRAMMAR\b/i.test(source) && !sectionCovered("Grammar", contractSections)) {
+      issues.push("Source contains GRAMMAR, but contract omits Grammar.");
+    }
+    if (/\bDISCUSSION\b/i.test(source) && !sectionCovered("Discussion", contractSections)) {
+      issues.push("Source contains DISCUSSION, but contract omits Discussion.");
+    }
+    if (/\bLISTENING\b/i.test(source) && !contractSections.some((section) => /listening/i.test(section))) {
+      issues.push("Source contains LISTENING, but contract omits Listening.");
+    }
+    if (/\bWRITING\b/i.test(source) && !sectionCovered("Writing", contractSections)) {
+      issues.push("Source contains WRITING, but contract omits Writing.");
+    }
+  }
+
+  if (lessonType === "grammar plus") {
+    if (!/No direct Student Book page text is indexed/i.test(source)) warnings.push("Grammar Plus has source text; verify whether it should be a Student Book class or supplemental practice.");
+    if (!/Grammar Plus/i.test(contract.sections)) issues.push("Grammar Plus class must include Grammar Plus in Active class section names.");
+    if (!contract.specialMode) issues.push("Grammar Plus class must include a Special class mode explaining supplemental practice.");
+  }
+
+  if (lessonType === "video class") {
+    if (!/Video Class/i.test(contract.sections)) issues.push("Video Class must include Video Class in Active class section names.");
+    if (!/Drive Materials/i.test(contract.specialMode || "")) issues.push("Video Class Special class mode must require Drive Materials video resource.");
+  }
+
+  return {
+    filename: file.filename,
+    metadata: meta,
+    contract,
+    detected: {
+      pdfPages,
+      bookPages,
+      sections: detectedSections,
+    },
+    ok: issues.length === 0 && (!failOnWarnings || warnings.length === 0),
+    issues,
+    warnings,
+  };
+}
+
+function printMarkdown(results) {
+  const failed = results.filter((item) => item.issues.length || (failOnWarnings && item.warnings.length));
+  const warnings = results.filter((item) => item.warnings.length && !item.issues.length);
+
+  console.log(`# Passages Contract Audit${unitFilter ? ` — Unit ${unitFilter}` : ""}`);
+  console.log("");
+  console.log(`Files audited: ${results.length}`);
+  console.log(`Failed: ${failed.length}`);
+  console.log(`Warnings only: ${warnings.length}`);
+  console.log("");
+
+  for (const result of results) {
+    const status = result.issues.length ? "FAIL" : result.warnings.length ? "WARN" : "OK";
+    console.log(`## ${status} — ${result.filename}`);
+    console.log(`- Lesson type: ${result.metadata.lessonType || "not found"}`);
+    console.log(`- Lesson title: ${result.metadata.lessonTitle || "not found"}`);
+    console.log(`- Contract sections: ${result.contract.sections || "not found"}`);
+    console.log(`- Detected sections: ${result.detected.sections.join(" + ") || "none"}`);
+    console.log(`- Book pages detected: ${result.detected.bookPages.join(", ") || "none"}`);
+    console.log(`- PDF pages detected: ${result.detected.pdfPages.join(", ") || "none"}`);
+
+    if (result.issues.length) {
+      console.log("- Issues:");
+      result.issues.forEach((issue) => console.log(`  - ${issue}`));
+    }
+    if (result.warnings.length) {
+      console.log("- Warnings:");
+      result.warnings.forEach((warning) => console.log(`  - ${warning}`));
+    }
+    console.log("");
+  }
+}
+
+try {
+  const files = readFiles();
+  const results = files.map(auditFile);
+  const hasFailures = results.some((item) => item.issues.length || (failOnWarnings && item.warnings.length));
+
+  if (outputJson) {
+    console.log(JSON.stringify({ ok: !hasFailures, unit: unitFilter || null, knowledgePath, results }, null, 2));
+  } else {
+    printMarkdown(results);
+  }
+
+  process.exit(hasFailures ? 1 : 0);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+}

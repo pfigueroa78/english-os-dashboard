@@ -10,6 +10,25 @@ PDF pages retrieval key: PDF_PAGES_41_42
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+<!-- PASSAGES_ACTIVE_CONTRACT_START -->
+### Active class teaching contract
+- Active class: Unit 4, local class 4, global class 25
+- Lesson title: Unit 4 Lesson B
+- Active class book pages: 32-33
+- Active class PDF pages: 41-42
+- Active class section names: Lesson B + Vocabulary + Grammar + Speaking
+- Active class skill focus: Vocabulary, grammar, speaking
+- Active class grammar focus: Extract exact grammar focus from Unit 4 Lesson B indexed pages; do not infer unindexed wording.
+- Active class vocabulary focus: Extract vocabulary from Unit 4 Lesson B indexed pages; recycle only confirmed unit vocabulary.
+- Active class functions: Teach from the indexed page range, then ask controlled practice before advancing.
+- Active class target structures: Use the target language from the indexed page range. Do not invent structures outside the class pack.
+- Expected learner production: Controlled and personalized answers based on the indexed Student Book prompts.
+- Source status: Source extraction blocker: expected page marker(s) not found in existing extracted content: BOOK_PAGE 33; PDF_PAGE 42. Do not invent missing page text.
+
+### Safety rule
+Preserve the existing extracted Student Book content exactly as indexed. Do not fabricate missing page text, transcript text, answer keys, audio scripts, or exercises.
+<!-- PASSAGES_ACTIVE_CONTRACT_END -->
+
 
 Aliases: CLASS_PACK_UNIT_04_CLASS_25 | UNIT_04_LOCAL_CLASS_04 | GLOBAL_CLASS_25 | UNIT_4_CLASS_25 | UNIT_4_CLASS_4_LOCAL | PDF_PAGE_RANGE_41_42 | BOOK_PAGE_RANGE_32_33
 

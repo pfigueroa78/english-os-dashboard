@@ -35,6 +35,8 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      ENGLISH_OS_BASE_URL: ${{ secrets.ENGLISH_OS_BASE_URL }}
+      ENGLISH_OS_TOKEN: ${{ secrets.ENGLISH_OS_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -154,7 +156,7 @@ jobs:
       - name: Run diagnostic endpoint
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
 
           DIAGNOSTIC_URL="https://${PRODUCTION_DOMAIN}/api/english-os/debug/passages?unit=${DIAGNOSTIC_UNIT}&class=${DIAGNOSTIC_CLASS}"
 
@@ -162,39 +164,84 @@ jobs:
           echo "${DIAGNOSTIC_URL}"
 
           curl -sS "${DIAGNOSTIC_URL}" | tee /tmp/passages-diagnostic.json
+          CURL_EXIT="$?"
+
+          if [ "${CURL_EXIT}" != "0" ]; then
+            echo "DIAGNOSTIC_EXIT=${CURL_EXIT}" >> "${GITHUB_ENV}"
+            exit 0
+          fi
 
           echo ""
           echo "Diagnostic summary:"
-          jq '.diagnosis' /tmp/passages-diagnostic.json
-          jq '.env.vectorStoreIdMasked' /tmp/passages-diagnostic.json
-          jq '.fileSearch.expectedFileFound' /tmp/passages-diagnostic.json
-          jq '.fileSearch.contractFound' /tmp/passages-diagnostic.json
-          jq '.fileSearch.detected.activeClassSectionNames' /tmp/passages-diagnostic.json
-          jq '.fileSearch.detected.activeClassGrammarFocus' /tmp/passages-diagnostic.json
+          jq '.diagnosis' /tmp/passages-diagnostic.json || true
+          jq '.env.vectorStoreIdMasked' /tmp/passages-diagnostic.json || true
+          jq '.fileSearch.expectedFileFound' /tmp/passages-diagnostic.json || true
+          jq '.fileSearch.contractFound' /tmp/passages-diagnostic.json || true
+          jq '.fileSearch.detected.activeClassSectionNames' /tmp/passages-diagnostic.json || true
+          jq '.fileSearch.detected.activeClassGrammarFocus' /tmp/passages-diagnostic.json || true
 
-          EXPECTED_FOUND="$(jq -r '.fileSearch.expectedFileFound' /tmp/passages-diagnostic.json)"
-          CONTRACT_FOUND="$(jq -r '.fileSearch.contractFound' /tmp/passages-diagnostic.json)"
-          ACTIVE_SECTIONS="$(jq -r '.fileSearch.detected.activeClassSectionNames' /tmp/passages-diagnostic.json)"
-          ACTIVE_GRAMMAR="$(jq -r '.fileSearch.detected.activeClassGrammarFocus' /tmp/passages-diagnostic.json)"
+          EXPECTED_FOUND="$(jq -r '.fileSearch.expectedFileFound // false' /tmp/passages-diagnostic.json)"
+          CONTRACT_FOUND="$(jq -r '.fileSearch.contractFound // false' /tmp/passages-diagnostic.json)"
+          ACTIVE_SECTIONS="$(jq -r '.fileSearch.detected.activeClassSectionNames // empty' /tmp/passages-diagnostic.json)"
+          ACTIVE_GRAMMAR="$(jq -r '.fileSearch.detected.activeClassGrammarFocus // empty' /tmp/passages-diagnostic.json)"
 
+          DIAGNOSTIC_EXIT="0"
           if [ "${EXPECTED_FOUND}" != "true" ]; then
             echo "Expected class pack was not found in production vector store."
-            exit 1
+            DIAGNOSTIC_EXIT="1"
           fi
 
           if [ "${CONTRACT_FOUND}" != "true" ]; then
             echo "Active class contract was not found in production vector store."
-            exit 1
+            DIAGNOSTIC_EXIT="1"
           fi
 
           if [ -z "${ACTIVE_SECTIONS}" ] || [ "${ACTIVE_SECTIONS}" = "null" ]; then
             echo "Active class section names were not detected."
-            exit 1
+            DIAGNOSTIC_EXIT="1"
           fi
 
           if [ -z "${ACTIVE_GRAMMAR}" ] || [ "${ACTIVE_GRAMMAR}" = "null" ]; then
             echo "Active class grammar focus was not detected."
-            exit 1
+            DIAGNOSTIC_EXIT="1"
           fi
 
-          echo "Passages vector store refresh completed successfully."
+          if [ "${DIAGNOSTIC_EXIT}" = "0" ]; then
+            echo "Passages vector store refresh completed successfully."
+          fi
+
+          echo "DIAGNOSTIC_EXIT=${DIAGNOSTIC_EXIT}" >> "${GITHUB_ENV}"
+
+      - name: Publish refresh result to English OS sheet
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          npm run passages:publish-result -- \
+            --workflow "Refresh Passages Vector Store" \
+            --status "diagnostic_exit_${DIAGNOSTIC_EXIT:-unknown}" \
+            --unit "${DIAGNOSTIC_UNIT}" \
+            --class "${DIAGNOSTIC_CLASS}" \
+            --knowledge-path "${KNOWLEDGE_PATH}" \
+            --diagnostic-json /tmp/passages-diagnostic.json \
+            --extra-json /tmp/passages-vector-store.log
+
+      - name: Upload refresh diagnostic report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: passages-vector-refresh-unit-${{ github.event.inputs.diagnostic_unit }}-class-${{ github.event.inputs.diagnostic_class }}
+          path: |
+            /tmp/passages-diagnostic.json
+            /tmp/passages-vector-store.log
+            /tmp/vercel-deploy.log
+
+      - name: Fail if diagnostic failed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${DIAGNOSTIC_EXIT:-1}" != "0" ]; then
+            echo "Passages vector store diagnostic failed with exit code ${DIAGNOSTIC_EXIT}."
+            exit "${DIAGNOSTIC_EXIT}"
+          fi

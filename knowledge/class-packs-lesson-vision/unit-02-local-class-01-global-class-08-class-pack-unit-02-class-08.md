@@ -10,6 +10,21 @@ PDF pages retrieval key: PDF_PAGES_19_20
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+### Active class teaching contract
+- Active class: Unit 2, local class 1, global class 8
+- Active class book pages: 10-11
+- Active class PDF pages: 19-20
+- Active class section names: Starting point + Listening
+- Active class grammar focus: past modals and phrasal modals of obligation; should have; was supposed to; had to; didn't have to
+- Active class vocabulary focus: life lessons; bad decisions; mistakes; messes; math test; uniform; trendy outfits; dorm room; microwave; cafeteria; unprepared; broke; got caught
+- Active class functions: talk about mistakes and consequences; explain what someone should have done; listen for a bad decision and why it was bad
+- Active class target structures: I was supposed to...; I didn't have to...; I should have...; We weren't supposed to...; I really shouldn't have...
+- Expected learner production: describe one past mistake and say what should have been done differently
+
+### Unit-level lesson vision context
+Use this context to teach the active class only. The unit theme is mistakes, problems, mysteries, explanations, and speculation. The teacher should convert the source into a class with visible input, examples, guided practice, and an Evaluation gate.
+
+---
 
 Aliases: CLASS_PACK_UNIT_02_CLASS_08 | UNIT_02_LOCAL_CLASS_01 | GLOBAL_CLASS_8 | UNIT_2_CLASS_8 | UNIT_2_CLASS_1_LOCAL | PDF_PAGE_RANGE_19_20 | BOOK_PAGE_RANGE_10_11
 

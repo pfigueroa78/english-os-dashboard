@@ -37,7 +37,7 @@ test.describe("English OS unified QA student flow", () => {
 
     await test.step("Current Class exposes the class player actions", async () => {
       await page.getByRole("button", { name: /^Current Class$/i }).click();
-      await expect(page.getByText("Class Player")).toBeVisible();
+      await expect(page.getByText("Class Player", { exact: true }).first()).toBeVisible();
       await expect(page.getByText("Unit 4 — Class 28").first()).toBeVisible();
       await expect(page.getByRole("button", { name: /^Ver clase$/i })).toBeVisible();
       await expect(page.getByRole("button", { name: /Enseñar esta clase con Coach/i }).first()).toBeVisible();

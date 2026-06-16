@@ -10,6 +10,20 @@ PDF pages retrieval key: PDF_PAGES__
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+### Active class teaching contract
+- Active class: Unit 2, local class 3, global class 10
+- Active class book pages: not indexed
+- Active class PDF pages: not indexed
+- Active class section names: Grammar Plus + Practice Lab
+- Active class grammar focus: supplemental practice for Unit 2 Lesson A; past modals and phrasal modals of obligation; should have; was supposed to; had to; didn't have to
+- Active class vocabulary focus: mistakes; consequences; bad decisions; life lessons; obligations; excuses; advice after a mistake
+- Active class functions: explain past obligations; say what someone should have done; transform mistakes into lessons learned
+- Active class target structures: I should have...; I shouldn't have...; I was supposed to...; I had to...; I didn't have to...; We weren't supposed to...
+- Expected learner production: complete controlled grammar transformations and write a short reflection about a past mistake
+
+### Special class mode
+This is a Grammar Plus class. No direct Student Book page text is indexed. Teach it as supplemental grammar practice based on Unit 2 Lesson A context. You may generate controlled examples and practice, but do not claim they are copied from the Student Book.
+
 ---
 
 # CLASS_PACK_UNIT_02_CLASS_10

@@ -10,6 +10,25 @@ PDF pages retrieval key: PDF_PAGES__
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+<!-- PASSAGES_ACTIVE_CONTRACT_START -->
+### Active class teaching contract
+- Active class: Unit 10, local class 3, global class 66
+- Lesson title: Unit 10 Grammar Plus
+- Active class book pages: not indexed
+- Active class PDF pages: not indexed
+- Active class section names: Grammar Plus + Practice Lab
+- Active class skill focus: Grammar, controlled practice, correction
+- Active class grammar focus: Consolidate the grammar from the previous Unit 10 lesson block using only confirmed course/index context.
+- Active class vocabulary focus: Recycle Unit 10 vocabulary already confirmed in indexed class packs.
+- Active class functions: Stabilize accuracy before advancing to the next Student Book class.
+- Active class target structures: Use accurate forms from the unit before expanding into longer answers.
+- Expected learner production: Corrected examples and controlled practice answers.
+- Special class mode: Grammar Plus supplemental practice. No direct Student Book page text is indexed for this class; do not invent missing exercises, answer keys, or page text.
+
+### Safety rule
+Use this class as supplemental grammar practice only. Do not substitute Student Book content from another class.
+<!-- PASSAGES_ACTIVE_CONTRACT_END -->
+
 ---
 
 # CLASS_PACK_UNIT_10_CLASS_66

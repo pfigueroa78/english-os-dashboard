@@ -10,6 +10,25 @@ PDF pages retrieval key: PDF_PAGES_105_106
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+<!-- PASSAGES_ACTIVE_CONTRACT_START -->
+### Active class teaching contract
+- Active class: Unit 12, local class 1, global class 78
+- Lesson title: Unit 12 Lesson A
+- Active class book pages: 96-97
+- Active class PDF pages: 105-106
+- Active class section names: Lesson A + Vocabulary + Grammar + Speaking
+- Active class skill focus: Vocabulary, grammar, speaking
+- Active class grammar focus: Extract exact grammar focus from Unit 12 Lesson A indexed pages; do not infer unindexed wording.
+- Active class vocabulary focus: Extract vocabulary from Unit 12 Lesson A indexed pages; recycle only confirmed unit vocabulary.
+- Active class functions: Teach from the indexed page range, then ask controlled practice before advancing.
+- Active class target structures: Use the target language from the indexed page range. Do not invent structures outside the class pack.
+- Expected learner production: Controlled and personalized answers based on the indexed Student Book prompts.
+- Source status: Source extraction blocker: expected page marker(s) not found in existing extracted content: BOOK_PAGE 97; PDF_PAGE 106. Do not invent missing page text.
+
+### Safety rule
+Preserve the existing extracted Student Book content exactly as indexed. Do not fabricate missing page text, transcript text, answer keys, audio scripts, or exercises.
+<!-- PASSAGES_ACTIVE_CONTRACT_END -->
+
 
 Aliases: CLASS_PACK_UNIT_12_CLASS_78 | UNIT_12_LOCAL_CLASS_01 | GLOBAL_CLASS_78 | UNIT_12_CLASS_78 | UNIT_12_CLASS_1_LOCAL | PDF_PAGE_RANGE_105_106 | BOOK_PAGE_RANGE_96_97
 

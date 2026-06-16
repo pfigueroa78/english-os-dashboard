@@ -1,5 +1,6 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
+import { AppExperienceLayer } from "@/components/AppExperienceLayer";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,12 +18,7 @@ export default function RootLayout({
       <html lang="en">
         <body>
           {children}
-          <a
-            href="/coach"
-            className="fixed bottom-4 right-4 z-50 rounded-full bg-sky-400 px-5 py-3 text-sm font-bold text-slate-950 shadow-2xl shadow-black/40 hover:bg-sky-300"
-          >
-            Open Coach
-          </a>
+          <AppExperienceLayer />
         </body>
       </html>
     </ClerkProvider>

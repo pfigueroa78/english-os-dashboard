@@ -43,7 +43,7 @@ jobs:
           CLERK_SECRET_KEY: "sk_test_dummy"
         run: |
           npm run start -- --hostname 127.0.0.1 > /tmp/english-os.log 2>&1 &
-          npx --yes wait-on http://127.0.0.1:3000/coach
+          npx --yes wait-on tcp:127.0.0.1:3000
 
       - name: Run UI traversal tests
         env:

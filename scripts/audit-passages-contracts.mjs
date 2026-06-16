@@ -40,9 +40,7 @@ function pad2(value) {
 
 function readFiles() {
   const root = path.resolve(knowledgePath);
-  if (!fs.existsSync(root)) {
-    throw new Error(`Knowledge path does not exist: ${root}`);
-  }
+  if (!fs.existsSync(root)) throw new Error(`Knowledge path does not exist: ${root}`);
 
   return fs
     .readdirSync(root)
@@ -65,6 +63,27 @@ function allMatches(text, pattern) {
   return Array.from(text.matchAll(pattern)).map((match) => normalizeSpace(match[1] || match[0]));
 }
 
+function parsePageRange(value) {
+  const normalized = normalizeSpace(value).toLowerCase();
+  if (!normalized || normalized.includes("not indexed") || normalized === "none") return [];
+
+  const range = normalized.match(/(\d+)\s*[-–—]\s*(\d+)/);
+  if (range) {
+    const start = Number(range[1]);
+    const end = Number(range[2]);
+    const min = Math.min(start, end);
+    const max = Math.max(start, end);
+    return Array.from({ length: max - min + 1 }, (_, index) => String(min + index));
+  }
+
+  return Array.from(new Set((normalized.match(/\d+/g) || []).map(String)));
+}
+
+function missingExpectedPages(expectedPages, detectedPages) {
+  const detected = new Set(detectedPages.map(String));
+  return expectedPages.filter((page) => !detected.has(String(page)));
+}
+
 function parseMetadata(text) {
   return {
     unit: Number(firstMatch(text, [/^- Unit:\s*(\d+)/im])) || 0,
@@ -72,8 +91,8 @@ function parseMetadata(text) {
     globalClass: Number(firstMatch(text, [/^- Global English OS class:\s*(\d+)/im])) || 0,
     lessonType: firstMatch(text, [/^- Lesson type:\s*([^\n]+)/im]),
     lessonTitle: firstMatch(text, [/^Lesson title:\s*([^\n]+)/im, /^- Lesson title:\s*([^\n]+)/im, /^Lesson\s+[A-Z]:\s*([^\n]+)/im]),
-    bookPages: firstMatch(text, [/^- Book pages:\s*([^\n]+)/im, /^- Active class book pages:\s*([^\n]+)/im]),
-    pdfPages: firstMatch(text, [/^- PDF pages:\s*([^\n]+)/im, /^- Active class PDF pages:\s*([^\n]+)/im]),
+    bookPages: firstMatch(text, [/^- Active class book pages:\s*([^\n]+)/im, /^- Book pages:\s*([^\n]+)/im]),
+    pdfPages: firstMatch(text, [/^- Active class PDF pages:\s*([^\n]+)/im, /^- PDF pages:\s*([^\n]+)/im]),
   };
 }
 
@@ -106,15 +125,10 @@ function detectBookPages(text) {
 function detectSections(sourceText) {
   const found = new Set();
   for (const rule of STANDARD_SECTION_RULES) {
-    if (rule.patterns.some((pattern) => pattern.test(sourceText))) {
-      found.add(rule.label);
-    }
+    if (rule.patterns.some((pattern) => pattern.test(sourceText))) found.add(rule.label);
   }
-
-  // Prefer combined labels when present and remove redundant single labels only when the combined label is exact.
   if (found.has("Vocabulary & Speaking")) found.delete("Vocabulary");
   if (found.has("Listening & Speaking")) found.delete("Listening");
-
   return Array.from(found);
 }
 
@@ -146,6 +160,8 @@ function auditFile(file) {
   const contractSections = splitContractSections(contract.sections);
   const pdfPages = detectPdfPages(source);
   const bookPages = detectBookPages(source);
+  const expectedPdfPages = parsePageRange(meta.pdfPages);
+  const expectedBookPages = parsePageRange(meta.bookPages);
   const lessonType = meta.lessonType.toLowerCase();
   const isSpecial = SPECIAL_CLASS_TYPES.has(lessonType);
   const issues = [];
@@ -159,34 +175,28 @@ function auditFile(file) {
   if (!meta.lessonTitle && !isSpecial) warnings.push("Missing Lesson title. This can cause the model to borrow a title from another retrieved class.");
 
   const expected = expectedFilename(meta);
-  if (expected && expected !== file.filename) {
-    issues.push(`Filename mismatch. Expected ${expected} from metadata, got ${file.filename}.`);
-  }
+  if (expected && expected !== file.filename) issues.push(`Filename mismatch. Expected ${expected} from metadata, got ${file.filename}.`);
 
   if (!isSpecial) {
     if (!source.trim()) issues.push("Student Book class has no extracted source text.");
     if (!pdfPages.length) issues.push("Student Book class has no PDF_PAGE markers.");
     if (!bookPages.length) issues.push("Student Book class has no BOOK_PAGE markers.");
+
+    const missingPdf = missingExpectedPages(expectedPdfPages, pdfPages);
+    const missingBook = missingExpectedPages(expectedBookPages, bookPages);
+    if (missingPdf.length) issues.push(`Missing extracted PDF page marker(s): ${missingPdf.join(", ")} from expected range ${meta.pdfPages}.`);
+    if (missingBook.length) issues.push(`Missing extracted BOOK page marker(s): ${missingBook.join(", ")} from expected range ${meta.bookPages}.`);
+
     if (!detectedSections.length) warnings.push("No visible section headings detected in extracted source text.");
 
     for (const detectedSection of detectedSections) {
-      if (!sectionCovered(detectedSection, contractSections)) {
-        issues.push(`Detected section '${detectedSection}' in source, but it is missing from Active class section names.`);
-      }
+      if (!sectionCovered(detectedSection, contractSections)) issues.push(`Detected section '${detectedSection}' in source, but it is missing from Active class section names.`);
     }
 
-    if (/\bGRAMMAR\b/i.test(source) && !sectionCovered("Grammar", contractSections)) {
-      issues.push("Source contains GRAMMAR, but contract omits Grammar.");
-    }
-    if (/\bDISCUSSION\b/i.test(source) && !sectionCovered("Discussion", contractSections)) {
-      issues.push("Source contains DISCUSSION, but contract omits Discussion.");
-    }
-    if (/\bLISTENING\b/i.test(source) && !contractSections.some((section) => /listening/i.test(section))) {
-      issues.push("Source contains LISTENING, but contract omits Listening.");
-    }
-    if (/\bWRITING\b/i.test(source) && !sectionCovered("Writing", contractSections)) {
-      issues.push("Source contains WRITING, but contract omits Writing.");
-    }
+    if (/\bGRAMMAR\b/i.test(source) && !sectionCovered("Grammar", contractSections)) issues.push("Source contains GRAMMAR, but contract omits Grammar.");
+    if (/\bDISCUSSION\b/i.test(source) && !sectionCovered("Discussion", contractSections)) issues.push("Source contains DISCUSSION, but contract omits Discussion.");
+    if (/\bLISTENING\b/i.test(source) && !contractSections.some((section) => /listening/i.test(section))) issues.push("Source contains LISTENING, but contract omits Listening.");
+    if (/\bWRITING\b/i.test(source) && !sectionCovered("Writing", contractSections)) issues.push("Source contains WRITING, but contract omits Writing.");
   }
 
   if (lessonType === "grammar plus") {
@@ -204,11 +214,7 @@ function auditFile(file) {
     filename: file.filename,
     metadata: meta,
     contract,
-    detected: {
-      pdfPages,
-      bookPages,
-      sections: detectedSections,
-    },
+    detected: { pdfPages, bookPages, sections: detectedSections, expectedPdfPages, expectedBookPages },
     ok: issues.length === 0 && (!failOnWarnings || warnings.length === 0),
     issues,
     warnings,
@@ -233,7 +239,9 @@ function printMarkdown(results) {
     console.log(`- Lesson title: ${result.metadata.lessonTitle || "not found"}`);
     console.log(`- Contract sections: ${result.contract.sections || "not found"}`);
     console.log(`- Detected sections: ${result.detected.sections.join(" + ") || "none"}`);
+    console.log(`- Expected book pages: ${result.detected.expectedBookPages.join(", ") || "none"}`);
     console.log(`- Book pages detected: ${result.detected.bookPages.join(", ") || "none"}`);
+    console.log(`- Expected PDF pages: ${result.detected.expectedPdfPages.join(", ") || "none"}`);
     console.log(`- PDF pages detected: ${result.detected.pdfPages.join(", ") || "none"}`);
 
     if (result.issues.length) {
@@ -252,13 +260,8 @@ try {
   const files = readFiles();
   const results = files.map(auditFile);
   const hasFailures = results.some((item) => item.issues.length || (failOnWarnings && item.warnings.length));
-
-  if (outputJson) {
-    console.log(JSON.stringify({ ok: !hasFailures, unit: unitFilter || null, knowledgePath, results }, null, 2));
-  } else {
-    printMarkdown(results);
-  }
-
+  if (outputJson) console.log(JSON.stringify({ ok: !hasFailures, unit: unitFilter || null, knowledgePath, results }, null, 2));
+  else printMarkdown(results);
   process.exit(hasFailures ? 1 : 0);
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);

@@ -61,7 +61,7 @@ test.describe("English OS QA student flow", () => {
       await page.getByRole("button", { name: /^Class 22$/i }).click();
       await waitForClassMaterial(page);
       await expect(page.getByText(/Student Book content/i)).toBeVisible();
-      await expect(page.getByText(/best time of day/i)).toBeVisible();
+      await expect(page.locator("pre").filter({ hasText: /What's your best time of day|race off/i }).first()).toBeVisible();
     });
 
     await test.step("Integrated Coach teaches from selected class without leaving UI", async () => {

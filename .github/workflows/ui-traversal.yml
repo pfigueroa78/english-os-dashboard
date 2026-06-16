@@ -2,6 +2,9 @@ name: UI Traversal
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - uiv1
@@ -29,18 +32,18 @@ jobs:
       - name: Build app
         env:
           NEXT_PUBLIC_E2E_DEMO: "1"
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_dummy"
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_Y2xlcmsuZGVtbyQ"
           CLERK_SECRET_KEY: "sk_test_dummy"
         run: npm run build
 
       - name: Start app
         env:
           NEXT_PUBLIC_E2E_DEMO: "1"
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_dummy"
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_Y2xlcmsuZGVtbyQ"
           CLERK_SECRET_KEY: "sk_test_dummy"
         run: |
           npm run start -- --hostname 127.0.0.1 > /tmp/english-os.log 2>&1 &
-          npx wait-on http://127.0.0.1:3000/coach
+          npx --yes wait-on http://127.0.0.1:3000/coach
 
       - name: Run UI traversal tests
         env:

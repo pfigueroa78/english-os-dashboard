@@ -18,6 +18,10 @@ function normalize(value: unknown) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+function normalizeForSearch(value: unknown) {
+  return normalize(value).toLowerCase();
+}
+
 function collectStrings(value: unknown, output: string[] = []): string[] {
   if (typeof value === "string") {
     output.push(value);
@@ -92,6 +96,43 @@ function buildExpected(unit: number, localClass: number) {
   };
 }
 
+function containsExpectedKey(text: string, expected: ReturnType<typeof buildExpected>) {
+  const haystack = normalizeForSearch(text);
+  const hasFilename = haystack.includes(expected.filename.toLowerCase());
+  const hasClassPackId = haystack.includes(expected.classPackId.toLowerCase());
+  const hasLocalAndGlobal = haystack.includes(expected.localClassAlias.toLowerCase()) && haystack.includes(expected.globalClassAlias.toLowerCase());
+  return hasFilename || hasClassPackId || hasLocalAndGlobal;
+}
+
+function resultCorpus(result: { filename?: string; text?: string }) {
+  return `${result.filename || ""}\n${result.text || ""}`;
+}
+
+function buildDiagnosticQuery(expected: ReturnType<typeof buildExpected>) {
+  return [
+    "Retrieve exactly one Passages class pack from file_search.",
+    "Do not use a semantically similar class pack.",
+    "The returned text must contain at least one of these exact retrieval keys:",
+    `Filename retrieval key: ${expected.filename}`,
+    `Exact retrieval key: ${expected.classPackId}`,
+    `Local class retrieval key: ${expected.localClassAlias}`,
+    `Global class retrieval key: ${expected.globalClassAlias}`,
+    "",
+    "Return only lines from that exact file:",
+    "Filename retrieval key",
+    "Exact retrieval key",
+    "Local class retrieval key",
+    "Global class retrieval key",
+    "Active class teaching contract",
+    "Active class section names",
+    "Active class grammar focus",
+    "Active class vocabulary focus",
+    "Active class target structures",
+    "",
+    "If the exact file is not found, return EXACT_CLASS_NOT_FOUND.",
+  ].join("\n");
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const unit = Number(url.searchParams.get("unit") || "1") || 1;
@@ -120,15 +161,7 @@ export async function GET(request: Request) {
     });
   }
 
-  const query = [
-    expected.filename,
-    expected.classPackId,
-    expected.localClassAlias,
-    expected.globalClassAlias,
-    "Active class teaching contract",
-    "Active class section names",
-    "Active class grammar focus",
-  ].join("\n");
+  const query = buildDiagnosticQuery(expected);
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -141,19 +174,19 @@ export async function GET(request: Request) {
       input: [
         {
           role: "system",
-          content: "You are a diagnostic tool. Use file_search only. Return only the exact Active class teaching contract lines if present. Do not write a lesson.",
+          content: "You are a deterministic diagnostic tool. Use file_search only. Return only exact lines from the requested Passages class pack. Never return a contract from another class.",
         },
         {
           role: "user",
           content: query,
         },
       ],
-      max_output_tokens: 600,
+      max_output_tokens: 800,
       tools: [
         {
           type: "file_search",
           vector_store_ids: [OPENAI_PASSAGES_VECTOR_STORE_ID],
-          max_num_results: 8,
+          max_num_results: 20,
         },
       ],
       include: ["file_search_call.results"],
@@ -173,28 +206,36 @@ export async function GET(request: Request) {
 
   const outputText = data.output_text || data.output?.flatMap((item: any) => item.content || []).map((item: any) => item.text || "").join("\n") || "";
   const results = extractFileSearchResults(data);
+  const filenames = unique(results.map((result) => result.filename || ""));
+  const targetResults = results.filter((result) => containsExpectedKey(resultCorpus(result), expected));
+  const outputMatchesExpected = containsExpectedKey(outputText, expected);
+  const targetText = [
+    ...targetResults.map(resultCorpus),
+    outputMatchesExpected ? outputText : "",
+  ].filter(Boolean).join("\n");
   const allText = `${outputText}\n${collectStrings(results).join("\n")}`;
 
-  const activeClassSectionNames = firstMatch(allText, [/Active class section names:\s*([^\n]+)/i]);
-  const activeClassGrammarFocus = firstMatch(allText, [/Active class grammar focus:\s*([^\n]+)/i]);
-  const activeClassVocabularyFocus = firstMatch(allText, [/Active class vocabulary focus:\s*([^\n]+)/i]);
-  const activeClassTargetStructures = firstMatch(allText, [/Active class target structures:\s*([^\n]+)/i]);
+  const activeClassSectionNames = firstMatch(targetText, [/Active class section names:\s*([^\n]+)/i]);
+  const activeClassGrammarFocus = firstMatch(targetText, [/Active class grammar focus:\s*([^\n]+)/i]);
+  const activeClassVocabularyFocus = firstMatch(targetText, [/Active class vocabulary focus:\s*([^\n]+)/i]);
+  const activeClassTargetStructures = firstMatch(targetText, [/Active class target structures:\s*([^\n]+)/i]);
 
-  const filenames = unique(results.map((result) => result.filename || ""));
-  const expectedFileFound = filenames.some((filename) => filename.includes(expected.filename));
-  const contractFound = Boolean(activeClassSectionNames || /Active class teaching contract/i.test(allText));
+  const expectedFileFound = targetResults.length > 0 || outputMatchesExpected;
+  const contractFound = expectedFileFound && Boolean(activeClassSectionNames || /Active class teaching contract/i.test(targetText));
+  const nearestActiveClassSectionNames = firstMatch(allText, [/Active class section names:\s*([^\n]+)/i]);
+  const nearestActiveClassGrammarFocus = firstMatch(allText, [/Active class grammar focus:\s*([^\n]+)/i]);
 
   let diagnosis = "Unknown.";
   if (!results.length) {
     diagnosis = "File search returned no results. The vector store may be empty, stale, or inaccessible.";
   } else if (!expectedFileFound) {
-    diagnosis = "File search returned results, but not the expected active class pack filename. The vector store or retrieval query is wrong.";
+    diagnosis = "File search returned results, but none contained the exact expected filename, class pack id, or unit/local/global retrieval keys. The vector store may be stale or the file_search query needs further tuning.";
   } else if (!contractFound) {
-    diagnosis = "The expected class pack was found, but the Active class teaching contract was not visible in retrieved snippets. Re-upload regenerated class packs or adjust chunking/query.";
+    diagnosis = "The exact expected class pack was found, but the Active class teaching contract was not visible in retrieved snippets. Re-upload regenerated class packs or adjust chunking/query.";
   } else if (!activeClassSectionNames) {
-    diagnosis = "The contract was detected, but Active class section names was not parsed. Check exact contract line formatting.";
+    diagnosis = "The exact expected class pack was found, but Active class section names was not parsed. Check exact contract line formatting.";
   } else {
-    diagnosis = "Expected class pack and active class contract were detected by production file_search.";
+    diagnosis = "Expected class pack and active class contract were detected by production file_search using exact retrieval keys.";
   }
 
   return NextResponse.json({
@@ -203,10 +244,18 @@ export async function GET(request: Request) {
     openAiStatus: response.status,
     fileSearch: {
       resultCount: results.length,
+      targetResultCount: targetResults.length,
       expectedFileFound,
+      outputMatchesExpected,
       contractFound,
       filenames,
       topResults: results.slice(0, 8).map((result) => ({
+        filename: result.filename || "",
+        score: result.score ?? null,
+        expectedKeyMatch: containsExpectedKey(resultCorpus(result), expected),
+        textPreview: normalize(result.text || "").slice(0, 260),
+      })),
+      targetResults: targetResults.slice(0, 8).map((result) => ({
         filename: result.filename || "",
         score: result.score ?? null,
         textPreview: normalize(result.text || "").slice(0, 260),
@@ -216,6 +265,10 @@ export async function GET(request: Request) {
         activeClassGrammarFocus,
         activeClassVocabularyFocus,
         activeClassTargetStructures,
+      },
+      nearestDetectedFromAnyResult: {
+        activeClassSectionNames: nearestActiveClassSectionNames,
+        activeClassGrammarFocus: nearestActiveClassGrammarFocus,
       },
       outputPreview: normalize(outputText).slice(0, 800),
     },

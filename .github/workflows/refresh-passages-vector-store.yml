@@ -1,31 +1,31 @@
 name: Refresh Passages Vector Store
+
 on:
   workflow_dispatch:
     inputs:
       knowledge_path:
         description: "Folder containing final Passages class packs"
         required: true
-        default: "knowledge/class-packs-lesson-vision"
+        default: "knowledge/class-packs"
       diagnostic_unit:
         description: "Unit number to verify after deploy"
         required: true
-        default: "2"
+        default: "1"
       diagnostic_class:
         description: "Local class number to verify after deploy"
         required: true
-        default: "1"
+        default: "4"
 
 permissions:
   contents: read
 
-concurrency:
-  group: refresh-passages-vector-store
-  cancel-in-progress: false
+env:
+  NODE_ENV: production
 
 jobs:
   refresh-vector-store:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 35
     env:
       KNOWLEDGE_PATH: ${{ github.event.inputs.knowledge_path }}
       DIAGNOSTIC_UNIT: ${{ github.event.inputs.diagnostic_unit }}
@@ -59,7 +59,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Validate class packs folder
         shell: bash
@@ -71,146 +71,104 @@ jobs:
             exit 1
           fi
 
-          PACK_COUNT="$(find "${KNOWLEDGE_PATH}" -maxdepth 1 -type f -name "*.md" | wc -l | tr -d ' ')"
-          echo "Found ${PACK_COUNT} markdown class packs in ${KNOWLEDGE_PATH}"
+          COUNT=$(find "${KNOWLEDGE_PATH}" -maxdepth 1 -type f -name "*.md" | wc -l | tr -d ' ')
+          echo "Found ${COUNT} markdown class packs in ${KNOWLEDGE_PATH}"
 
-          if [ "${PACK_COUNT}" -lt 80 ]; then
-            echo "Expected around 84 class packs. Found only ${PACK_COUNT}."
+          if [ "${COUNT}" -lt 84 ]; then
+            echo "Expected at least 84 markdown class packs."
             exit 1
           fi
-
-          UNIT_PADDED="$(printf "%02d" "${DIAGNOSTIC_UNIT}")"
-          LOCAL_PADDED="$(printf "%02d" "${DIAGNOSTIC_CLASS}")"
-          GLOBAL_CLASS="$(( (DIAGNOSTIC_UNIT - 1) * 7 + DIAGNOSTIC_CLASS ))"
-          GLOBAL_PADDED="$(printf "%02d" "${GLOBAL_CLASS}")"
-          EXPECTED_FILE="unit-${UNIT_PADDED}-local-class-${LOCAL_PADDED}-global-class-${GLOBAL_PADDED}-class-pack-unit-${UNIT_PADDED}-class-${GLOBAL_PADDED}.md"
-
-          echo "Expected diagnostic file: ${EXPECTED_FILE}"
-
-          if [ ! -f "${KNOWLEDGE_PATH}/${EXPECTED_FILE}" ]; then
-            echo "Missing expected diagnostic file: ${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
-            exit 1
-          fi
-
-          grep -n "CLASS_PACK_UNIT_${UNIT_PADDED}_CLASS_${GLOBAL_PADDED}" "${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
-          grep -n "Active class teaching contract" "${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
-          grep -n "Active class section names:" "${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
-          grep -n "Active class grammar focus:" "${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
 
       - name: Build fresh OpenAI vector store
+        id: build_vector_store
         shell: bash
         run: |
           set -euo pipefail
 
-          node scripts/openai-passages-knowledge.mjs --upload --fresh "${KNOWLEDGE_PATH}" | tee /tmp/passages-vector-store.log
-
-          NEW_VECTOR_STORE_ID="$(grep -oE 'vs_[A-Za-z0-9_]+' /tmp/passages-vector-store.log | tail -1)"
-
-          if [ -z "${NEW_VECTOR_STORE_ID}" ]; then
-            echo "Could not extract vector store id from script output."
-            cat /tmp/passages-vector-store.log
-            exit 1
-          fi
-
-          echo "NEW_VECTOR_STORE_ID=${NEW_VECTOR_STORE_ID}" >> "${GITHUB_ENV}"
-          echo "Created vector store: ${NEW_VECTOR_STORE_ID}"
+          node scripts/openai-passages-knowledge.mjs \
+            --knowledge-path "${KNOWLEDGE_PATH}" \
+            --fresh \
+            --emit-github-output
 
       - name: Link Vercel project
         shell: bash
-        run: |
-          set -euo pipefail
-
-          mkdir -p .vercel
-          cat > .vercel/project.json <<EOF
-          {
-            "orgId": "${VERCEL_ORG_ID}",
-            "projectId": "${VERCEL_PROJECT_ID}"
-          }
-          EOF
+        run: npx vercel pull --yes --environment=production --token "${VERCEL_TOKEN}"
 
       - name: Update Vercel production env
         shell: bash
         run: |
           set -euo pipefail
 
-          npx vercel@latest env rm OPENAI_PASSAGES_VECTOR_STORE_ID production --yes --token "${VERCEL_TOKEN}" || true
-          printf "%s\n" "${NEW_VECTOR_STORE_ID}" | npx vercel@latest env add OPENAI_PASSAGES_VECTOR_STORE_ID production --token "${VERCEL_TOKEN}"
+          NEW_VECTOR_STORE_ID="${{ steps.build_vector_store.outputs.vector_store_id }}"
+
+          if [ -z "${NEW_VECTOR_STORE_ID}" ]; then
+            echo "Missing vector_store_id output."
+            exit 1
+          fi
+
+          echo "Updating OPENAI_PASSAGES_VECTOR_STORE_ID in Vercel production."
+          npx vercel env rm OPENAI_PASSAGES_VECTOR_STORE_ID production --yes --token "${VERCEL_TOKEN}" || true
+          printf "%s" "${NEW_VECTOR_STORE_ID}" | npx vercel env add OPENAI_PASSAGES_VECTOR_STORE_ID production --token "${VERCEL_TOKEN}"
 
       - name: Deploy production to Vercel
+        id: deploy
         shell: bash
         run: |
           set -euo pipefail
 
-          npx vercel@latest deploy --prod --yes --token "${VERCEL_TOKEN}" | tee /tmp/vercel-deploy.log
-
-          DEPLOYMENT_URL="$(grep -oE 'https://[^ ]+\.vercel\.app' /tmp/vercel-deploy.log | tail -1 || true)"
-          echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> "${GITHUB_ENV}"
-          echo "Deployment URL: ${DEPLOYMENT_URL}"
+          DEPLOY_URL=$(npx vercel deploy --prod --yes --token "${VERCEL_TOKEN}" | tail -n 1)
+          echo "deploy_url=${DEPLOY_URL}" >> "$GITHUB_OUTPUT"
+          echo "Deployment URL: ${DEPLOY_URL}"
 
       - name: Wait for production alias
         shell: bash
         run: |
           set -euo pipefail
-          sleep 20
+
+          for i in $(seq 1 24); do
+            STATUS=$(curl -s -o /tmp/health.txt -w "%{http_code}" "https://${PRODUCTION_DOMAIN}/api/english-os/debug/passages?unit=${DIAGNOSTIC_UNIT}&class=${DIAGNOSTIC_CLASS}" || true)
+            echo "Attempt ${i}: ${STATUS}"
+            if [ "${STATUS}" = "200" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo "Production alias did not become ready in time."
+          cat /tmp/health.txt || true
+          exit 1
 
       - name: Run diagnostic endpoint
+        id: diagnostic
         shell: bash
         run: |
-          set -uo pipefail
+          set -euo pipefail
 
           DIAGNOSTIC_URL="https://${PRODUCTION_DOMAIN}/api/english-os/debug/passages?unit=${DIAGNOSTIC_UNIT}&class=${DIAGNOSTIC_CLASS}"
+          echo "Diagnostic URL: ${DIAGNOSTIC_URL}"
 
-          echo "Calling diagnostic endpoint:"
-          echo "${DIAGNOSTIC_URL}"
+          curl -sS "${DIAGNOSTIC_URL}" -o diagnostic.json
+          cat diagnostic.json | node -e '
+            const fs = require("fs");
+            const data = JSON.parse(fs.readFileSync(0, "utf8"));
+            const ok = Boolean(data?.fileSearch?.expectedFileFound && data?.fileSearch?.contractFound);
+            const summary = {
+              ok,
+              diagnosis: data?.diagnosis || "",
+              vectorStoreIdMasked: data?.env?.vectorStoreIdMasked || "",
+              expectedFileFound: data?.fileSearch?.expectedFileFound || false,
+              contractFound: data?.fileSearch?.contractFound || false,
+              activeClassSectionNames: data?.fileSearch?.detected?.activeClassSectionNames || "",
+              activeClassGrammarFocus: data?.fileSearch?.detected?.activeClassGrammarFocus || "",
+            };
+            fs.writeFileSync("diagnostic-summary.json", JSON.stringify(summary, null, 2));
+            console.log(JSON.stringify(summary, null, 2));
+            process.exit(ok ? 0 : 2);
+          ' || echo "diagnostic_exit=$?" >> "$GITHUB_OUTPUT"
 
-          curl -sS "${DIAGNOSTIC_URL}" | tee /tmp/passages-diagnostic.json
-          CURL_EXIT="$?"
-
-          if [ "${CURL_EXIT}" != "0" ]; then
-            echo "DIAGNOSTIC_EXIT=${CURL_EXIT}" >> "${GITHUB_ENV}"
-            exit 0
+          if ! grep -q '^diagnostic_exit=' "$GITHUB_OUTPUT"; then
+            echo "diagnostic_exit=0" >> "$GITHUB_OUTPUT"
           fi
-
-          echo ""
-          echo "Diagnostic summary:"
-          jq '.diagnosis' /tmp/passages-diagnostic.json || true
-          jq '.env.vectorStoreIdMasked' /tmp/passages-diagnostic.json || true
-          jq '.fileSearch.expectedFileFound' /tmp/passages-diagnostic.json || true
-          jq '.fileSearch.contractFound' /tmp/passages-diagnostic.json || true
-          jq '.fileSearch.detected.activeClassSectionNames' /tmp/passages-diagnostic.json || true
-          jq '.fileSearch.detected.activeClassGrammarFocus' /tmp/passages-diagnostic.json || true
-
-          EXPECTED_FOUND="$(jq -r '.fileSearch.expectedFileFound // false' /tmp/passages-diagnostic.json)"
-          CONTRACT_FOUND="$(jq -r '.fileSearch.contractFound // false' /tmp/passages-diagnostic.json)"
-          ACTIVE_SECTIONS="$(jq -r '.fileSearch.detected.activeClassSectionNames // empty' /tmp/passages-diagnostic.json)"
-          ACTIVE_GRAMMAR="$(jq -r '.fileSearch.detected.activeClassGrammarFocus // empty' /tmp/passages-diagnostic.json)"
-
-          DIAGNOSTIC_EXIT="0"
-          if [ "${EXPECTED_FOUND}" != "true" ]; then
-            echo "Expected class pack was not found in production vector store."
-            DIAGNOSTIC_EXIT="1"
-          fi
-
-          if [ "${CONTRACT_FOUND}" != "true" ]; then
-            echo "Active class contract was not found in production vector store."
-            DIAGNOSTIC_EXIT="1"
-          fi
-
-          if [ -z "${ACTIVE_SECTIONS}" ] || [ "${ACTIVE_SECTIONS}" = "null" ]; then
-            echo "Active class section names were not detected."
-            DIAGNOSTIC_EXIT="1"
-          fi
-
-          if [ -z "${ACTIVE_GRAMMAR}" ] || [ "${ACTIVE_GRAMMAR}" = "null" ]; then
-            echo "Active class grammar focus was not detected."
-            DIAGNOSTIC_EXIT="1"
-          fi
-
-          if [ "${DIAGNOSTIC_EXIT}" = "0" ]; then
-            echo "Passages vector store refresh completed successfully."
-          fi
-
-          echo "DIAGNOSTIC_EXIT=${DIAGNOSTIC_EXIT}" >> "${GITHUB_ENV}"
 
       - name: Publish refresh result to English OS sheet
         if: always()
@@ -218,30 +176,38 @@ jobs:
         run: |
           set -euo pipefail
 
-          npm run passages:publish-result -- \
-            --workflow "Refresh Passages Vector Store" \
-            --status "diagnostic_exit_${DIAGNOSTIC_EXIT:-unknown}" \
+          STATUS="diagnostic_exit_${{ steps.diagnostic.outputs.diagnostic_exit || 'unknown' }}"
+          SUMMARY_JSON="{}"
+          if [ -f diagnostic-summary.json ]; then
+            SUMMARY_JSON=$(cat diagnostic-summary.json)
+          fi
+
+          node scripts/publish-passages-workflow-result.mjs \
+            --status "${STATUS}" \
             --unit "${DIAGNOSTIC_UNIT}" \
             --class "${DIAGNOSTIC_CLASS}" \
+            --repository "${GITHUB_REPOSITORY}" \
+            --sha "${GITHUB_SHA}" \
+            --run-id "${GITHUB_RUN_ID}" \
+            --run-url "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --knowledge-path "${KNOWLEDGE_PATH}" \
-            --diagnostic-json /tmp/passages-diagnostic.json \
-            --extra-json /tmp/passages-vector-store.log
+            --summary-json "${SUMMARY_JSON}"
 
       - name: Upload refresh diagnostic report
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: passages-vector-refresh-unit-${{ github.event.inputs.diagnostic_unit }}-class-${{ github.event.inputs.diagnostic_class }}
           path: |
-            /tmp/passages-diagnostic.json
-            /tmp/passages-vector-store.log
-            /tmp/vercel-deploy.log
+            diagnostic.json
+            diagnostic-summary.json
 
       - name: Fail if diagnostic failed
+        if: always()
         shell: bash
         run: |
-          set -euo pipefail
-          if [ "${DIAGNOSTIC_EXIT:-1}" != "0" ]; then
-            echo "Passages vector store diagnostic failed with exit code ${DIAGNOSTIC_EXIT}."
-            exit "${DIAGNOSTIC_EXIT}"
+          EXIT_CODE="${{ steps.diagnostic.outputs.diagnostic_exit || '1' }}"
+          if [ "${EXIT_CODE}" != "0" ]; then
+            echo "Diagnostic failed with exit ${EXIT_CODE}."
+            exit 1
           fi

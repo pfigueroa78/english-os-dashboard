@@ -1,0 +1,59 @@
+name: Audit Passages Contracts
+
+on:
+  workflow_dispatch:
+    inputs:
+      unit:
+        description: "Unit number to audit. Use 0 to audit all units."
+        required: true
+        default: "2"
+      knowledge_path:
+        description: "Folder containing Passages class packs"
+        required: true
+        default: "knowledge/class-packs-lesson-vision"
+      fail_on_warnings:
+        description: "Fail workflow on warnings as well as errors"
+        required: true
+        default: "false"
+
+permissions:
+  contents: read
+
+jobs:
+  audit-contracts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run contract audit
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EXTRA_ARGS=""
+          if [ "${{ github.event.inputs.fail_on_warnings }}" = "true" ]; then
+            EXTRA_ARGS="--fail-on-warnings"
+          fi
+
+          npm run passages:audit-contracts -- \
+            --knowledge-path "${{ github.event.inputs.knowledge_path }}" \
+            --unit "${{ github.event.inputs.unit }}" \
+            ${EXTRA_ARGS} | tee passages-contract-audit.md
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: passages-contract-audit-unit-${{ github.event.inputs.unit }}
+          path: passages-contract-audit.md

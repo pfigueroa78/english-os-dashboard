@@ -10,6 +10,20 @@ PDF pages retrieval key: PDF_PAGES_25_26
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+### Active class teaching contract
+- Active class: Unit 2, local class 5, global class 12
+- Active class book pages: 16-17
+- Active class PDF pages: 25-26
+- Active class section names: Vocabulary & Speaking + Listening & Speaking
+- Active class grammar focus: verbs of belief and degrees of certainty; assume; be positive; bet; figure; have a hunch; suppose; be certain; be sure; doubt; guess; know for a fact; suspect
+- Active class vocabulary focus: assume; be positive; bet; figure; have a hunch; suppose; be certain; be sure; doubt; guess; know for a fact; suspect; myth; mystery; contagious; voice; cell phone; gas station
+- Active class functions: express certainty and uncertainty; discuss possible explanations; listen for ideas about myths and mysteries; brainstorm mysteries to investigate
+- Active class target structures: I assume...; I bet...; I doubt that...; I suspect...; I know for a fact that...; I'm not sure, but...; I have a hunch that...
+- Expected learner production: discuss one mystery using at least three verbs of belief and one uncertainty phrase
+
+### Unit-level lesson vision context
+Use this context to teach the active class only. This class should develop vocabulary for belief/certainty and listening-speaking skills around myths and mysteries. If audio is required, use Drive Materials when available; otherwise provide teacher listening input.
+
 ---
 
 # CLASS_PACK_UNIT_02_CLASS_12

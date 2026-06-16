@@ -12,7 +12,11 @@ on:
         required: true
         default: "knowledge/class-packs-lesson-vision"
       fail_on_warnings:
-        description: "Fail workflow on warnings as well as errors"
+        description: "Treat warnings as audit findings"
+        required: true
+        default: "false"
+      fail_workflow_on_audit_failure:
+        description: "Fail the GitHub Action when the audit report contains findings"
         required: true
         default: "false"
 
@@ -28,6 +32,7 @@ jobs:
       ENGLISH_OS_TOKEN: ${{ secrets.ENGLISH_OS_TOKEN }}
       UNIT: ${{ github.event.inputs.unit }}
       KNOWLEDGE_PATH: ${{ github.event.inputs.knowledge_path }}
+      FAIL_WORKFLOW_ON_AUDIT_FAILURE: ${{ github.event.inputs.fail_workflow_on_audit_failure }}
 
     steps:
       - name: Checkout repository
@@ -105,11 +110,16 @@ jobs:
             passages-contract-audit.md
             passages-contract-audit.json
 
-      - name: Fail if audit failed
+      - name: Report audit findings without failing by default
         shell: bash
         run: |
           set -euo pipefail
           if [ "${AUDIT_EXIT:-1}" != "0" ]; then
-            echo "Passages contract audit failed with exit code ${AUDIT_EXIT}."
-            exit "${AUDIT_EXIT}"
+            echo "Passages contract audit found issues. Results were published to Google Sheets."
+            echo "AUDIT_EXIT=${AUDIT_EXIT}"
+            if [ "${FAIL_WORKFLOW_ON_AUDIT_FAILURE}" = "true" ]; then
+              echo "Strict mode enabled: failing workflow because audit found issues."
+              exit "${AUDIT_EXIT}"
+            fi
+            echo "Strict mode disabled: keeping workflow successful so the remediation pipeline can continue."
           fi

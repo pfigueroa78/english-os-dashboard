@@ -10,6 +10,11 @@ async function closeCoachIfOpen(page: Page) {
   }
 }
 
+async function waitForClassMaterial(page: Page) {
+  await expect(page.getByText("Class material", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/Loading class material/i)).toHaveCount(0);
+}
+
 async function openQaStudentExperience(page: Page) {
   if (!qaToken) {
     throw new Error("Missing ENGLISH_OS_QA_TOKEN or QA_TOKEN environment variable.");
@@ -49,11 +54,12 @@ test.describe("English OS QA student flow", () => {
 
     await test.step("Class material viewer opens video class and student class", async () => {
       await page.getByRole("button", { name: /^Ver clase$/i }).first().click();
-      await expect(page.getByText("Class material")).toBeVisible();
+      await waitForClassMaterial(page);
       await expect(page.getByText(/Class 28|Unit 4 — Class 28/i).first()).toBeVisible();
       await expect(page.getByText(/Video Class mode/i)).toBeVisible();
 
       await page.getByRole("button", { name: /^Class 22$/i }).click();
+      await waitForClassMaterial(page);
       await expect(page.getByText(/Student Book content/i)).toBeVisible();
       await expect(page.getByText(/best time of day/i)).toBeVisible();
     });

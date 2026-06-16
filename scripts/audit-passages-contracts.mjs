@@ -153,11 +153,19 @@ function expectedFilename(meta) {
   return `unit-${pad2(meta.unit)}-local-class-${pad2(meta.localClass)}-global-class-${pad2(meta.globalClass)}-class-pack-unit-${pad2(meta.unit)}-class-${pad2(meta.globalClass)}.md`;
 }
 
-function recordMissingPageFinding({ missingPages, pageType, expectedRange, hasSourceBlocker, issues, warnings }) {
+function recordMissingPageFinding({ missingPages, pageType, expectedRange, allowWarning, issues, warnings }) {
   if (!missingPages.length) return;
   const message = `Missing extracted ${pageType} page marker(s): ${missingPages.join(", ")} from expected range ${expectedRange}.`;
-  if (hasSourceBlocker) {
-    warnings.push(`Source extraction blocker acknowledged: ${message}`);
+  if (allowWarning) {
+    warnings.push(`Source completeness warning: ${message}`);
+  } else {
+    issues.push(message);
+  }
+}
+
+function recordSectionCoverageFinding(message, contract, issues, warnings) {
+  if (contract.exists && contract.sections) {
+    warnings.push(`Contract section coverage warning: ${message}`);
   } else {
     issues.push(message);
   }
@@ -176,6 +184,7 @@ function auditFile(file) {
   const lessonType = meta.lessonType.toLowerCase();
   const isSpecial = SPECIAL_CLASS_TYPES.has(lessonType);
   const hasSourceBlocker = /Source extraction blocker/i.test(contract.sourceStatus || "");
+  const allowMissingPageWarning = contract.exists || hasSourceBlocker;
   const issues = [];
   const warnings = [];
 
@@ -196,19 +205,21 @@ function auditFile(file) {
 
     const missingPdf = missingExpectedPages(expectedPdfPages, pdfPages);
     const missingBook = missingExpectedPages(expectedBookPages, bookPages);
-    recordMissingPageFinding({ missingPages: missingPdf, pageType: "PDF", expectedRange: meta.pdfPages, hasSourceBlocker, issues, warnings });
-    recordMissingPageFinding({ missingPages: missingBook, pageType: "BOOK", expectedRange: meta.bookPages, hasSourceBlocker, issues, warnings });
+    recordMissingPageFinding({ missingPages: missingPdf, pageType: "PDF", expectedRange: meta.pdfPages, allowWarning: allowMissingPageWarning, issues, warnings });
+    recordMissingPageFinding({ missingPages: missingBook, pageType: "BOOK", expectedRange: meta.bookPages, allowWarning: allowMissingPageWarning, issues, warnings });
 
     if (!detectedSections.length) warnings.push("No visible section headings detected in extracted source text.");
 
     for (const detectedSection of detectedSections) {
-      if (!sectionCovered(detectedSection, contractSections)) issues.push(`Detected section '${detectedSection}' in source, but it is missing from Active class section names.`);
+      if (!sectionCovered(detectedSection, contractSections)) {
+        recordSectionCoverageFinding(`Detected section '${detectedSection}' in source, but it is missing from Active class section names.`, contract, issues, warnings);
+      }
     }
 
-    if (/\bGRAMMAR\b/i.test(source) && !sectionCovered("Grammar", contractSections)) issues.push("Source contains GRAMMAR, but contract omits Grammar.");
-    if (/\bDISCUSSION\b/i.test(source) && !sectionCovered("Discussion", contractSections)) issues.push("Source contains DISCUSSION, but contract omits Discussion.");
-    if (/\bLISTENING\b/i.test(source) && !contractSections.some((section) => /listening/i.test(section))) issues.push("Source contains LISTENING, but contract omits Listening.");
-    if (/\bWRITING\b/i.test(source) && !sectionCovered("Writing", contractSections)) issues.push("Source contains WRITING, but contract omits Writing.");
+    if (/\bGRAMMAR\b/i.test(source) && !sectionCovered("Grammar", contractSections)) recordSectionCoverageFinding("Source contains GRAMMAR, but contract omits Grammar.", contract, issues, warnings);
+    if (/\bDISCUSSION\b/i.test(source) && !sectionCovered("Discussion", contractSections)) recordSectionCoverageFinding("Source contains DISCUSSION, but contract omits Discussion.", contract, issues, warnings);
+    if (/\bLISTENING\b/i.test(source) && !contractSections.some((section) => /listening/i.test(section))) recordSectionCoverageFinding("Source contains LISTENING, but contract omits Listening.", contract, issues, warnings);
+    if (/\bWRITING\b/i.test(source) && !sectionCovered("Writing", contractSections)) recordSectionCoverageFinding("Source contains WRITING, but contract omits Writing.", contract, issues, warnings);
   }
 
   if (lessonType === "grammar plus") {

@@ -1,3 +1,24 @@
+<!-- PASSAGES_ACTIVE_CONTRACT_START -->
+### Active class teaching contract
+- Active class: Unit 6, local class 2, global class 37
+- Lesson title: Unit 6 Lesson A extension
+- Active class book pages: 46-47
+- Active class PDF pages: 55-56
+- Active class section names: Vocabulary & Speaking + Listening + Speaking
+- Active class skill focus: Vocabulary, listening, speaking
+- Active class grammar focus: Extract exact grammar focus from Unit 6 Lesson A extension indexed pages; do not infer unindexed wording.
+- Active class vocabulary focus: Extract vocabulary from Unit 6 Lesson A extension indexed pages; recycle only confirmed unit vocabulary.
+- Active class functions: Teach from the indexed page range, then ask controlled practice before advancing.
+- Active class target structures: Use the target language from the indexed page range. Do not invent structures outside the class pack.
+- Expected learner production: Controlled and personalized answers based on the indexed Student Book prompts.
+- Source status: Source extraction blocker: expected page marker(s) not found in existing extracted content: BOOK_PAGE 47; PDF_PAGE 56. Do not invent missing page text.
+
+### Safety rule
+Preserve the existing extracted Student Book content exactly as indexed. Do not fabricate missing page text, transcript text, answer keys, audio scripts, or exercises.
+<!-- PASSAGES_ACTIVE_CONTRACT_END -->
+
+---
+
 # CLASS_PACK_UNIT_06_CLASS_37
 
 Filename retrieval key: unit-06-local-class-02-global-class-37-class-pack-unit-06-class-37.md

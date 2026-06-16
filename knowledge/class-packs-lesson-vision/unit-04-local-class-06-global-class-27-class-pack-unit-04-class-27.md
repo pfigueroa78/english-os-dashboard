@@ -10,6 +10,20 @@ PDF pages retrieval key: PDF_PAGES__
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+### Active class teaching contract
+- Active class: Unit 4, local class 6, global class 27
+- Active class book pages: not indexed
+- Active class PDF pages: not indexed
+- Active class section names: Grammar Plus + Practice Lab
+- Active class grammar focus: Unit 4 Lesson B consolidation; review of time clauses and gerund/infinitive patterns connected to routines, habits, and advice
+- Active class vocabulary focus: Unit 4 vocabulary for routines, sleep habits, productivity, personal preferences, schedules, and lifestyle choices
+- Active class functions: consolidate grammar accuracy; correct learner errors; expand short answers into clear B1+/B2 responses
+- Active class target structures: I prefer -ing...; I try to...; It is a good idea to...; Whenever I...; Before I...; After I...
+- Expected learner production: produce corrected examples and short advice-style responses using Unit 4 grammar and vocabulary
+
+### Special class mode
+This is a Grammar Plus class. No direct Student Book page text is indexed in this class pack. Use it as supplemental grammar consolidation for the previous Unit 4 lesson block. Do not invent missing Student Book content; recycle only the indexed Unit 4 language and learner-safe examples.
+
 ---
 
 # CLASS_PACK_UNIT_04_CLASS_27
@@ -23,7 +37,7 @@ Metadata:
 - Lesson type: Grammar Plus
 - Book pages: not indexed
 - PDF pages: not indexed
-- Notes: none
+- Notes: Grammar Plus supplemental practice; no direct Student Book page text is indexed.
 
 Teacher retrieval instruction:
 Use this class pack as the primary source when the learner asks for Unit 4, Class 6, or English OS Class 27. Teach the content as a live class, not as a dump.

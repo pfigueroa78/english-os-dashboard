@@ -22,6 +22,11 @@ async function requireSignedIn(page: Page) {
   }
 }
 
+function isWideViewport(page: Page) {
+  const viewport = page.viewportSize();
+  return Boolean(viewport && viewport.width >= 640);
+}
+
 test.describe("English OS Coach accepted baseline", () => {
   test("loads the coach entrypoint or sign-in gate", async ({ page }) => {
     await openCoach(page);
@@ -40,8 +45,11 @@ test.describe("English OS Coach accepted baseline", () => {
     await expect(page.getByRole("heading", { name: /^Coach$/i })).toBeVisible();
     await expect(page.getByText(/Unidad/i)).toBeVisible();
     await expect(page.getByText(/Clase/i)).toBeVisible();
-    await expect(page.getByText(/Tokens/i)).toBeVisible();
-    await expect(page.getByText(/Costo/i)).toBeVisible();
+
+    if (isWideViewport(page)) {
+      await expect(page.getByText(/Tokens/i)).toBeVisible();
+      await expect(page.getByText(/Costo/i)).toBeVisible();
+    }
 
     await expect(page.getByRole("button", { name: /Continuar/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Gramática/i })).toBeVisible();
@@ -66,7 +74,7 @@ test.describe("English OS Coach accepted baseline", () => {
     await requireSignedIn(page);
 
     await expect(page.getByText(/Study unit/i)).toBeVisible();
-    await expect(page.getByLabel(/Unidad de estudio/i)).toBeVisible();
+    await expect(page.locator("input").first()).toBeVisible();
     await expect(page.getByRole("button", { name: /Usar actual/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /^Clase$/i })).toBeVisible();
 

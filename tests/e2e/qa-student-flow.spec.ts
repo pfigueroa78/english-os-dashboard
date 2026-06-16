@@ -3,6 +3,13 @@ import { expect, test, type Page } from "@playwright/test";
 const qaEmail = process.env.QA_STUDENT_EMAIL || "pfigueroamiranda@gmail.com";
 const qaToken = process.env.ENGLISH_OS_QA_TOKEN || process.env.QA_TOKEN || "";
 
+async function closeCoachIfOpen(page: Page) {
+  const closeCoach = page.getByRole("button", { name: /Cerrar Coach/i });
+  if ((await closeCoach.count()) > 0 && (await closeCoach.first().isVisible().catch(() => false))) {
+    await closeCoach.first().click();
+  }
+}
+
 async function openQaStudentExperience(page: Page) {
   if (!qaToken) {
     throw new Error("Missing ENGLISH_OS_QA_TOKEN or QA_TOKEN environment variable.");
@@ -17,7 +24,7 @@ async function openQaStudentExperience(page: Page) {
     { token: qaToken, email: qaEmail }
   );
 
-  await page.goto("/qa", { waitUntil: "networkidle" });
+  await page.goto("/qa", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: /Adaptive Learning UX/i })).toBeVisible();
   await expect(page.getByText("QA mode").first()).toBeVisible();
   await expect(page.getByText("Mission Control Dashboard")).toBeVisible();
@@ -41,7 +48,7 @@ test.describe("English OS QA student flow", () => {
     });
 
     await test.step("Class material viewer opens video class and student class", async () => {
-      await page.getByRole("button", { name: /^Ver clase$/i }).click();
+      await page.getByRole("button", { name: /^Ver clase$/i }).first().click();
       await expect(page.getByText("Class material")).toBeVisible();
       await expect(page.getByText(/Class 28|Unit 4 — Class 28/i).first()).toBeVisible();
       await expect(page.getByText(/Video Class mode/i)).toBeVisible();
@@ -58,16 +65,13 @@ test.describe("English OS QA student flow", () => {
     });
 
     await test.step("Unit 4 review prompt starts in the integrated coach", async () => {
-      const closeCoach = page.getByRole("button", { name: /Cerrar Coach/i });
-      if (await closeCoach.isVisible().catch(() => false)) {
-        await closeCoach.click();
-      }
+      await closeCoachIfOpen(page);
 
-      await page.getByRole("button", { name: /^Coach integrado$/i }).click();
+      await page.getByRole("button", { name: /^Coach integrado$/i }).first().click();
       await page.getByRole("button", { name: /Repasar U4/i }).click();
       await expect(page.getByText(/What is your best time of day/i)).toBeVisible();
 
-      await page.getByRole("button", { name: /Cerrar Coach/i }).click();
+      await closeCoachIfOpen(page);
     });
 
     await test.step("Practice catches although vs despite error", async () => {

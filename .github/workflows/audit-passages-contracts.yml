@@ -23,6 +23,12 @@ jobs:
   audit-contracts:
     runs-on: ubuntu-latest
 
+    env:
+      ENGLISH_OS_BASE_URL: ${{ secrets.ENGLISH_OS_BASE_URL }}
+      ENGLISH_OS_TOKEN: ${{ secrets.ENGLISH_OS_TOKEN }}
+      UNIT: ${{ github.event.inputs.unit }}
+      KNOWLEDGE_PATH: ${{ github.event.inputs.knowledge_path }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,7 +45,7 @@ jobs:
       - name: Run contract audit
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
 
           EXTRA_ARGS=""
           if [ "${{ github.event.inputs.fail_on_warnings }}" = "true" ]; then
@@ -47,13 +53,47 @@ jobs:
           fi
 
           npm run passages:audit-contracts -- \
-            --knowledge-path "${{ github.event.inputs.knowledge_path }}" \
-            --unit "${{ github.event.inputs.unit }}" \
-            ${EXTRA_ARGS} | tee passages-contract-audit.md
+            --knowledge-path "${KNOWLEDGE_PATH}" \
+            --unit "${UNIT}" \
+            --json \
+            ${EXTRA_ARGS} > passages-contract-audit.json
+          AUDIT_EXIT="$?"
+
+          npm run passages:audit-contracts -- \
+            --knowledge-path "${KNOWLEDGE_PATH}" \
+            --unit "${UNIT}" \
+            ${EXTRA_ARGS} > passages-contract-audit.md || true
+
+          echo "AUDIT_EXIT=${AUDIT_EXIT}" >> "${GITHUB_ENV}"
+
+      - name: Publish audit result to English OS sheet
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          npm run passages:publish-result -- \
+            --workflow "Audit Passages Contracts" \
+            --status "audit_exit_${AUDIT_EXIT:-unknown}" \
+            --unit "${UNIT}" \
+            --knowledge-path "${KNOWLEDGE_PATH}" \
+            --audit-json passages-contract-audit.json \
+            --markdown-file passages-contract-audit.md
 
       - name: Upload audit report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: passages-contract-audit-unit-${{ github.event.inputs.unit }}
-          path: passages-contract-audit.md
+          path: |
+            passages-contract-audit.md
+            passages-contract-audit.json
+
+      - name: Fail if audit failed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${AUDIT_EXIT:-1}" != "0" ]; then
+            echo "Passages contract audit failed with exit code ${AUDIT_EXIT}."
+            exit "${AUDIT_EXIT}"
+          fi

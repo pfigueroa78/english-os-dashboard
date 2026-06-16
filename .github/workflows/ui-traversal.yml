@@ -36,20 +36,18 @@ jobs:
           CLERK_SECRET_KEY: "sk_test_dummy"
         run: npm run build
 
-      - name: Start app
+      - name: Start app and run UI traversal tests
         env:
+          E2E_BASE_URL: http://localhost:3000
           NEXT_PUBLIC_E2E_DEMO: "1"
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_Y2xlcmsuZGVtbyQ"
           CLERK_SECRET_KEY: "sk_test_dummy"
         run: |
-          npm run start -- --hostname 127.0.0.1 > /tmp/english-os.log 2>&1 &
-          npx --yes wait-on tcp:127.0.0.1:3000
-
-      - name: Run UI traversal tests
-        env:
-          E2E_BASE_URL: http://127.0.0.1:3000
-          NEXT_PUBLIC_E2E_DEMO: "1"
-        run: npm run test:e2e
+          npm run start -- --hostname 0.0.0.0 > /tmp/english-os.log 2>&1 &
+          SERVER_PID=$!
+          npx --yes wait-on tcp:localhost:3000
+          npm run test:e2e
+          kill $SERVER_PID
 
       - name: Upload app log
         if: always()

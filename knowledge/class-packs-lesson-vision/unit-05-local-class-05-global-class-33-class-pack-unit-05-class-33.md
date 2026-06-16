@@ -10,6 +10,25 @@ PDF pages retrieval key: PDF_PAGES_51_52
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+<!-- PASSAGES_ACTIVE_CONTRACT_START -->
+### Active class teaching contract
+- Active class: Unit 5, local class 5, global class 33
+- Lesson title: Unit 5 Lesson B extension
+- Active class book pages: 42-43
+- Active class PDF pages: 51-52
+- Active class section names: Lesson B extension + Listening/Reading/Writing + Speaking
+- Active class skill focus: Listening, speaking, reading/writing
+- Active class grammar focus: Extract exact grammar focus from Unit 5 Lesson B extension indexed pages; do not infer unindexed wording.
+- Active class vocabulary focus: Extract vocabulary from Unit 5 Lesson B extension indexed pages; recycle only confirmed unit vocabulary.
+- Active class functions: Teach from the indexed page range, then ask controlled practice before advancing.
+- Active class target structures: Use the target language from the indexed page range. Do not invent structures outside the class pack.
+- Expected learner production: Controlled and personalized answers based on the indexed Student Book prompts.
+- Source status: Source extraction blocker: expected page marker(s) not found in existing extracted content: BOOK_PAGE 43; PDF_PAGE 52. Do not invent missing page text.
+
+### Safety rule
+Preserve the existing extracted Student Book content exactly as indexed. Do not fabricate missing page text, transcript text, answer keys, audio scripts, or exercises.
+<!-- PASSAGES_ACTIVE_CONTRACT_END -->
+
 ---
 
 # CLASS_PACK_UNIT_05_CLASS_33
@@ -43,7 +62,7 @@ BOOK_PAGE: 42
                He warned me not to . . .                        He explained that . . .           He asked me . . .      He wondered ...
 
            Wlst'atements ;1} ~~:;, · ,,, .
-           Y.~/,y,,    ' •   '   ,   :~I/   1'   I   1   ,, I
+           Y.~/,y,,    ' •   '   ,   :~I/   1'   I   , I
 
 
                   He claimed that ...

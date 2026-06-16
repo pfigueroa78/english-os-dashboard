@@ -1,14 +1,16 @@
-# CLASS_PACK_UNIT_06_CLASS_41
+### Active class teaching contract
+- Active class: Unit 6, local class 6, global class 41
+- Active class book pages: not indexed
+- Active class PDF pages: not indexed
+- Active class section names: Grammar Plus + Practice Lab
+- Active class grammar focus: Unit 6 Lesson B grammar consolidation from indexed Unit 6 context only.
+- Active class vocabulary focus: Recycle confirmed Unit 6 vocabulary only.
+- Active class functions: consolidate grammar accuracy; correct sentence structure; produce controlled and personalized examples
+- Active class target structures: Use only target structures confirmed in indexed Unit 6 class packs or learner-safe practice examples.
+- Expected learner production: accurate controlled examples and short personalized answers before the Unit 6 video/review class
 
-Filename retrieval key: unit-06-local-class-06-global-class-41-class-pack-unit-06-class-41.md
-Exact retrieval key: CLASS_PACK_UNIT_06_CLASS_41
-Unit retrieval key: UNIT_06
-Local class retrieval key: UNIT_06_LOCAL_CLASS_06
-Global class retrieval key: GLOBAL_CLASS_41
-Book pages retrieval key: BOOK_PAGES__
-PDF pages retrieval key: PDF_PAGES__
-
-Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
+### Special class mode
+This is a Grammar Plus class. No direct Student Book page text is indexed in this class pack. Use it as supplemental grammar consolidation for the previous Unit 6 lesson block. Do not invent missing Student Book content; recycle only indexed Unit 6 language and learner-safe examples.
 
 ---
 

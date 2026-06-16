@@ -1163,7 +1163,7 @@ function MistakeInbox({
             mistake={mistake}
             mastered={Boolean(masteredMistakes[mistake.id])}
             onPractice={() => onPractice(mistake)}
-            onMastered={(id) => setMasteredMistakes((current) => ({ ...current, [id]: true }))}
+            onMastered={() => onMastered(mistake.id)}
           />
         ))}
       </div>

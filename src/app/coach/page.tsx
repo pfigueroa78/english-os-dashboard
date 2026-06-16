@@ -47,6 +47,7 @@ type AgentId = "grammar_corrector" | "speaking_partner" | "english_evaluator";
 type SpecialistAgent = {
   id: AgentId;
   name: string;
+  shortName: string;
   description: string;
   defaultPrompt: string;
 };
@@ -55,6 +56,7 @@ const SPECIALIST_AGENTS: SpecialistAgent[] = [
   {
     id: "grammar_corrector",
     name: "Grammar Corrector",
+    shortName: "Grammar",
     description: "Corrige gramática, estructura, artículos, preposiciones y naturalidad.",
     defaultPrompt:
       "Please correct my English. Focus on grammar, sentence structure, articles, prepositions, fluency, and natural professional phrasing.",
@@ -62,6 +64,7 @@ const SPECIALIST_AGENTS: SpecialistAgent[] = [
   {
     id: "speaking_partner",
     name: "Speaking Partner",
+    shortName: "Speaking",
     description: "Practica conversación, fluidez y respuestas profesionales.",
     defaultPrompt:
       "Let's practice speaking in a business context. Ask me one realistic question and correct important mistakes after my answer.",
@@ -69,40 +72,67 @@ const SPECIALIST_AGENTS: SpecialistAgent[] = [
   {
     id: "english_evaluator",
     name: "English Evaluator",
+    shortName: "Evaluate",
     description: "Evalúa nivel CEFR, precisión, fluidez, vocabulario y próximos pasos.",
     defaultPrompt:
       "Please evaluate my English objectively using CEFR criteria. Give me a score, weaknesses, recurring patterns, and targeted exercises.",
   },
 ];
 
-function buildTodayClassMessage(unit: string, lesson: string) {
-  const safeUnit = unit || "tu unidad actual";
-  const safeLesson = lesson || "la clase de hoy";
+function extractUnitNumber(value: string) {
+  const match = String(value || "").match(/(\d{1,2})/);
+  return match?.[1] || "";
+}
 
+function unitLabel(value: string) {
+  const number = extractUnitNumber(value);
+  return number ? `Unit ${number}` : value || "Current unit";
+}
+
+function buildTodayClassMessage(unit: string, lesson: string) {
   return [
-    "Hola. Hoy no necesitas decidir qué practicar.",
+    "Hola. Estoy listo para guiar tu clase de English OS.",
     "",
-    `Unidad actual: ${safeUnit}`,
-    `Clase de hoy: ${safeLesson}`,
+    `Unidad activa: ${unitLabel(unit)}`,
+    `Clase / lección actual: ${lesson || "Clase guiada de English OS"}`,
     "",
-    "Vamos a seguir el hilo normal de English OS:",
-    "1. Diagnóstico corto",
-    "2. Vocabulario base",
-    "3. Mini práctica guiada",
-    "4. Corrección y siguiente paso",
-    "",
-    "Cuando estés listo, usa el botón Continuar clase de hoy en el panel de recursos o escribe: start",
+    "Puedes continuar la clase, pedir gramática o vocabulario de la unidad, o responder la evaluación pendiente.",
   ].join("\n");
 }
 
 function buildStartTodayClassPrompt(unit: string, lesson: string) {
+  const unitNumber = extractUnitNumber(unit);
   return [
-    "Start today's English OS class based on my current unit, current lesson, CEFR level, recent mistakes, vocabulary and next recommended action.",
-    "Guide me step by step like a structured class.",
-    "Start with a short diagnostic question, then continue with vocabulary and speaking practice.",
-    `Current unit: ${unit || "current unit"}`,
-    `Current lesson: ${lesson || "current lesson"}`,
-  ].join("\n");
+    unitNumber
+      ? `Dame la clase actual de la unidad ${unitNumber} usando el contenido real del libro, pero como profesor.`
+      : "Dame mi clase actual usando el contenido real del libro, pero como profesor.",
+    lesson ? `Current lesson/class context: ${lesson}` : "",
+    "Teach it step by step, use the real section names, and finish with an evaluation gate before progress can advance.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildUnitGrammarPrompt(unit: string) {
+  const number = extractUnitNumber(unit);
+  return [
+    number
+      ? `Dame una guía de gramática de la unidad ${number}.`
+      : "Dame una guía de gramática de mi unidad actual.",
+    "Usa mi contexto de English OS y el contenido real del curso cuando esté disponible.",
+    "Organiza la respuesta por clases/secciones reales de la unidad. Incluye estructuras, reglas en español, ejemplos en inglés, errores frecuentes, tips B1/B2 y una evaluación corta al final.",
+  ].join(" ");
+}
+
+function buildUnitVocabularyPrompt(unit: string) {
+  const number = extractUnitNumber(unit);
+  return [
+    number
+      ? `Dame una guía de vocabulario de la unidad ${number}.`
+      : "Dame una guía de vocabulario de mi unidad actual.",
+    "Usa mi contexto de English OS y el contenido real del curso cuando esté disponible.",
+    "Organiza el vocabulario por clases/secciones reales de la unidad. Incluye chunks, collocations, significado en español, ejemplos en inglés, tips de pronunciación y práctica corta al final.",
+  ].join(" ");
 }
 
 export default function CoachPage() {
@@ -122,11 +152,11 @@ export default function CoachPage() {
   const [lastTokens, setLastTokens] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [agentError, setAgentError] = useState("");
-
   const [activeAgentId, setActiveAgentId] = useState<AgentId>("grammar_corrector");
 
   const [currentUnit, setCurrentUnit] = useState("");
   const [currentLesson, setCurrentLesson] = useState("");
+  const [studyUnit, setStudyUnit] = useState("");
   const [contextLoading, setContextLoading] = useState(false);
   const [contextError, setContextError] = useState("");
 
@@ -147,6 +177,9 @@ export default function CoachPage() {
   const activeAgent =
     SPECIALIST_AGENTS.find((agent) => agent.id === activeAgentId) ||
     SPECIALIST_AGENTS[0];
+
+  const activeStudyUnit = studyUnit || currentUnit;
+  const activeStudyUnitLabel = unitLabel(activeStudyUnit);
 
   const conversationStorageKey = user?.primaryEmailAddress?.emailAddress
     ? `english-os-coach:${user.primaryEmailAddress.emailAddress}`
@@ -172,10 +205,7 @@ export default function CoachPage() {
       if (saved) {
         try {
           const parsed = JSON.parse(saved) as Message[];
-
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setMessages(parsed);
-          }
+          if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);
         } catch {
           window.localStorage.removeItem(conversationStorageKey);
         }
@@ -186,9 +216,9 @@ export default function CoachPage() {
   }, [isLoaded, isSignedIn, conversationStorageKey]);
 
   useEffect(() => {
-    if (!currentUnit) return;
-    loadDriveUnitResources(currentUnit);
-  }, [currentUnit]);
+    if (!activeStudyUnit) return;
+    loadDriveUnitResources(activeStudyUnit);
+  }, [activeStudyUnit]);
 
   async function loadUserContext() {
     setContextLoading(true);
@@ -221,7 +251,10 @@ export default function CoachPage() {
         missionControl.lesson ||
         "";
 
-      if (unit) setCurrentUnit(unit);
+      if (unit) {
+        setCurrentUnit(unit);
+        setStudyUnit((current) => current || unit);
+      }
       if (lesson) setCurrentLesson(lesson);
 
       setMessages((current) => {
@@ -282,8 +315,9 @@ export default function CoachPage() {
 
   async function createWorkbook(kind: "grammar" | "vocabulary") {
     const isGrammar = kind === "grammar";
+    const unit = activeStudyUnit;
 
-    if (!currentUnit) return;
+    if (!unit) return;
 
     if (isGrammar) {
       if (grammarWorkbookLoading) return;
@@ -299,7 +333,7 @@ export default function CoachPage() {
 
     try {
       const params = new URLSearchParams({
-        unit: currentUnit,
+        unit,
         lesson: currentLesson,
       });
 
@@ -328,11 +362,8 @@ export default function CoachPage() {
         generatedAt: data.generatedAt,
       };
 
-      if (isGrammar) {
-        setGrammarWorkbook(workbook);
-      } else {
-        setVocabularyWorkbook(workbook);
-      }
+      if (isGrammar) setGrammarWorkbook(workbook);
+      else setVocabularyWorkbook(workbook);
 
       window.open(data.exportUrl || data.fileUrl, "_blank", "noopener,noreferrer");
 
@@ -340,27 +371,19 @@ export default function CoachPage() {
         ...current,
         {
           role: "coach",
-          content:
-            `Listo. Generé el Excel de ${isGrammar ? "gramática" : "vocabulario"}. Puedes encontrarlo en el panel de recursos de la unidad.`,
+          content: `Listo. Generé el Excel de ${
+            isGrammar ? "gramática" : "vocabulario"
+          } para ${unitLabel(unit)}. Puedes abrirlo desde el panel de estudio.`,
         },
       ]);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Unknown workbook error";
-
-      if (isGrammar) {
-        setGrammarWorkbookError(message);
-      } else {
-        setVocabularyWorkbookError(message);
-      }
-
+      const message = err instanceof Error ? err.message : "Unknown workbook error";
+      if (isGrammar) setGrammarWorkbookError(message);
+      else setVocabularyWorkbookError(message);
       setError(message);
     } finally {
-      if (isGrammar) {
-        setGrammarWorkbookLoading(false);
-      } else {
-        setVocabularyWorkbookLoading(false);
-      }
+      if (isGrammar) setGrammarWorkbookLoading(false);
+      else setVocabularyWorkbookLoading(false);
     }
   }
 
@@ -385,13 +408,8 @@ export default function CoachPage() {
     try {
       const response = await fetch("/api/english-os/agents", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          agentId: activeAgent.id,
-          message,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId: activeAgent.id, message }),
       });
 
       const data = await response.json();
@@ -407,7 +425,9 @@ export default function CoachPage() {
         ...current,
         {
           role: "coach",
-          content: `${data.agent?.name || activeAgent.name}\n\n${data.reply || "No response returned."}`,
+          content: `${data.agent?.name || activeAgent.name}\n\n${
+            data.reply || "No response returned."
+          }`,
           usage: data.usage,
         },
       ]);
@@ -431,18 +451,13 @@ export default function CoachPage() {
 
     setMessages((current) => [
       ...current,
-      {
-        role: "user",
-        content: message,
-      },
+      { role: "user", content: message },
     ]);
 
     try {
       const response = await fetch("/api/english-os/coach", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
           conversationHistory: messages.slice(-12),
@@ -470,24 +485,11 @@ export default function CoachPage() {
         missionControl.lesson ||
         "";
 
-      if (unit) setCurrentUnit(unit);
+      if (unit) {
+        setCurrentUnit(unit);
+        setStudyUnit((current) => current || unit);
+      }
       if (lesson) setCurrentLesson(lesson);
-
-      setMessages((current) => {
-        const shouldReplaceInitialMessage =
-          current.length === 1 &&
-          current[0]?.role === "coach" &&
-          current[0]?.content.includes("Loading your English OS class plan");
-
-        if (!shouldReplaceInitialMessage) return current;
-
-        return [
-          {
-            role: "coach",
-            content: buildTodayClassMessage(unit, lesson),
-          },
-        ];
-      });
 
       setLastCost(data.usage?.estimatedCostUSD ?? null);
       setLastTokens(data.usage?.totalTokens ?? null);
@@ -508,19 +510,15 @@ export default function CoachPage() {
   }
 
   function startTodayClass() {
-    sendMessage(buildStartTodayClassPrompt(currentUnit, currentLesson));
+    sendMessage(buildStartTodayClassPrompt(activeStudyUnit, currentLesson));
   }
 
   function requestUnitGrammar() {
-    sendMessage(
-      "Agrega una guía completa de gramática de mi unidad actual según mi contexto de English OS. Incluye: estructuras gramaticales, reglas explicadas en español, ejemplos en inglés, errores frecuentes que cometo, tips B1/B2, mini-resumen ejecutivo y 10 ejercicios de práctica con respuestas."
-    );
+    sendMessage(buildUnitGrammarPrompt(activeStudyUnit));
   }
 
   function requestUnitVocabulary() {
-    sendMessage(
-      "Agrega una guía completa de vocabulario de mi unidad actual según mi contexto de English OS. Incluye: palabras clave, phrasal verbs, collocations, significado en español, ejemplos en inglés, tips de pronunciación, errores comunes que cometo y 10 ejercicios de práctica con respuestas."
-    );
+    sendMessage(buildUnitVocabularyPrompt(activeStudyUnit));
   }
 
   function requestResourcePractice(resource: DriveUnitResource) {
@@ -538,7 +536,7 @@ export default function CoachPage() {
       .join("\n");
 
     sendMessage(
-      `Vamos a trabajar con este recurso de mi unidad actual.\n\n${details}\n\nCrea una actividad completa para estudiar este recurso. Incluye: preparación antes de escuchar/ver, vocabulario clave, preguntas de comprensión, práctica oral, errores comunes que debo evitar y una tarea final. Explícame en español y dame ejemplos en inglés.`
+      `Vamos a trabajar con este recurso de ${activeStudyUnitLabel}.\n\n${details}\n\nCrea una actividad completa para estudiar este recurso. Incluye preparación, vocabulario clave, comprensión, práctica oral, errores comunes y una tarea final.`
     );
   }
 
@@ -550,35 +548,27 @@ export default function CoachPage() {
       kind === "grammar"
         ? "border-emerald-800 bg-emerald-950/60 text-emerald-100"
         : "border-cyan-800 bg-cyan-950/60 text-cyan-100";
-    const buttonClass =
-      kind === "grammar"
-        ? "bg-emerald-600 hover:bg-emerald-500"
-        : "bg-cyan-600 hover:bg-cyan-500";
-    const outlineClass =
-      kind === "grammar"
-        ? "border-emerald-700 hover:bg-emerald-900"
-        : "border-cyan-700 hover:bg-cyan-900";
 
     return (
-      <div className={`rounded-xl border p-3 text-sm ${colorClass}`}>
+      <div className={`rounded-2xl border p-3 text-sm ${colorClass}`}>
         <p className="font-semibold">Excel de {label} generado</p>
         <p className="mt-1 break-words text-xs opacity-90">{workbook.title}</p>
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2">
           <a
             href={workbook.exportUrl}
             target="_blank"
             rel="noreferrer"
-            className={`rounded-lg px-3 py-2 text-xs font-semibold text-white ${buttonClass}`}
+            className="rounded-xl bg-white/10 px-3 py-2 text-center text-xs font-semibold hover:bg-white/20"
           >
-            Descargar XLSX
+            XLSX
           </a>
           <a
             href={workbook.fileUrl}
             target="_blank"
             rel="noreferrer"
-            className={`rounded-lg border px-3 py-2 text-xs font-semibold ${outlineClass}`}
+            className="rounded-xl border border-white/20 px-3 py-2 text-center text-xs font-semibold hover:bg-white/10"
           >
-            Abrir en Sheets
+            Sheets
           </a>
         </div>
       </div>
@@ -587,22 +577,22 @@ export default function CoachPage() {
 
   if (!isLoaded) {
     return (
-      <main className="min-h-screen bg-slate-950 p-8 text-white">
-        <p>Loading...</p>
+      <main className="flex min-h-[100dvh] items-center justify-center bg-slate-950 p-6 text-white">
+        <p>Loading English OS...</p>
       </main>
     );
   }
 
   if (!isSignedIn) {
     return (
-      <main className="min-h-screen bg-slate-950 p-8 text-white">
-        <div className="mx-auto max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-8">
-          <h1 className="mb-4 text-2xl font-bold">English OS Coach</h1>
-          <p className="mb-6 text-slate-300">
-            Please sign in to use your English Coach.
+      <main className="flex min-h-[100dvh] items-center justify-center bg-slate-950 p-4 text-white">
+        <div className="w-full max-w-sm rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+          <h1 className="text-2xl font-bold">English OS Coach</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            Sign in to continue your guided English learning path.
           </p>
           <SignInButton mode="modal">
-            <button className="rounded-xl bg-blue-600 px-4 py-2 font-semibold hover:bg-blue-500">
+            <button className="mt-6 w-full rounded-2xl bg-blue-600 px-4 py-3 font-semibold hover:bg-blue-500">
               Sign in
             </button>
           </SignInButton>
@@ -612,133 +602,143 @@ export default function CoachPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 md:px-6">
-        <header className="sticky top-0 z-20 mb-4 rounded-2xl border border-slate-800 bg-slate-950/95 p-4 backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold md:text-3xl">
-                English OS Coach
+    <main className="min-h-[100dvh] bg-slate-950 text-white">
+      <div className="mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-3 py-3 sm:px-4 lg:px-6 lg:py-5">
+        <header className="mb-3 rounded-3xl border border-slate-800 bg-slate-900/95 p-3 shadow-2xl shadow-black/20 lg:sticky lg:top-3 lg:z-20 lg:p-4 lg:backdrop-blur">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-blue-300">
+                English OS
+              </p>
+              <h1 className="mt-1 truncate text-xl font-bold sm:text-2xl">
+                Coach
               </h1>
-              <p className="text-sm text-slate-400">
-                Signed in as {user?.primaryEmailAddress?.emailAddress}
+              <p className="mt-1 truncate text-xs text-slate-400 sm:text-sm">
+                {user?.primaryEmailAddress?.emailAddress}
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-300">
-                Tokens: {" "}
-                <span className="font-semibold text-white">
-                  {lastTokens ?? "—"}
-                </span>
-              </div>
-
-              <div className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-300">
-                Cost: {" "}
-                <span className="font-semibold text-white">
-                  {lastCost === null ? "—" : `$${lastCost.toFixed(6)}`}
-                </span>
-              </div>
-
+            <div className="flex shrink-0 items-center gap-2">
               <Link
                 href="/"
-                className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold hover:bg-slate-900"
+                className="hidden rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold hover:bg-slate-800 sm:inline-flex"
               >
                 Dashboard
               </Link>
-
               <Link
                 href="/users"
-                className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold hover:bg-slate-900"
+                className="hidden rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold hover:bg-slate-800 lg:inline-flex"
               >
                 Users
               </Link>
-
               <UserButton />
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
-            <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                Current Unit
-              </p>
-              <p className="mt-1 font-semibold text-slate-100">
-                {contextLoading
-                  ? "Loading..."
-                  : currentUnit || "No current unit found"}
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-3">
+              <p className="text-[10px] uppercase tracking-wide text-slate-500">Unidad</p>
+              <p className="mt-1 truncate text-sm font-semibold text-slate-100">
+                {contextLoading ? "Loading..." : activeStudyUnitLabel}
               </p>
             </div>
-
-            <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                Current Lesson
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-3">
+              <p className="text-[10px] uppercase tracking-wide text-slate-500">Clase</p>
+              <p className="mt-1 truncate text-sm font-semibold text-slate-100">
+                {currentLesson || "Guided class"}
               </p>
-              <p className="mt-1 font-semibold text-slate-100">
-                {contextLoading
-                  ? "Loading..."
-                  : currentLesson || "No current lesson found"}
+            </div>
+            <div className="hidden rounded-2xl border border-slate-800 bg-slate-950 p-3 sm:block">
+              <p className="text-[10px] uppercase tracking-wide text-slate-500">Tokens</p>
+              <p className="mt-1 text-sm font-semibold text-slate-100">{lastTokens ?? "—"}</p>
+            </div>
+            <div className="hidden rounded-2xl border border-slate-800 bg-slate-950 p-3 sm:block">
+              <p className="text-[10px] uppercase tracking-wide text-slate-500">Costo</p>
+              <p className="mt-1 text-sm font-semibold text-slate-100">
+                {lastCost === null ? "—" : `$${lastCost.toFixed(6)}`}
               </p>
             </div>
           </div>
 
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={startTodayClass}
+              disabled={loading || !activeStudyUnit}
+              className="rounded-2xl bg-blue-600 px-3 py-3 text-xs font-bold text-white hover:bg-blue-500 disabled:opacity-50"
+            >
+              Continuar
+            </button>
+            <button
+              type="button"
+              onClick={requestUnitGrammar}
+              disabled={loading || !activeStudyUnit}
+              className="rounded-2xl border border-emerald-700 bg-emerald-950/60 px-3 py-3 text-xs font-bold text-emerald-100 hover:bg-emerald-900 disabled:opacity-50"
+            >
+              Gramática
+            </button>
+            <button
+              type="button"
+              onClick={requestUnitVocabulary}
+              disabled={loading || !activeStudyUnit}
+              className="rounded-2xl border border-cyan-700 bg-cyan-950/60 px-3 py-3 text-xs font-bold text-cyan-100 hover:bg-cyan-900 disabled:opacity-50"
+            >
+              Vocabulario
+            </button>
+          </div>
+
           {contextError && (
-            <div className="mt-3 rounded-xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
+            <div className="mt-3 rounded-2xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
               {contextError}
             </div>
           )}
         </header>
 
         {error && (
-          <div className="mb-4 rounded-xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">
+          <div className="mb-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">
             {error}
           </div>
         )}
 
-        <div className="grid flex-1 gap-4 lg:grid-cols-[1fr_380px]">
-          <section className="flex min-h-[calc(100vh-280px)] flex-col rounded-2xl border border-slate-800 bg-slate-900">
-            <div className="flex-1 space-y-6 overflow-y-auto p-4 md:p-8">
+        <div className="grid flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="flex min-h-[70dvh] min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 lg:h-[calc(100dvh-220px)]">
+            <div className="flex-1 space-y-4 overflow-y-auto p-3 sm:p-5 lg:p-6">
               {messages.map((message, index) => (
                 <article
                   key={index}
                   className={
                     message.role === "user"
-                      ? "ml-auto max-w-3xl rounded-2xl bg-blue-600 p-5 shadow-lg"
-                      : "mr-auto max-w-5xl rounded-2xl bg-slate-800 p-5 shadow-lg"
+                      ? "ml-auto max-w-[92%] rounded-3xl bg-blue-600 p-4 shadow-lg sm:max-w-2xl"
+                      : "mr-auto max-w-[96%] rounded-3xl bg-slate-800 p-4 shadow-lg sm:max-w-4xl lg:p-5"
                   }
                 >
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
                       {message.role === "user" ? "You" : "Coach"}
                     </p>
-
                     {message.usage && (
-                      <p className="text-xs text-slate-400">
-                        {message.usage.totalTokens} tokens · $
-                        {message.usage.estimatedCostUSD.toFixed(6)}
+                      <p className="text-[11px] text-slate-400">
+                        {message.usage.totalTokens} · ${message.usage.estimatedCostUSD.toFixed(6)}
                       </p>
                     )}
                   </div>
-
-                  <div className="prose prose-invert max-w-none whitespace-pre-wrap text-base leading-8 text-slate-100 md:text-lg">
+                  <div className="prose prose-invert max-w-none whitespace-pre-wrap text-sm leading-7 text-slate-100 sm:text-base sm:leading-8">
                     <MarkdownMessage content={message.content} />
                   </div>
                 </article>
               ))}
 
               {(loading || agentLoading) && (
-                <div className="mr-auto max-w-5xl rounded-2xl bg-slate-800 p-5 text-slate-300">
-                  {agentLoading
-                    ? `${activeAgent.name} is thinking...`
-                    : "Coach is thinking..."}
+                <div className="mr-auto max-w-[92%] rounded-3xl bg-slate-800 p-4 text-sm text-slate-300">
+                  {agentLoading ? `${activeAgent.name} is thinking...` : "Coach is thinking..."}
                 </div>
               )}
 
               <div ref={bottomRef} />
             </div>
 
-            <footer className="border-t border-slate-800 bg-slate-950/80 p-4">
-              <div className="flex flex-col gap-3 md:flex-row">
+            <footer className="sticky bottom-0 z-10 border-t border-slate-800 bg-slate-950/95 p-3 backdrop-blur sm:p-4">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <textarea
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
@@ -748,159 +748,133 @@ export default function CoachPage() {
                       sendMessage();
                     }
                   }}
-                  placeholder="Example: answer the diagnostic question from today class."
-                  className="min-h-28 flex-1 resize-none rounded-xl border border-slate-700 bg-slate-900 p-4 text-base text-white outline-none focus:border-blue-500"
+                  placeholder="Responde la evaluación, pide una clase o escribe una duda..."
+                  className="min-h-24 flex-1 resize-none rounded-2xl border border-slate-700 bg-slate-900 p-3 text-base text-white outline-none focus:border-blue-500"
                 />
-
                 <button
                   onClick={() => sendMessage()}
                   disabled={loading || !input.trim()}
-                  className="rounded-xl bg-blue-600 px-8 py-4 font-semibold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 md:w-36"
+                  className="rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-32"
                 >
-                  {loading ? "Sending..." : "Send"}
+                  {loading ? "..." : "Send"}
                 </button>
               </div>
-
-              <p className="mt-2 text-xs text-slate-500">
-                Enter sends with the general coach. Use Continuar clase de hoy when you want a guided class.
+              <p className="mt-2 text-[11px] text-slate-500">
+                Enter envía. Shift + Enter agrega línea. El avance se habilita solo después de aprobar la evaluación.
               </p>
             </footer>
           </section>
 
-          <aside className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-4">
-            <section className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
+          <aside className="space-y-3 lg:h-[calc(100dvh-220px)] lg:overflow-y-auto">
+            <section className="rounded-3xl border border-slate-800 bg-slate-900 p-4">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-bold">Unit Resources</h2>
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Study unit</p>
+                  <h2 className="mt-1 text-lg font-bold">{activeStudyUnitLabel}</h2>
                   <p className="mt-1 text-sm text-slate-400">
-                    Materials, workbooks and specialist tools for this unit.
+                    Cambia la unidad para generar gramática, vocabulario y recursos del tema correcto.
                   </p>
                 </div>
               </div>
+              <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Unidad de estudio
+              </label>
+              <input
+                value={studyUnit}
+                onChange={(event) => setStudyUnit(event.target.value)}
+                placeholder={currentUnit || "Unit 1"}
+                className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-white outline-none focus:border-blue-500"
+              />
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStudyUnit(currentUnit)}
+                  disabled={!currentUnit}
+                  className="rounded-2xl border border-slate-700 px-3 py-2 text-xs font-semibold hover:bg-slate-800 disabled:opacity-50"
+                >
+                  Usar actual
+                </button>
+                <button
+                  type="button"
+                  onClick={startTodayClass}
+                  disabled={loading || !activeStudyUnit}
+                  className="rounded-2xl bg-blue-600 px-3 py-2 text-xs font-semibold hover:bg-blue-500 disabled:opacity-50"
+                >
+                  Clase
+                </button>
+              </div>
             </section>
 
-            <section className="rounded-2xl border border-blue-900 bg-blue-950/40 p-4">
-              <p className="text-xs uppercase tracking-wide text-blue-300">
-                Today Class
-              </p>
-              <p className="mt-1 text-sm font-semibold text-white">
-                {currentLesson || "Clase guiada de English OS"}
-              </p>
-              <p className="mt-2 text-xs leading-5 text-blue-100/80">
-                El Coach guía la clase paso a paso. No tienes que decidir qué practicar.
-              </p>
-              <button
-                type="button"
-                onClick={startTodayClass}
-                disabled={loading || !currentUnit}
-                className="mt-3 w-full rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
-              >
-                Continuar clase de hoy
-              </button>
-            </section>
-
-            <section className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                Unit Workbooks
-              </p>
+            <section className="rounded-3xl border border-slate-800 bg-slate-900 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Unit workbooks</p>
               <p className="mt-1 text-sm text-slate-400">
-                Genera archivos de estudio sin interrumpir la conversación.
+                Acciones ligadas a {activeStudyUnitLabel}. No usan una unidad fija.
               </p>
-
               <div className="mt-3 grid gap-2">
                 <button
                   type="button"
                   onClick={() => createWorkbook("grammar")}
-                  disabled={grammarWorkbookLoading || !currentUnit}
-                  className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                  disabled={grammarWorkbookLoading || !activeStudyUnit}
+                  className="rounded-2xl bg-emerald-600 px-3 py-3 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
                 >
-                  {grammarWorkbookLoading
-                    ? "Generando gramática..."
-                    : "Descargar Excel de gramática"}
+                  {grammarWorkbookLoading ? "Generando..." : `Excel gramática · ${activeStudyUnitLabel}`}
                 </button>
-
                 <button
                   type="button"
                   onClick={() => createWorkbook("vocabulary")}
-                  disabled={vocabularyWorkbookLoading || !currentUnit}
-                  className="rounded-xl bg-cyan-600 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50"
+                  disabled={vocabularyWorkbookLoading || !activeStudyUnit}
+                  className="rounded-2xl bg-cyan-600 px-3 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50"
                 >
-                  {vocabularyWorkbookLoading
-                    ? "Generando vocabulario..."
-                    : "Descargar Excel de vocabulario"}
+                  {vocabularyWorkbookLoading ? "Generando..." : `Excel vocabulario · ${activeStudyUnitLabel}`}
                 </button>
-
                 <button
                   type="button"
                   onClick={requestUnitGrammar}
-                  disabled={loading || !currentUnit}
-                  className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-50"
+                  disabled={loading || !activeStudyUnit}
+                  className="rounded-2xl border border-emerald-700 px-3 py-3 text-sm font-semibold text-emerald-100 hover:bg-emerald-950 disabled:opacity-50"
                 >
-                  Agregar gramática al chat
+                  Guía de gramática en chat
                 </button>
-
                 <button
                   type="button"
                   onClick={requestUnitVocabulary}
-                  disabled={loading || !currentUnit}
-                  className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-50"
+                  disabled={loading || !activeStudyUnit}
+                  className="rounded-2xl border border-cyan-700 px-3 py-3 text-sm font-semibold text-cyan-100 hover:bg-cyan-950 disabled:opacity-50"
                 >
-                  Agregar vocabulario al chat
+                  Guía de vocabulario en chat
                 </button>
               </div>
-
               <div className="mt-3 space-y-3">
                 {grammarWorkbookError && (
-                  <div className="rounded-xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
+                  <div className="rounded-2xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
                     {grammarWorkbookError}
                   </div>
                 )}
-
                 {vocabularyWorkbookError && (
-                  <div className="rounded-xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
+                  <div className="rounded-2xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
                     {vocabularyWorkbookError}
                   </div>
                 )}
-
                 {renderWorkbookCard("grammar", grammarWorkbook)}
                 {renderWorkbookCard("vocabulary", vocabularyWorkbook)}
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
-              <div className="mb-3 flex flex-col gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-slate-500">
-                    Specialist Agent
-                  </p>
-                  <p className="mt-1 text-sm text-slate-400">
-                    {activeAgent.description}
-                  </p>
-                </div>
-
-                <select
-                  value={activeAgentId}
-                  onChange={(event) => setActiveAgentId(event.target.value as AgentId)}
-                  className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
-                >
-                  {SPECIALIST_AGENTS.map((agent) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid gap-2">
-                <button
-                  type="button"
-                  onClick={() => sendAgentMessage()}
-                  disabled={agentLoading}
-                  className="rounded-xl bg-purple-600 px-3 py-2 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-50"
-                >
-                  {agentLoading ? "Running agent..." : "Usar agente"}
-                </button>
-
+            <section className="rounded-3xl border border-slate-800 bg-slate-900 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Specialist agent</p>
+              <p className="mt-1 text-sm text-slate-400">{activeAgent.description}</p>
+              <select
+                value={activeAgentId}
+                onChange={(event) => setActiveAgentId(event.target.value as AgentId)}
+                className="mt-3 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-white outline-none focus:border-blue-500"
+              >
+                {SPECIALIST_AGENTS.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.name}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-3 grid grid-cols-3 gap-2">
                 {SPECIALIST_AGENTS.map((agent) => (
                   <button
                     key={agent.id}
@@ -910,74 +884,65 @@ export default function CoachPage() {
                       sendAgentMessage(agent.defaultPrompt);
                     }}
                     disabled={agentLoading}
-                    className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                    className="rounded-2xl border border-slate-700 px-2 py-3 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-50"
                   >
-                    {agent.name}
+                    {agent.shortName}
                   </button>
                 ))}
               </div>
-
               {agentError && (
-                <div className="mt-3 rounded-xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
+                <div className="mt-3 rounded-2xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">
                   {agentError}
                 </div>
               )}
             </section>
 
-            <section className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+            <section className="rounded-3xl border border-slate-800 bg-slate-900 p-4">
               <h3 className="text-sm font-bold text-slate-100">Drive Materials</h3>
               <p className="mt-1 text-xs text-slate-400">
-                Audios and videos loaded from Google Drive.
+                Audios, videos and documents for {activeStudyUnitLabel}.
               </p>
-
               {resourcesLoading && (
-                <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
+                <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
                   Loading resources...
                 </div>
               )}
-
               {resourcesError && (
-                <div className="mt-3 rounded-xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">
+                <div className="mt-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">
                   {resourcesError}
                 </div>
               )}
-
               {!resourcesLoading && !resourcesError && resources.length === 0 && (
-                <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
+                <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
                   No Drive resources found for this unit.
                 </div>
               )}
-
-              <div className="mt-3 space-y-4">
+              <div className="mt-3 space-y-3">
                 {resources.map((resource) => (
                   <div
                     key={resource.resourceId}
-                    className="rounded-xl border border-slate-800 bg-slate-950 p-4"
+                    className="rounded-2xl border border-slate-800 bg-slate-950 p-4"
                   >
-                    <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="mb-2 flex items-start justify-between gap-2">
                       <h3 className="text-sm font-semibold text-slate-100">
                         {resource.title}
                       </h3>
-
-                      <span className="rounded-full border border-slate-700 px-2 py-1 text-xs uppercase text-slate-400">
+                      <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] uppercase text-slate-400">
                         {resource.type}
                       </span>
                     </div>
-
-                    <p className="mb-3 text-xs text-slate-400">
+                    <p className="mb-3 text-xs leading-5 text-slate-400">
                       {resource.description}
                     </p>
-
                     {resource.type === "audio" && resource.embedUrl && (
                       <iframe
                         src={resource.embedUrl}
-                        className="mb-3 h-20 w-full rounded-xl border border-slate-800 bg-black"
+                        className="mb-3 h-20 w-full rounded-2xl border border-slate-800 bg-black"
                         allow="autoplay"
                       />
                     )}
-
                     {resource.type === "video" && resource.embedUrl && (
-                      <div className="mb-3 aspect-video overflow-hidden rounded-xl border border-slate-800 bg-black">
+                      <div className="mb-3 aspect-video overflow-hidden rounded-2xl border border-slate-800 bg-black">
                         <iframe
                           src={resource.embedUrl}
                           title={resource.title}
@@ -987,24 +952,22 @@ export default function CoachPage() {
                         />
                       </div>
                     )}
-
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <a
                         href={resource.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold hover:bg-slate-800"
+                        className="rounded-2xl border border-slate-700 px-3 py-2 text-center text-sm font-semibold hover:bg-slate-800"
                       >
                         Open
                       </a>
-
                       <button
                         type="button"
                         onClick={() => requestResourcePractice(resource)}
                         disabled={loading}
-                        className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"
+                        className="rounded-2xl bg-blue-600 px-3 py-2 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50"
                       >
-                        Practice this
+                        Practice
                       </button>
                     </div>
                   </div>

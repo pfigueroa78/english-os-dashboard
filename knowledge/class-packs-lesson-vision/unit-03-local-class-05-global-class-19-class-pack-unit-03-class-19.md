@@ -10,6 +10,18 @@ PDF pages retrieval key: PDF_PAGES_33_34
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+### Active class teaching contract
+- Active class: Unit 3, local class 5, global class 19
+- Lesson title: My kind of town
+- Active class book pages: 24-25
+- Active class PDF pages: 33-34
+- Active class section names: Listening + Discussion
+- Active class grammar focus: expressing and justifying opinions about quality of life; comparing city and town preferences
+- Active class vocabulary focus: affordable housing; exciting nightlife; pleasant weather; restaurants; health care; retail shops; parks; historic neighborhoods; wireless hot spots; transportation; crime rates
+- Active class functions: listen for opinions about a city; rate quality-of-life issues; explain personal priorities for where to live
+- Active class target structures: I guess... is important.; For me,...; I know what you mean, but...; I want to live somewhere where...; I don't mind if...
+- Expected learner production: choose and explain three quality-of-life priorities in a short discussion
+
 ---
 
 # CLASS_PACK_UNIT_03_CLASS_19
@@ -21,9 +33,10 @@ Metadata:
 - Local class inside unit: 5
 - Global English OS class: 19
 - Lesson type: Student Book class
+- Lesson title: My kind of town
 - Book pages: 24-25
 - PDF pages: 33-34
-- Notes: none
+- Notes: Source extraction currently includes BOOK_PAGE 24 / PDF_PAGE 33 only; BOOK_PAGE 25 / PDF_PAGE 34 remains a source-extraction blocker and must not be invented.
 
 Teacher retrieval instruction:
 Use this class pack as the primary source when the learner asks for Unit 3, Class 5, or English OS Class 19. Teach the content as a live class, not as a dump.

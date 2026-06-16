@@ -10,6 +10,21 @@ PDF pages retrieval key: PDF_PAGES_31_32
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+### Active class teaching contract
+- Active class: Unit 3, local class 4, global class 18
+- Lesson title: My kind of town
+- Active class book pages: 22-23
+- Active class PDF pages: 31-32
+- Active class section names: Starting point + Vocabulary
+- Active class grammar focus: contrast connectors and descriptive comparisons of places; although, however, despite, in spite of, nevertheless, on the other hand
+- Active class vocabulary focus: bustling streets; subway system; housing costs; crime rate; resort town; outdoor activities; stores; boutiques; compound terms for towns
+- Active class functions: compare a city and a town; define types of towns; describe hometown preferences
+- Active class target structures: Although it's..., ...; However,...; On the other hand,...; Despite..., ...; A border town is near...; The town where I'd like to live...
+- Expected learner production: compare the city and town descriptions and describe the learner's hometown or preferred town type
+
+---
+
+# CLASS_PACK_UNIT_03_CLASS_18
 
 Aliases: CLASS_PACK_UNIT_03_CLASS_18 | UNIT_03_LOCAL_CLASS_04 | GLOBAL_CLASS_18 | UNIT_3_CLASS_18 | UNIT_3_CLASS_4_LOCAL | PDF_PAGE_RANGE_31_32 | BOOK_PAGE_RANGE_22_23
 
@@ -18,9 +33,10 @@ Metadata:
 - Local class inside unit: 4
 - Global English OS class: 18
 - Lesson type: Student Book class
+- Lesson title: My kind of town
 - Book pages: 22-23
 - PDF pages: 31-32
-- Notes: none
+- Notes: Source extraction currently includes BOOK_PAGE 22 / PDF_PAGE 31 only; BOOK_PAGE 23 / PDF_PAGE 32 remains a source-extraction blocker and must not be invented.
 
 Teacher retrieval instruction:
 Use this class pack as the primary source when the learner asks for Unit 3, Class 4, or English OS Class 18. Teach the content as a live class, not as a dump.
@@ -46,7 +62,6 @@ i:         LESSON B ...._ My kind of town
                                                                                                                            i rLanguage
            A Complete the descriptions with the sentences below. Then compare answers.
 
-
                 his e ~i ;, ... < e ca .1 w ith bustling
               streets is a great place to live. Most evenings you
               can choose from a movie, a concert, or even a
@@ -55,18 +70,14 @@ i:         LESSON B ...._ My kind of town
               (2) __ Our efficient new subway system can get
               you anywhere you want to go. (3) _ _
 
-
-                                                                             ;~
-
-                                                                          This is a picturesque little resort town
-                                                                          with year-round outdoor activities. There's
-                                                                          something to do in all four seasons. But there's not
-                                                                          much action here at night. (4) _ _ There are many
-                                                                          quaint little stores and b outiques in this beautiful
-                                                                          town. (5) _ _ Apartments are affordable, too. You
-                                                                          can get a great place for about $1,000 a month, and
-                                                                          average monthly salaries are about $2,500. (6) _ _
-
+                                                                           This is a picturesque little resort town
+                                                                           with year-round outdoor activities. There's
+                                                                           something to do in all four seasons. But there's not
+              much action here at night. (4) _ _ There are many
+              quaint little stores and b outiques in this beautiful
+              town. (5) _ _ Apartments are affordable, too. You
+              can get a great place for about $1,000 a month, and
+              average monthly salaries are about $2,500. (6) _ _
 
               a. However, housing costs are high. A nice apartment is about $2,500 per month.
               b. So, even though our streets are safe, the evenings can be dull.
@@ -77,7 +88,6 @@ i:         LESSON B ...._ My kind of town
               f. Despite the attractive location, the prices of houses are surprisingly reasonable.
 
             B Pair work Which place do you think has more to offer - the city or the town?
-
 
       (i)J~V~O~C
                ~A~B=U
@@ -94,5 +104,4 @@ i:         LESSON B ...._ My kind of town
               t he town w here you'd like to live someday? Compare ideas.
                                                                                                    ~VOCABULARY PL~S see page 132
 
-
-     22   oWifl    Ex pl o rin g new citi es
+      22   oWifl    Ex pl o rin g new citi es

@@ -387,6 +387,11 @@ function extractContractMetadata(data: any, input: any[]) {
   const sourceText = collectStrings(data).join("\n");
   const allText = `${inputText}\n${sourceText}`;
 
+  const lessonTitle = firstCleanMatch(allText, [
+    /Lesson title:\s*([^\n]+)/i,
+    /"lessonTitle"\s*:\s*"([^"]+)"/i,
+    /"lesson"\s*:\s*"([^"]+)"/i,
+  ]);
   const bookPages = firstCleanMatch(inputText, [/Book pages from initial index row:\s*([^\n]+)/i, /"bookPages"\s*:\s*"([^"]+)"/i]);
   const pdfPages = firstCleanMatch(inputText, [/PDF pages from initial index row:\s*([^\n]+)/i, /"pdfPages"\s*:\s*"([^"]+)"/i]);
   const classSections = normalizeContractValue(firstCleanMatch(allText, [/Active class section names:\s*([^\n]+)/i]));
@@ -408,16 +413,20 @@ function extractContractMetadata(data: any, input: any[]) {
   ]) || extractVisibleListAfterHeading(sourceText, "### Vision vocabulary candidates");
   const structureFormula = firstCleanMatch(sourceText, [/Vision central structure formula:\s*([^\n]+)/i, /"centralStructureFormula"\s*:\s*"([^"]+)"/i]);
 
-  return { bookPages, pdfPages, classSections, grammarFocus, vocabularyFocus, structureFormula };
+  return { lessonTitle, bookPages, pdfPages, classSections, grammarFocus, vocabularyFocus, structureFormula };
+}
+
+function markdownHardBreak(line: string) {
+  return `${line}  `;
 }
 
 function splitCompressedHeaderLabels(reply: string) {
   return String(reply || "")
-    .replace(/\s+(\*\*)?Class sections:/gi, "\nClass sections:")
-    .replace(/\s+(\*\*)?Main focus:/gi, "\nMain focus:")
-    .replace(/\s+(\*\*)?Grammar focus:/gi, "\nGrammar focus:")
-    .replace(/\s+(\*\*)?Vocabulary focus:/gi, "\nVocabulary focus:")
-    .replace(/\s+(🎯\s*)?(\*\*)?Learning objective:/gi, "\n\n🎯 Learning objective:");
+    .replace(/\s+(?:\*\*)?Class sections:(?:\*\*)?/gi, "\nClass sections:")
+    .replace(/\s+(?:\*\*)?Main focus:(?:\*\*)?/gi, "\nMain focus:")
+    .replace(/\s+(?:\*\*)?Grammar focus:(?:\*\*)?/gi, "\nGrammar focus:")
+    .replace(/\s+(?:\*\*)?Vocabulary focus:(?:\*\*)?/gi, "\nVocabulary focus:")
+    .replace(/\s+(?:🎯\s*)?(?:\*\*)?Learning objective:(?:\*\*)?/gi, "\n\n🎯 Learning objective:");
 }
 
 function replaceOrInsertHeaderLine(reply: string, labelPattern: RegExp, line: string) {
@@ -425,7 +434,7 @@ function replaceOrInsertHeaderLine(reply: string, labelPattern: RegExp, line: st
   const lines = reply.split("\n");
   const existing = lines.findIndex((current) => labelPattern.test(current));
   if (existing >= 0) {
-    lines[existing] = line;
+    lines[existing] = markdownHardBreak(line);
     return lines.join("\n");
   }
 
@@ -433,22 +442,36 @@ function replaceOrInsertHeaderLine(reply: string, labelPattern: RegExp, line: st
   for (const anchor of anchors) {
     const index = lines.findIndex((current) => anchor.test(current));
     if (index >= 0) {
-      lines.splice(index + 1, 0, line);
+      lines.splice(index + 1, 0, markdownHardBreak(line));
       return lines.join("\n");
     }
   }
 
-  return `${line}\n${reply}`;
+  return `${markdownHardBreak(line)}\n${reply}`;
+}
+
+function applyHeaderHardBreaks(reply: string) {
+  return reply
+    .split("\n")
+    .map((line) => {
+      if (/^(Unit \d+ — Class \d+|Global Class \d+|Lesson:|Book pages:|Class sections:|Main focus:|Grammar focus:|Vocabulary focus:)/i.test(line.trim())) {
+        return markdownHardBreak(line.trim().replace(/\*\*/g, ""));
+      }
+      return line;
+    })
+    .join("\n");
 }
 
 function replaceOutputText(data: any, reply: string) {
+  let replaced = false;
   const output = Array.isArray(data.output)
-    ? data.output.map((item: any, itemIndex: number) => {
+    ? data.output.map((item: any) => {
         if (!Array.isArray(item?.content)) return item;
         return {
           ...item,
-          content: item.content.map((content: any, contentIndex: number) => {
-            if (itemIndex === 0 && contentIndex === 0 && typeof content?.text === "string") {
+          content: item.content.map((content: any) => {
+            if (!replaced && typeof content?.text === "string") {
+              replaced = true;
               return { ...content, text: reply };
             }
             return content;
@@ -467,6 +490,9 @@ function ensurePassagesLessonContract(data: any, input: any[]) {
   const metadata = extractContractMetadata(data, input);
   let reply = splitCompressedHeaderLabels(outputText);
 
+  if (metadata.lessonTitle) {
+    reply = replaceOrInsertHeaderLine(reply, /^(\*\*)?Lesson:/im, `Lesson: ${metadata.lessonTitle}`);
+  }
   if (metadata.bookPages || metadata.pdfPages) {
     reply = replaceOrInsertHeaderLine(reply, /^(\*\*)?Book pages:/im, `Book pages: ${metadata.bookPages || "—"} | PDF pages: ${metadata.pdfPages || "—"}`);
   }
@@ -483,7 +509,7 @@ function ensurePassagesLessonContract(data: any, input: any[]) {
     reply = reply.replace(/\*\*Structure:\*\*\s*\n/i, `**Structure:**\n${metadata.structureFormula}\n\n`);
   }
 
-  reply = reply
+  reply = applyHeaderHardBreaks(reply)
     .replace(/Practice Gate\s+Before we continue/gi, "Before we continue")
     .replace(/\bThe book asks\b:?/gi, "Focus questions:")
     .replace(/\bThe book shows\b/gi, "We use these examples to practice")

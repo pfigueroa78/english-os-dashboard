@@ -10,6 +10,18 @@ PDF pages retrieval key: PDF_PAGES_29_30
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+### Active class teaching contract
+- Active class: Unit 3, local class 2, global class 16
+- Lesson title: Exploring new cities
+- Active class book pages: 20-21
+- Active class PDF pages: 29-30
+- Active class section names: Vocabulary + Listening + Discussion
+- Active class grammar focus: opinion agreement/disagreement and city-description language connected to Unit 3
+- Active class vocabulary focus: climate; cost of living; crime rate; cuisine; green spaces; hotels; job market; landmarks; neighborhoods; nightlife; shopping; transportation system
+- Active class functions: classify city features; describe a city; listen for city-feature details; discuss perfect places for different purposes
+- Active class target structures: Salvador is famous for...; It's a good place for...; I think you're right.; I'm not sure I agree.; Maybe, but don't you think...?
+- Expected learner production: describe city features and justify opinions in a short pair discussion
+
 ---
 
 # CLASS_PACK_UNIT_03_CLASS_16
@@ -21,9 +33,10 @@ Metadata:
 - Local class inside unit: 2
 - Global English OS class: 16
 - Lesson type: Student Book class
+- Lesson title: Exploring new cities
 - Book pages: 20-21
 - PDF pages: 29-30
-- Notes: none
+- Notes: Source extraction currently includes BOOK_PAGE 20 / PDF_PAGE 29 only; BOOK_PAGE 21 / PDF_PAGE 30 remains a source-extraction blocker and must not be invented.
 
 Teacher retrieval instruction:
 Use this class pack as the primary source when the learner asks for Unit 3, Class 2, or English OS Class 16. Teach the content as a live class, not as a dump.
@@ -42,13 +55,11 @@ l!j VOCABULARY
               climate           crime rate     green spaces       job market       neighborhoods             shopping
               cost of living    cuisine        hotels             landmarks        nightlife                 transportation system
 
-
         B Pair w ork Use the features from part A to talk about your city. Give examples
           and add extra information.
              "Salvador is famous all over Brazil for its cuisine. Acaraje is one of the most popular foods,
               and it's really delicious. It's a deep-fried cake that's made from mashed beans."
                                                                                                           ~ VOCABULARY J»LUS see page 132
-
 
        LISTENING
      . 1   - - - - -- --                                                                     -
@@ -74,7 +85,6 @@ l!j VOCABULARY
                    a c ity w here you'd like to live for a few years?--   - - - - --             ----
                    a good city to go to school in? _ _ _ _ __ _ __ _ __
                    a place that you wou ld never want to visit? _ _ _ _ _ _ __ _ _ __
-
 
         B Pair work Discuss your answers.
              "I think New York is a good place                 Agreeing with an opinion                   Disagreeing wit h an opinion

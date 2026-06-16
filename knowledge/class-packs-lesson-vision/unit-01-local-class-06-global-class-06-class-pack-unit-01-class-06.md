@@ -10,6 +10,20 @@ PDF pages retrieval key: PDF_PAGES__
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+### Active class teaching contract
+- Active class: Unit 1, local class 6, global class 6
+- Active class book pages: not indexed
+- Active class PDF pages: not indexed
+- Active class section names: Grammar Plus + Practice Lab
+- Active class grammar focus: supplemental practice for Unit 1 Lesson B; noun clauses after be; noun clauses with that; subject complements for advantages, disadvantages, and family situations
+- Active class vocabulary focus: extended family; nuclear family; two-income family; in-laws; only child; sibling; twin; strict parents; close family; family advantages and disadvantages
+- Active class functions: describe family structures; explain advantages and disadvantages; express opinions about family life; ask follow-up questions about family situations
+- Active class target structures: The big advantage of having... is that...; The only trouble with being... is that...; The nice thing about... is that...; The bad part is that...; The worst thing is that...; What's the best thing about...?
+- Expected learner production: complete controlled noun-clause transformations and produce short spoken or written opinions about family life
+
+### Special class mode
+This is a Grammar Plus class. No direct Student Book page text is indexed. Teach it as supplemental grammar practice based on Unit 1 Lesson B context. You may generate controlled examples and practice, but do not claim they are copied from the Student Book.
+
 ---
 
 # CLASS_PACK_UNIT_01_CLASS_06
@@ -23,7 +37,7 @@ Metadata:
 - Lesson type: Grammar Plus
 - Book pages: not indexed
 - PDF pages: not indexed
-- Notes: none
+- Notes: Grammar Plus supplemental practice for Unit 1 Lesson B
 
 Teacher retrieval instruction:
 Use this class pack as the primary source when the learner asks for Unit 1, Class 6, or English OS Class 6. Teach the content as a live class, not as a dump.

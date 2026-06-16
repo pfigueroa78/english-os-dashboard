@@ -359,6 +359,21 @@ function extractVisibleListAfterHeading(text: string, heading: string) {
   return section.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("- ")).slice(0, 6).join("; ");
 }
 
+function dedupeFocusValue(value: string) {
+  const seen = new Set<string>();
+  return String(value || "")
+    .split(/\s*;\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .join("; ");
+}
+
 function normalizeContractValue(value: string) {
   return String(value || "")
     .replace(/\s*;\s*/g, " + ")
@@ -375,7 +390,7 @@ function extractContractMetadata(data: any, input: any[]) {
   const bookPages = firstCleanMatch(inputText, [/Book pages from initial index row:\s*([^\n]+)/i, /"bookPages"\s*:\s*"([^"]+)"/i]);
   const pdfPages = firstCleanMatch(inputText, [/PDF pages from initial index row:\s*([^\n]+)/i, /"pdfPages"\s*:\s*"([^"]+)"/i]);
   const classSections = normalizeContractValue(firstCleanMatch(allText, [/Active class section names:\s*([^\n]+)/i]));
-  const grammarFocus = firstCleanMatch(allText, [
+  const grammarFocus = dedupeFocusValue(firstCleanMatch(allText, [
     /Active class grammar focus:\s*([^\n]+)/i,
     /Lesson grammar focus:\s*([^\n]+)/i,
     /Vision central grammar:\s*([^\n]+)/i,
@@ -383,7 +398,7 @@ function extractContractMetadata(data: any, input: any[]) {
     /"centralGrammar"\s*:\s*"([^"]+)"/i,
     /Grammar focus:\s*([^\n]+)/i,
     /Grammar:\s*([^\n]+)/i,
-  ]);
+  ]));
   const vocabularyFocus = firstCleanMatch(allText, [
     /Active class vocabulary focus:\s*([^\n]+)/i,
     /"vocabularyFocus"\s*:\s*"([^"]+)"/i,
@@ -396,6 +411,15 @@ function extractContractMetadata(data: any, input: any[]) {
   return { bookPages, pdfPages, classSections, grammarFocus, vocabularyFocus, structureFormula };
 }
 
+function splitCompressedHeaderLabels(reply: string) {
+  return String(reply || "")
+    .replace(/\s+(\*\*)?Class sections:/gi, "\nClass sections:")
+    .replace(/\s+(\*\*)?Main focus:/gi, "\nMain focus:")
+    .replace(/\s+(\*\*)?Grammar focus:/gi, "\nGrammar focus:")
+    .replace(/\s+(\*\*)?Vocabulary focus:/gi, "\nVocabulary focus:")
+    .replace(/\s+(🎯\s*)?(\*\*)?Learning objective:/gi, "\n\n🎯 Learning objective:");
+}
+
 function replaceOrInsertHeaderLine(reply: string, labelPattern: RegExp, line: string) {
   if (!line.trim()) return reply;
   const lines = reply.split("\n");
@@ -405,7 +429,7 @@ function replaceOrInsertHeaderLine(reply: string, labelPattern: RegExp, line: st
     return lines.join("\n");
   }
 
-  const anchors = [/^Book pages:/i, /^\*\*Book pages:\*\*/i, /^Lesson:/i, /^\*\*Lesson:\*\*/i];
+  const anchors = [/^Vocabulary focus:/i, /^Grammar focus:/i, /^Main focus:/i, /^Class sections:/i, /^Book pages:/i, /^Lesson:/i, /^\*\*Lesson:\*\*/i];
   for (const anchor of anchors) {
     const index = lines.findIndex((current) => anchor.test(current));
     if (index >= 0) {
@@ -417,24 +441,43 @@ function replaceOrInsertHeaderLine(reply: string, labelPattern: RegExp, line: st
   return `${line}\n${reply}`;
 }
 
+function replaceOutputText(data: any, reply: string) {
+  const output = Array.isArray(data.output)
+    ? data.output.map((item: any, itemIndex: number) => {
+        if (!Array.isArray(item?.content)) return item;
+        return {
+          ...item,
+          content: item.content.map((content: any, contentIndex: number) => {
+            if (itemIndex === 0 && contentIndex === 0 && typeof content?.text === "string") {
+              return { ...content, text: reply };
+            }
+            return content;
+          }),
+        };
+      })
+    : data.output;
+
+  return { ...data, output_text: reply, output };
+}
+
 function ensurePassagesLessonContract(data: any, input: any[]) {
   const outputText = data.output_text || data.output?.flatMap((item: any) => item.content || []).map((item: any) => item.text || "").join("\n") || "";
   if (!outputText) return data;
 
   const metadata = extractContractMetadata(data, input);
-  let reply = outputText;
+  let reply = splitCompressedHeaderLabels(outputText);
 
   if (metadata.bookPages || metadata.pdfPages) {
-    reply = replaceOrInsertHeaderLine(reply, /(\*\*)?Book pages:|^Book pages:/im, `Book pages: ${metadata.bookPages || "—"} | PDF pages: ${metadata.pdfPages || "—"}`);
+    reply = replaceOrInsertHeaderLine(reply, /^(\*\*)?Book pages:/im, `Book pages: ${metadata.bookPages || "—"} | PDF pages: ${metadata.pdfPages || "—"}`);
   }
   if (metadata.classSections) {
-    reply = replaceOrInsertHeaderLine(reply, /(\*\*)?Class sections:|^Class sections:/im, `Class sections: ${metadata.classSections}`);
+    reply = replaceOrInsertHeaderLine(reply, /^(\*\*)?Class sections:/im, `Class sections: ${metadata.classSections}`);
   }
   if (metadata.grammarFocus) {
-    reply = replaceOrInsertHeaderLine(reply, /(\*\*)?Grammar focus:|^Grammar focus:/im, `Grammar focus: ${metadata.grammarFocus}`);
+    reply = replaceOrInsertHeaderLine(reply, /^(\*\*)?Grammar focus:/im, `Grammar focus: ${metadata.grammarFocus}`);
   }
   if (metadata.vocabularyFocus) {
-    reply = replaceOrInsertHeaderLine(reply, /(\*\*)?Vocabulary focus:|^Vocabulary focus:/im, `Vocabulary focus: ${metadata.vocabularyFocus}`);
+    reply = replaceOrInsertHeaderLine(reply, /^(\*\*)?Vocabulary focus:/im, `Vocabulary focus: ${metadata.vocabularyFocus}`);
   }
   if (metadata.structureFormula && /\*\*Structure:\*\*/i.test(reply) && !reply.includes(metadata.structureFormula)) {
     reply = reply.replace(/\*\*Structure:\*\*\s*\n/i, `**Structure:**\n${metadata.structureFormula}\n\n`);
@@ -442,12 +485,14 @@ function ensurePassagesLessonContract(data: any, input: any[]) {
 
   reply = reply
     .replace(/Practice Gate\s+Before we continue/gi, "Before we continue")
+    .replace(/\bThe book asks\b:?/gi, "Focus questions:")
     .replace(/\bThe book shows\b/gi, "We use these examples to practice")
     .replace(/\bThe text presents\b/gi, "This class works with")
+    .replace(/\n\s*⚠️\s*\n(?=\s*(⚠️\s*)?(\*\*)?Common mistake)/gi, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  return { ...data, output_text: reply };
+  return replaceOutputText(data, reply);
 }
 
 export async function createPassagesKnowledgeResponse(params: {

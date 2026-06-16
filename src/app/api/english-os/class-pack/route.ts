@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { loadClassPack, loadUnitClassPacks } from "@/lib/classPacks";
+import { authenticateQaRequest } from "@/lib/qaServer";
 
 export const runtime = "nodejs";
 
@@ -9,9 +10,16 @@ function numberParam(url: URL, key: string, fallback = 0) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
-export async function GET(request: Request) {
+async function hasAccess(request: Request) {
+  const qa = authenticateQaRequest(request);
+  if (qa.ok) return true;
+
   const { userId } = await auth();
-  if (!userId) {
+  return Boolean(userId);
+}
+
+export async function GET(request: Request) {
+  if (!(await hasAccess(request))) {
     return NextResponse.json({ ok: false, error: "Authentication required." }, { status: 401 });
   }
 

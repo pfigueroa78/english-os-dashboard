@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "passages:knowledge": "node scripts/openai-passages-knowledge.mjs"
+    "passages:knowledge": "node scripts/openai-passages-knowledge.mjs",
+    "passages:audit-contracts": "node scripts/audit-passages-contracts.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.4.3",

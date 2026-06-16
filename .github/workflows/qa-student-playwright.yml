@@ -11,12 +11,6 @@ on:
         description: "QA learner email"
         required: false
         default: "pfigueroamiranda@gmail.com"
-  pull_request:
-    branches:
-      - main
-  push:
-    branches:
-      - main
 
 permissions:
   contents: read

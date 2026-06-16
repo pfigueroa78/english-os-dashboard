@@ -6,13 +6,24 @@
  *   return jsonResponse_(appendPassagesWorkflowResult_(payload || data.payload || data));
  * }
  *
- * This file assumes the main Apps Script project already defines ENGLISH_OS_SHEET_ID
- * and token validation in its request router.
+ * This file uses the existing English OS sheet resolver when available.
  */
 
 const PASSAGES_WORKFLOW_RESULTS_SHEET = 'Passages Workflow Results';
 const PASSAGES_CONTRACT_AUDIT_SHEET = 'Passages Contract Audit';
 const PASSAGES_VECTOR_REFRESH_SHEET = 'Passages Vector Refresh';
+
+function getPassagesWorkflowSpreadsheet_() {
+  if (typeof getEnglishOSSheetId_ === 'function') {
+    return SpreadsheetApp.openById(getEnglishOSSheetId_());
+  }
+
+  if (typeof ENGLISH_OS_SHEET_ID !== 'undefined' && ENGLISH_OS_SHEET_ID) {
+    return SpreadsheetApp.openById(ENGLISH_OS_SHEET_ID);
+  }
+
+  throw new Error('Missing spreadsheet resolver. Define getEnglishOSSheetId_() or ENGLISH_OS_SHEET_ID.');
+}
 
 function getOrCreateSheet_(spreadsheet, sheetName, headers) {
   let sheet = spreadsheet.getSheetByName(sheetName);
@@ -39,7 +50,7 @@ function stringifyForSheet_(value, maxLength) {
 function appendPassagesWorkflowResult_(payload) {
   if (!payload) throw new Error('Missing payload.');
 
-  const spreadsheet = SpreadsheetApp.openById(ENGLISH_OS_SHEET_ID);
+  const spreadsheet = getPassagesWorkflowSpreadsheet_();
   const summary = payload.summary || {};
   const workflow = String(payload.workflow || '');
   const unit = String(payload.unit || '');

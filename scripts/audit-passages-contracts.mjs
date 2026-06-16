@@ -104,7 +104,8 @@ function parseContract(text) {
     vocabularyFocus: firstMatch(text, [/^- Active class vocabulary focus:\s*([^\n]+)/im]),
     targetStructures: firstMatch(text, [/^- Active class target structures:\s*([^\n]+)/im]),
     expectedProduction: firstMatch(text, [/^- Expected learner production:\s*([^\n]+)/im]),
-    specialMode: firstMatch(text, [/^### Special class mode\s*\n([^#]+)/im]),
+    sourceStatus: firstMatch(text, [/^- Source status:\s*([^\n]+)/im]),
+    specialMode: firstMatch(text, [/^### Special class mode\s*\n([^#]+)/im, /^- Special class mode:\s*([^\n]+)/im]),
   };
 }
 
@@ -152,6 +153,16 @@ function expectedFilename(meta) {
   return `unit-${pad2(meta.unit)}-local-class-${pad2(meta.localClass)}-global-class-${pad2(meta.globalClass)}-class-pack-unit-${pad2(meta.unit)}-class-${pad2(meta.globalClass)}.md`;
 }
 
+function recordMissingPageFinding({ missingPages, pageType, expectedRange, hasSourceBlocker, issues, warnings }) {
+  if (!missingPages.length) return;
+  const message = `Missing extracted ${pageType} page marker(s): ${missingPages.join(", ")} from expected range ${expectedRange}.`;
+  if (hasSourceBlocker) {
+    warnings.push(`Source extraction blocker acknowledged: ${message}`);
+  } else {
+    issues.push(message);
+  }
+}
+
 function auditFile(file) {
   const meta = parseMetadata(file.text);
   const contract = parseContract(file.text);
@@ -164,6 +175,7 @@ function auditFile(file) {
   const expectedBookPages = parsePageRange(meta.bookPages);
   const lessonType = meta.lessonType.toLowerCase();
   const isSpecial = SPECIAL_CLASS_TYPES.has(lessonType);
+  const hasSourceBlocker = /Source extraction blocker/i.test(contract.sourceStatus || "");
   const issues = [];
   const warnings = [];
 
@@ -184,8 +196,8 @@ function auditFile(file) {
 
     const missingPdf = missingExpectedPages(expectedPdfPages, pdfPages);
     const missingBook = missingExpectedPages(expectedBookPages, bookPages);
-    if (missingPdf.length) issues.push(`Missing extracted PDF page marker(s): ${missingPdf.join(", ")} from expected range ${meta.pdfPages}.`);
-    if (missingBook.length) issues.push(`Missing extracted BOOK page marker(s): ${missingBook.join(", ")} from expected range ${meta.bookPages}.`);
+    recordMissingPageFinding({ missingPages: missingPdf, pageType: "PDF", expectedRange: meta.pdfPages, hasSourceBlocker, issues, warnings });
+    recordMissingPageFinding({ missingPages: missingBook, pageType: "BOOK", expectedRange: meta.bookPages, hasSourceBlocker, issues, warnings });
 
     if (!detectedSections.length) warnings.push("No visible section headings detected in extracted source text.");
 

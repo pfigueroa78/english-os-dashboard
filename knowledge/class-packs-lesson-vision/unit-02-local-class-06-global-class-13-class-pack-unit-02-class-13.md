@@ -10,6 +10,20 @@ PDF pages retrieval key: PDF_PAGES__
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+### Active class teaching contract
+- Active class: Unit 2, local class 6, global class 13
+- Active class book pages: not indexed
+- Active class PDF pages: not indexed
+- Active class section names: Grammar Plus + Practice Lab
+- Active class grammar focus: supplemental practice for Unit 2 Lesson B; modals and adverbs for speculating; verbs of belief and degrees of certainty
+- Active class vocabulary focus: mystery; speculation; certainty; uncertainty; assume; suspect; doubt; know for a fact; may have; might have; could have; must have
+- Active class functions: speculate about mysteries; express certainty and uncertainty; support an explanation with evidence
+- Active class target structures: It must have been...; It may have been...; It could have been...; I assume...; I suspect...; I doubt that...; I know for a fact that...
+- Expected learner production: complete controlled speculation practice and explain one mystery using evidence and uncertainty language
+
+### Special class mode
+This is a Grammar Plus class. No direct Student Book page text is indexed. Teach it as supplemental grammar practice based on Unit 2 Lesson B context. You may generate controlled examples and practice, but do not claim they are copied from the Student Book.
+
 ---
 
 # CLASS_PACK_UNIT_02_CLASS_13

@@ -33,11 +33,11 @@ function estimateCostUSD(inputTokens: number, outputTokens: number): number {
   return Number((inputCost + outputCost).toFixed(8));
 }
 
-function normalizeMessages(messages: ConversationMessage[]) {
+function normalizeMessages(messages: ConversationMessage[]): ConversationMessage[] {
   return messages
     .filter((message) => message && typeof message.content === "string")
     .slice(-40)
-    .map((message) => ({
+    .map((message): ConversationMessage => ({
       role: message.role === "user" ? "user" : "coach",
       content: message.content.slice(0, 5000),
     }));

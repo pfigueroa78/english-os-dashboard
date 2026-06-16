@@ -18,15 +18,18 @@ Teacher instruction: Use this file as the primary source for this exact class. D
 - Active class PDF pages: not indexed
 - Active class section names: Grammar Plus + Practice Lab
 - Active class skill focus: Grammar, controlled practice, correction
-- Active class grammar focus: Consolidate the grammar from the previous Unit 9 lesson block using only confirmed course/index context.
-- Active class vocabulary focus: Recycle Unit 9 vocabulary already confirmed in indexed class packs.
-- Active class functions: Stabilize accuracy before advancing to the next Student Book class.
-- Active class target structures: Use accurate forms from the unit before expanding into longer answers.
-- Expected learner production: Corrected examples and controlled practice answers.
+- Active class grammar focus: Unit 9 comparison and contrast review: comparative forms, while, in contrast to, both ... and ...
+- Active class vocabulary focus: typical; in contrast to; both; while; more/fewer/less; trend; option; accurate.
+- Active class functions: Stabilize accuracy with comparison and contrast language before advancing to the next Student Book class.
+- Active class target structures: X is more/less/fewer... than Y; While X..., Y...; In contrast to X, Y...; Both X and Y...
+- Expected learner production: Corrected examples, controlled practice answers, and short professional contrast statements.
 - Special class mode: Grammar Plus supplemental practice. No direct Student Book page text is indexed for this class; do not invent missing exercises, answer keys, or page text.
 
 ### Safety rule
 Use this class as supplemental grammar practice only. Do not substitute Student Book content from another class.
+
+### Teaching improvement rule
+Make the visible grammar focus concrete. Do not leave it as "consolidate previous grammar" only. Teach the listed Unit 9 comparison/contrast structures explicitly, but present them as review practice rather than copied Student Book exercises.
 <!-- PASSAGES_ACTIVE_CONTRACT_END -->
 
 ---

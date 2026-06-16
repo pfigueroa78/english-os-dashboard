@@ -40,8 +40,9 @@ Book pages: ... Class sections: ... Main focus: ... Grammar focus: ... Vocabular
 ## Story / communication need
 Open with a short realistic situation that explains why the learner needs the language now.
 
-## Section-by-section class
-Use the real active section names as headings. Each section has a job.
+Active sections:
+Use the real active section names as learner-visible headings. Each section has a job.
+Do not output a generic wrapper heading such as “Section-by-section class”.
 Do not create a generic duplicate block after already teaching the real sections. Teach each active section once.
 Do not write an extra wrapper section if it causes repeated Vocabulary, Listening, Reading, Grammar, or Discussion sections.
 
@@ -119,7 +120,13 @@ Use this fallback format when no reading text is visible:
 Never write “Now read...” unless you immediately provide the text to read. Never write “On the next page,” “the text moves,” “the reading moves,” “the class asks,” or “the text asks.”
 
 ### Writing
-Show a model, give a frame, ask for a short written answer, then evaluate grammar, clarity, and naturalness.
+Develop writing skill with a visible model and a scaffolded task. Use **Teacher writing model** or **Model paragraph**, not **Teacher reading input**.
+Required writing flow:
+1. Provide a short model paragraph or model sentences.
+2. Identify the topic sentence or main idea when relevant.
+3. Point out 2-3 supporting details.
+4. Give a reusable writing frame.
+5. Ask the learner to write a short answer.
 
 ## Evaluation gate
 Every full class ends with evaluation before progress can advance. End with 3-5 items: one controlled grammar/key-language item, one vocabulary item, one short production item, and one discussion-style opinion item when Discussion is active.

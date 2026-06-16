@@ -84,15 +84,15 @@ jobs:
           fi
 
           grep -n "Active class teaching contract" "${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
-          grep -n "Active class section names" "${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
-          grep -n "Active class grammar focus" "${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
+          grep -n "Active class section names: Starting point + Listening & Speaking + Grammar + Discussion" "${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
+          grep -n "Active class grammar focus: noun clauses after be; Noun clauses after be" "${KNOWLEDGE_PATH}/${EXPECTED_FILE}"
 
       - name: Build fresh OpenAI vector store
         shell: bash
         run: |
           set -euo pipefail
 
-          node scripts/openai-passages-knowledge.mjs --fresh "${KNOWLEDGE_PATH}" | tee /tmp/passages-vector-store.log
+          node scripts/openai-passages-knowledge.mjs --upload --fresh "${KNOWLEDGE_PATH}" | tee /tmp/passages-vector-store.log
 
           NEW_VECTOR_STORE_ID="$(grep -oE 'vs_[A-Za-z0-9_]+' /tmp/passages-vector-store.log | tail -1)"
 
@@ -125,7 +125,7 @@ jobs:
 
           npx vercel@latest env rm OPENAI_PASSAGES_VECTOR_STORE_ID production --yes --token "${VERCEL_TOKEN}" || true
 
-          printf "%s" "${NEW_VECTOR_STORE_ID}" | npx vercel@latest env add OPENAI_PASSAGES_VECTOR_STORE_ID production --token "${VERCEL_TOKEN}"
+          printf "%s\n" "${NEW_VECTOR_STORE_ID}" | npx vercel@latest env add OPENAI_PASSAGES_VECTOR_STORE_ID production --token "${VERCEL_TOKEN}"
 
       - name: Deploy production to Vercel
         shell: bash
@@ -134,7 +134,7 @@ jobs:
 
           npx vercel@latest deploy --prod --yes --token "${VERCEL_TOKEN}" | tee /tmp/vercel-deploy.log
 
-          DEPLOYMENT_URL="$(grep -oE 'https://[^ ]+\\.vercel\\.app' /tmp/vercel-deploy.log | tail -1 || true)"
+          DEPLOYMENT_URL="$(grep -oE 'https://[^ ]+\.vercel\.app' /tmp/vercel-deploy.log | tail -1 || true)"
           echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> "${GITHUB_ENV}"
           echo "Deployment URL: ${DEPLOYMENT_URL}"
 
@@ -168,6 +168,7 @@ jobs:
           EXPECTED_FOUND="$(jq -r '.fileSearch.expectedFileFound' /tmp/passages-diagnostic.json)"
           CONTRACT_FOUND="$(jq -r '.fileSearch.contractFound' /tmp/passages-diagnostic.json)"
           ACTIVE_SECTIONS="$(jq -r '.fileSearch.detected.activeClassSectionNames' /tmp/passages-diagnostic.json)"
+          ACTIVE_GRAMMAR="$(jq -r '.fileSearch.detected.activeClassGrammarFocus' /tmp/passages-diagnostic.json)"
 
           if [ "${EXPECTED_FOUND}" != "true" ]; then
             echo "Expected class pack was not found in production vector store."
@@ -179,8 +180,13 @@ jobs:
             exit 1
           fi
 
-          if [ -z "${ACTIVE_SECTIONS}" ] || [ "${ACTIVE_SECTIONS}" = "null" ]; then
-            echo "Active class section names were not detected."
+          if [ "${ACTIVE_SECTIONS}" != "Starting point + Listening & Speaking + Grammar + Discussion" ]; then
+            echo "Active class section names were not detected correctly: ${ACTIVE_SECTIONS}"
+            exit 1
+          fi
+
+          if [ "${ACTIVE_GRAMMAR}" != "noun clauses after be; Noun clauses after be" ]; then
+            echo "Active class grammar focus was not detected correctly: ${ACTIVE_GRAMMAR}"
             exit 1
           fi
 

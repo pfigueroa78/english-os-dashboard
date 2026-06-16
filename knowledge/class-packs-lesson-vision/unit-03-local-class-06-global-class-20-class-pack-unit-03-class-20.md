@@ -10,6 +10,20 @@ PDF pages retrieval key: PDF_PAGES__
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+### Active class teaching contract
+- Active class: Unit 3, local class 6, global class 20
+- Active class book pages: not indexed
+- Active class PDF pages: not indexed
+- Active class section names: Grammar Plus + Practice Lab
+- Active class grammar focus: Unit 3 communication review; adjective clauses; linking contrast and opinion language about cities and towns
+- Active class vocabulary focus: city features; types of towns; quality-of-life issues; advantages and disadvantages of places
+- Active class functions: review grammar and communication from Unit 3; consolidate speaking accuracy before the video class
+- Active class target structures: It's a place where...; It's a city that...; Although...; However,...; I agree because...; I'm not sure I agree.
+- Expected learner production: produce a short comparison of two places and justify opinions using Unit 3 grammar and vocabulary
+
+### Special class mode
+This is a Grammar Plus / communication review class. No direct Student Book page text is indexed in this class pack. Use it as supplemental review and practice connected to the current unit. Do not invent missing Student Book page text; teach from the grammar focus, unit topic, and available course index context.
+
 ---
 
 # CLASS_PACK_UNIT_03_CLASS_20
@@ -23,7 +37,7 @@ Metadata:
 - Lesson type: Grammar Plus
 - Book pages: not indexed
 - PDF pages: not indexed
-- Notes: Communication review
+- Notes: Communication review; supplemental practice
 
 Teacher retrieval instruction:
 Use this class pack as the primary source when the learner asks for Unit 3, Class 6, or English OS Class 20. Teach the content as a live class, not as a dump.

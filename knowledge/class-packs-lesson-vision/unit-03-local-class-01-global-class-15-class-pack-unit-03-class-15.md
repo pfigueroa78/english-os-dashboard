@@ -10,6 +10,21 @@ PDF pages retrieval key: PDF_PAGES_27_28
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+### Active class teaching contract
+- Active class: Unit 3, local class 1, global class 15
+- Lesson title: Exploring new cities
+- Active class book pages: 18-19
+- Active class PDF pages: 27-28
+- Active class section names: Starting point + Listening
+- Active class grammar focus: adjective clauses and descriptive language for cities, tourist attractions, places, seasons, and experiences
+- Active class vocabulary focus: museums; nightlife; seafood; architecture; tourist attractions; crowds; busy streets; skyline; spicy food; shopping areas; fashions; restaurants; museums
+- Active class functions: describe cities; compare attractions; listen for city details; talk about a city the learner knows
+- Active class target structures: It's a city that...; It's a place where...; The season when...; Tourists who come here...; I know a city that...
+- Expected learner production: describe one city and answer listening/detail questions using Unit 3 city vocabulary
+
+---
+
+# CLASS_PACK_UNIT_03_CLASS_15
 
 Aliases: CLASS_PACK_UNIT_03_CLASS_15 | UNIT_03_LOCAL_CLASS_01 | GLOBAL_CLASS_15 | UNIT_3_CLASS_15 | UNIT_3_CLASS_1_LOCAL | PDF_PAGE_RANGE_27_28 | BOOK_PAGE_RANGE_18_19
 
@@ -18,9 +33,10 @@ Metadata:
 - Local class inside unit: 1
 - Global English OS class: 15
 - Lesson type: Student Book class
+- Lesson title: Exploring new cities
 - Book pages: 18-19
 - PDF pages: 27-28
-- Notes: none
+- Notes: Source extraction currently includes BOOK_PAGE 18 / PDF_PAGE 27 only; BOOK_PAGE 19 / PDF_PAGE 28 remains a source-extraction blocker and must not be invented.
 
 Teacher retrieval instruction:
 Use this class pack as the primary source when the learner asks for Unit 3, Class 1, or English OS Class 15. Teach the content as a live class, not as a dump.

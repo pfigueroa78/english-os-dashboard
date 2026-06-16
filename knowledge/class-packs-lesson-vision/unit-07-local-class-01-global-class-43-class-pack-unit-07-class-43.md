@@ -76,7 +76,7 @@ f4J Internet trends
              of their workweek.
 
 
-       B Pair '!”ork What did people do before these trends appeared?
+       B Pair '!"ork What did people do before these trends appeared?
             "People used to buy CDs, and they put them in CD players to listen to them."
 
                        '

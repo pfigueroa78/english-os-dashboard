@@ -10,6 +10,8 @@ PDF pages retrieval key: PDF_PAGES_25_26
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+Lesson title: I can't explain it!
+
 ### Active class teaching contract
 - Active class: Unit 2, local class 5, global class 12
 - Active class book pages: 16-17
@@ -35,6 +37,7 @@ Metadata:
 - Local class inside unit: 5
 - Global English OS class: 12
 - Lesson type: Student Book class
+- Lesson title: I can't explain it!
 - Book pages: 16-17
 - PDF pages: 25-26
 - Notes: none

@@ -99,7 +99,20 @@ async function listAllVectorStores() {
   return Array.isArray(firstPage.data) ? firstPage.data : [];
 }
 
+async function createVectorStore(name) {
+  return openaiFetch("/vector_stores", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+}
+
 async function findOrCreateVectorStore() {
+  if (forceFreshUpload) {
+    const freshName = `${VECTOR_STORE_NAME} - fresh ${new Date().toISOString()}`;
+    return createVectorStore(freshName);
+  }
+
   const stores = await listAllVectorStores();
   const existing = stores.find((store) => store.name === VECTOR_STORE_NAME);
 
@@ -107,11 +120,7 @@ async function findOrCreateVectorStore() {
     return existing;
   }
 
-  return openaiFetch("/vector_stores", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: VECTOR_STORE_NAME }),
-  });
+  return createVectorStore(VECTOR_STORE_NAME);
 }
 
 async function uploadFileIfNeeded(filePath, existingFiles) {
@@ -232,10 +241,15 @@ async function upload() {
     ? await waitForVectorStoreFiles(vectorStore.id, attached.map((item) => item.fileId))
     : { ok: true, skipped: true };
 
+  if (!waitResult.ok) {
+    throw new Error(`Vector store files did not complete before timeout: ${JSON.stringify(waitResult)}`);
+  }
+
   console.log(JSON.stringify({
     ok: true,
     mode: "upload",
     vectorStore: { id: vectorStore.id, name: vectorStore.name },
+    freshVectorStore: forceFreshUpload,
     uploadedFileCount: attached.filter((item) => item.uploaded).length,
     attachedFileCount: attached.length,
     attached,
@@ -261,6 +275,8 @@ async function main() {
     await upload();
     return;
   }
+
+  throw new Error("No action selected. Use --check or --upload.");
 }
 
 main().catch((error) => {

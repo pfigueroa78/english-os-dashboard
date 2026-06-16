@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -42,8 +45,44 @@ function normalizeMarkdownContent(content: string) {
 }
 
 export function MarkdownMessage({ content }: MarkdownMessageProps) {
+  const [copied, setCopied] = useState(false);
+
+  async function copyContent() {
+    const text = String(content || "").trim();
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "true");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    }
+  }
+
   return (
-    <div className="english-os-message-markdown">
+    <div className="english-os-message-markdown group relative">
+      <div className="not-prose mb-3 flex justify-end">
+        <button
+          type="button"
+          onClick={copyContent}
+          className="rounded-full border border-slate-600 bg-slate-900/80 px-3 py-1.5 text-[11px] font-semibold text-slate-200 transition hover:border-blue-400 hover:bg-slate-800 hover:text-white"
+          aria-label="Copy coach response"
+        >
+          {copied ? "Copied" : "Copy response"}
+        </button>
+      </div>
+
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{

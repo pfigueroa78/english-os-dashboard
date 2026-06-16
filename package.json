@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "passages:knowledge": "node scripts/openai-passages-knowledge.mjs",
-    "passages:audit-contracts": "node scripts/audit-passages-contracts.mjs"
+    "passages:audit-contracts": "node scripts/audit-passages-contracts.mjs",
+    "passages:publish-result": "node scripts/publish-passages-workflow-result.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.4.3",

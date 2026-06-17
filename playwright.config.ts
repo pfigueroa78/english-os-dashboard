@@ -30,7 +30,7 @@ export default defineConfig({
             "pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk",
         },
         reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
+        timeout: 240_000,
         stdout: "pipe",
         stderr: "pipe",
       }

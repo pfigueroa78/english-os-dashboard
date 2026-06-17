@@ -88,6 +88,29 @@ function loadClassPack(unit: number, localClass: number) {
   return { filename, content: fs.readFileSync(fullPath, "utf8") };
 }
 
+function activeTeachingContract(content: string) {
+  const heading = "### Active class teaching contract";
+  const start = content.indexOf(heading);
+  if (start < 0) return "";
+  const safetyRule = content.indexOf("### Safety rule", start);
+  const extractedContent = content.indexOf("## Extracted Student Book content", start);
+  const candidates = [safetyRule, extractedContent].filter((index) => index > start);
+  const end = candidates.length ? Math.min(...candidates) : content.length;
+  return content.slice(start, end).trim();
+}
+
+function loadUnitTeachingContracts(unit: number) {
+  return Array.from({ length: 7 }, (_, index) => {
+    const localClass = index + 1;
+    const pack = loadClassPack(unit, localClass);
+    return {
+      localClass,
+      filename: pack.filename,
+      contract: activeTeachingContract(pack.content),
+    };
+  });
+}
+
 function getOutputText(openaiResponse: any): string {
   if (typeof openaiResponse?.output_text === "string") return openaiResponse.output_text.trim();
   const output = openaiResponse?.output;
@@ -209,6 +232,50 @@ ${message}
   ];
 }
 
+function buildReviewInput(params: {
+  message: string;
+  learnerContext: any;
+  unit: number;
+  contracts: ReturnType<typeof loadUnitTeachingContracts>;
+  conversationHistory: CoachMessage[];
+}) {
+  return [
+    {
+      role: "system",
+      content: `
+${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}
+
+${PASSAGES_TEACHER_STYLE_GUIDANCE}
+
+Hard rule for unit review:
+- Build the review from the seven supplied class teaching contracts, not from generic course knowledge.
+- Synthesize the unit strategically; do not dump seven full classes.
+- Include grammar review, vocabulary/useful expressions, speaking themes, model B1/B2 answers, and a mini-checkpoint.
+- Explain and model target language before asking the learner to produce it.
+- Do not expose filenames, class packs, retrieval details, or internal metadata.
+      `.trim(),
+    },
+    {
+      role: "user",
+      content: `
+USER REQUEST:
+${params.message}
+
+ACTIVE REVIEW UNIT: ${params.unit}
+
+VERIFIED TEACHING CONTRACTS FOR ALL SEVEN CLASSES:
+${params.contracts.map((item) => `CLASS ${item.localClass}\n${item.contract}`).join("\n\n")}
+
+ENGLISH OS LEARNER CONTEXT:
+${JSON.stringify(params.learnerContext).slice(0, 5000)}
+
+RECENT CONVERSATION:
+${JSON.stringify(params.conversationHistory).slice(0, 2500)}
+      `.trim(),
+    },
+  ];
+}
+
 async function callCoachModel(input: any[]) {
   if (!OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY.");
   const response = await fetch("https://api.openai.com/v1/responses", {
@@ -268,7 +335,39 @@ export async function coachPost(request: Request) {
       ok: true,
       agent: "coach",
       reply,
+      activeUnit: unit,
+      activeClass: localClass,
       source: "Local Class Pack + Pedagogy Prompt",
+      deterministic: false,
+      usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
+    });
+  }
+
+  if (isReviewQuestion(message)) {
+    const unit = extractRequestedUnitNumber(message) || Number(String(currentUnit).match(/\d{1,2}/)?.[0] || 0);
+    if (!unit) return NextResponse.json({ ok: false, error: "I need a unit number for the review." }, { status: 400 });
+
+    const contracts = loadUnitTeachingContracts(unit);
+    const missing = contracts.filter((item) => !item.contract);
+    if (missing.length) {
+      return NextResponse.json(
+        { ok: false, error: `Missing teaching contracts for unit ${unit}: ${missing.map((item) => item.localClass).join(", ")}` },
+        { status: 500 }
+      );
+    }
+
+    const openaiData = await callCoachModel(
+      buildReviewInput({ message, learnerContext: context, unit, contracts, conversationHistory })
+    );
+    const reply = getOutputText(openaiData);
+    assertNoMetadataFallback(reply);
+    const u = usage(openaiData);
+    return NextResponse.json({
+      ok: true,
+      agent: "coach",
+      reply,
+      activeUnit: unit,
+      source: "Seven Local Teaching Contracts + Review Pedagogy Prompt",
       deterministic: false,
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });

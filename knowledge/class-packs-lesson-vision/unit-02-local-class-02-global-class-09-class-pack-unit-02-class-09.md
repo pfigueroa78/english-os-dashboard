@@ -10,6 +10,25 @@ PDF pages retrieval key: PDF_PAGES_21_22
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+<!-- PASSAGES_ACTIVE_CONTRACT_START -->
+### Active class teaching contract
+- Active class: Unit 2, local class 2, global class 9
+- Lesson title: Recognizing problems
+- Active class book pages: 12-13
+- Active class PDF pages: 21-22
+- Active class section names: Vocabulary + Listening + Writing
+- Active class skill focus: The class is not grammar-centered; it focuses on vocabulary for problems, listening for problem-solving, and writing through brainstorming.
+- Active class grammar focus: The class is not grammar-centered and instead focuses on recognizing and describing problems in vocabulary, listening, and writing tasks.
+- Active class vocabulary focus: aggravate; avoid; cause; deal with a problem; identify; ignore; run into; solve; living on a tight budget; buy the first thing you see; buy brand names; use credit cards; compare prices; look for sales; check ads for used items
+- Active class functions: describing problems; talking about how people handle problems; brainstorming ideas; writing a topic sentence and paragraph
+- Active class target structures: replace boldfaced problem phrases with verbs; talk about people who are similar to the examples; describe what each speaker finally did about a problem; brainstorm dos and don'ts; write a topic sentence; write a similar paragraph using brainstormed ideas
+- Expected learner production: replace problem phrases with target verbs in sentences,talk about people they know who match the vocabulary examples,identify what each listener finally did about the problem,briefly describe each person's problem from listening,brainstorm dos and don'ts for living on a budget or other topics,write a topic sentence and paragraph about a chosen topic,exchange brainstorming lists and paragraphs and respond to a partner
+- Source status: Verified against visible Student Book pages 12-13 / PDF pages 21-22.
+
+### Safety rule
+Preserve the verified sections, sequence, focus, and target language. Do not fabricate answer keys, audio transcripts, exercises, or source wording.
+<!-- PASSAGES_ACTIVE_CONTRACT_END -->
+
 Lesson title: Life lessons
 
 ### Active class teaching contract
@@ -51,54 +70,118 @@ Use this class pack as the primary source when the learner asks for Unit 2, Clas
 PDF_PAGE: 21
 BOOK_PAGE: 12
 
-@          VOCABULARY
-            Recogniz ing problems
-            A These verbs are often used to talk about problems. Use the verbs to replace
-              the boldfaced words and phrases in the sentences.
+@
+          VOCABULARY
+          Recognizing problems
+
+          A These verbs are often used to talk about problems. Use the verbs to replace
+            the boldfaced words and phrases in the sentences.
+
+                    -
+                        A!
+             aggravate § •
+             avoid
+             cause
+             deal with
+                     a problem
+             identify
+             ignore
+
+             run into
+             solve
 
 
-                aggravate
-                             -§ • A!
-                avoid
-                cause
-                deal with
-                              a problem
-                identify
-                ignore
-                run into
-                solve
+            1. My friend never does anything about his problems.
+              My friend always ignores his problems.
+
+            2. Maria can look at a broken bicycle and find the problem right away.
+            3. My sister is never afraid to try to take care of a difficult problem.
+            4. Dan always makes his problems worse.
+            5. Ruby always follows the recipe closely to prevent problems when she cooks.
+            6. Michael always unexpectedly encounters problems when he tries to fix things.
+            7. Carla is great at completely fixing any kind of problem at work.
+
+            8. Al is the kind of student who always makes problems for teachers.
+          B Pair work Tell your partner about people you know who are similar to the
+            people in the sentences in part A.
+
+            "My cousin always ignores her problems. Her car is always making strange noises,
+             but she never does anything about it.n
+      m                                                   VOCABULARY f'LUS see page 131
+
+          LISTENING
+       •  Dealing with problems
+
+        a4»> A Listen to Ray (R), Felipe (F), and Jennifer (J) talk about a problem that they
+            each had. What did each person finally do about the problem? Write the
+            correct letter.
+            __ ignored it  dealt with it __ aggravated it
+
+        a4»> B Listen again. Briefly describe each person's problem.
+            Ray: ____________________________
+                                                                   ~
+            Felipe:-------------------------------
+            Jennifer: ______________________________
 
 
-               1. My friend never does anything about his problems.
-                   My friend always ignores his problems.
-               2. Maria can look at a broken bicycle and find the problem right away.
-               3. My sister is never afraid to try to take care of a difficult problem.
-               4. Dan always makes his problems worse.
-               5. Ruby always follows the recipe closely to prevent problems when she cooks.
-               6. Michael always unexpectedly encounters problems when he tries to fix things.
-               7. Carla is great at completely fixing any kind of problem at work.
-               8. Al is the kind of student who always makes problems for teachers.
+     12 dJ§liEJ Mistakes and mysteries
 
-            B Pair work Tell your partner about people you know w ho are similar to the
-              people in the sentences in part A.
-               "My cousin always ignores her problems. Her car is always making strange noises,
-                but she never does anything about it.n
-                                                                                                  VOCABULARY f'LUS see page 131
+## PDF_PAGE 22 | BOOK_PAGE 13
+PDF_PAGE: 22
+BOOK_PAGE: 13
+
+itiT2)_W__R _I T_IN_G_ ___________________________________
+                                                              ~
+         -..,, Brainstorming
+
+               Brainstorming means making a list of ideas about a topic. Then you can use this
+               list to come up with a topic sentence and ideas to support it.
 
 
- m   •
-            LISTENING
-            Dealing w ith problems
-         a4»> A Listen to Ray (R), Felipe (F), and Jennifer (J) talk about a problem that they
-               each had. What did each person finally do about the problem? Write the
-               correct letter.
-               __ ignored it              dealt with it   __ aggravated it
+             A Group work Brainstorm as many ideas as you can to add to the dos and don'ts
+               for living on a budget.
+             ~
+             ~       Living   on  a  Tight;   Budget;
+             ~
+             ~
+                     Do                   Don't;
+             ~
+                     • compare prices     • buy the first thing you see
+             ~       • look for_sales     • buy brand names
+             ~       • check ads for used iteme • uee credit carde
+             ~
 
-         a4»> B Listen again. Briefly describe each person's problem.
-               Ray: _ _ _ _ __ _ _ _ _ __ _ _ _ _ _ _ _ _ _ _ _ __ _ _ _~
+             B Group work Brainstorm dos and don'ts for one of these topics. Write your ideas.
 
-               F e l i p e : - - - - - - - - - - - - - - - - - - - - - - - - -- - - --
-               Jennifer: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ __
+               • getting over a bad cold • staying safe in a big city • preparing for entrance exams
+
+             C Read this paragraph about living on a tight budget. Then write a topic
+               sentence and a similar paragraph about your topic using your ideas.
+             .,. .. .     . .   ""' .. .. .                  . . ..
+                    ·~r                                           .~ :~(Q)(EJ
 
 
-12       dJ§liEJ    Mistakes a nd mysteries
+
+                  Living on a tight budget is easy if you follow some simple rules when you go
+               shopping. First of all, you should never buy some.thing at the first store you visit. You
+               need to check at least a few other stores and go on line to compare prices. Second,
+               don't be in a hurry! If you take your time, you might find a sale. If there are no sales right
+
+               now, ask a salesperson if there's going to be one soon. Third, consider buying used, or
+               secondhand, items. You can check in the newspaper or on line to find what you're looking
+               for. Finally, you might get a better price at some stores by paying cash instead of using a
+
+               credit card, so be sure to ask about cash discounts.
+
+             D Pair work Exchange brainstorming lists and paragraphs with a partner.
+               Then answer the questions.
+
+               1. How many brainstorming ideas did your partner use? Do you think he or she
+                 chose the best ones?
+               2. Do you have any questions about your partner's paragraph? Is there anything
+                 you disagree with?
+               3. Can you think of a gooq title for your partner's paragraph? Explain your choice.
+
+
+
+                                                              4!4-~1•1a·Y Life lessons 13

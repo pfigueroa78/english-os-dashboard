@@ -13,20 +13,20 @@ Teacher instruction: Use this file as the primary source for this exact class. D
 <!-- PASSAGES_ACTIVE_CONTRACT_START -->
 ### Active class teaching contract
 - Active class: Unit 12, local class 1, global class 78
-- Lesson title: Unit 12 Lesson A
+- Lesson title: Culture shock
 - Active class book pages: 96-97
 - Active class PDF pages: 105-106
-- Active class section names: Lesson A + Vocabulary + Grammar + Speaking
-- Active class skill focus: Vocabulary, grammar, speaking
-- Active class grammar focus: Extract exact grammar focus from Unit 12 Lesson A indexed pages; do not infer unindexed wording.
-- Active class vocabulary focus: Extract vocabulary from Unit 12 Lesson A indexed pages; recycle only confirmed unit vocabulary.
-- Active class functions: Teach from the indexed page range, then ask controlled practice before advancing.
-- Active class target structures: Use the target language from the indexed page range. Do not invent structures outside the class pack.
-- Expected learner production: Controlled and personalized answers based on the indexed Student Book prompts.
-- Source status: Source extraction blocker: expected page marker(s) not found in existing extracted content: BOOK_PAGE 97; PDF_PAGE 106. Do not invent missing page text.
+- Active class section names: Starting point + Vocabulary & Speaking + Grammar
+- Active class skill focus: Reading, speaking, and grammar practice around studying abroad and future predictions
+- Active class grammar focus: Grammar-centered: future perfect and future perfect continuous
+- Active class vocabulary focus: words of encouragement; adjust to; be excited about; be scared of; be familiar with; become aware of; get accustomed to; look forward to; participate in; take advantage of
+- Active class functions: discussing benefits of studying or living abroad; describing challenges of living or studying abroad; giving encouragement
+- Active class target structures: future perfect; future perfect continuous; by this time next year; by the end of next year
+- Expected learner production: choose important benefits from a website about studying abroad,discuss choices and other benefits with a partner,complete verb phrases with prepositions,discuss challenges people face when living or studying abroad,correct and produce sentences using the future perfect and future perfect continuous,write original sentences using time expressions such as by the end of the day / by the year 2030
+- Source status: Verified against visible Student Book pages 96-97 / PDF pages 105-106.
 
 ### Safety rule
-Preserve the existing extracted Student Book content exactly as indexed. Do not fabricate missing page text, transcript text, answer keys, audio scripts, or exercises.
+Preserve the verified sections, sequence, focus, and target language. Do not fabricate answer keys, audio transcripts, exercises, or source wording.
 <!-- PASSAGES_ACTIVE_CONTRACT_END -->
 
 
@@ -50,70 +50,115 @@ Use this class pack as the primary source when the learner asks for Unit 12, Cla
 PDF_PAGE: 105
 BOOK_PAGE: 96
 
-LESSON A ..,_, Culture shock
+LESSON     A  ..,_,
+                                         Culture shock
+                 __P_ O_l_N_T_ _____________________
+      i~~S_T_.A_R_T_I_NG                         ~--~
+      .., The benefits of studying abroad
 
- i~~S
-    _T.
-      _A_R
-         _T_IN
-             _G      __P_O_l_N_T______________________~--~
- . . , The benefits of studying abroad
-       A Read this website. Choose three benefits of studying a language abroad
-         that you feel are the most important.
+          A Read this website. Choose three benefits of studying a language abroad
+            that you feel are the most important.
 
 
-           LTI ...
-                 .-. OPENING
-                     :            DOORS TO THE WORLD
-        . 1~~~J     9 ·
-         LANGUAGE . t a
-                      ....f/j l
+            LTI. ...- . :
+                9    ·O PENING      DOORS     TO   THE   WORLD
+           .1L
+            ~
+            AN
+             ~
+             GU
+              ~
+              AG
+               J
+               E .ta.. ..f /jl
+                      Study Abroad  with Language Travelers Institute!
+                      Consider enrolling in one of LTl's affordable programs of language study abroad.
+                ~
+                      Then imagine yourself by the end of next year:
+                ~     • You will have been studying your chosen language for 12 months.
+                      • You will have been interacting with people from other cultures, which will have
+                        changed the way you view the world.
+                      • You will have been living in a fascinating foreign land.
+                      And, if you're like over 90% of LTl's former students, by this time next year:
+                      • Your self-confidence will have increased.
+                      • Your commitment to language study will have gotten stronger.
+                      • You will have made many fascinating new friends!
+                      Study abroad with Language Travelers Institute
+                      and the world will become your oyster.
+          B Pair work Discuss your choices. What are some other benefits of studying
+            or living abroad?
+            "/ think interacting with people from other cultures is the most important benefit.1 1
+                                ____________
+      iC.o1J~V_O_C_A_B_U_L_A_R_Y_&_S_P_E_A_K_l_N_G ~~---
+      ~   Words  of encouragement
+          A Complete these verbs and phrases with a preposition from the box.
+             about in of  to with
+            1. adjust ____JQ__ 4. be familiar    7. look forward
+            2. be excited    5. become aware     8. participate __
+            3. be scared     6. get accustomed _ _ 9. take advantage _ _
+          B Pair work What challenges do people face when they live or study abroad?
+            Discuss with a partner using the verbs and phrases in part A.
+            "Sometimes people are scared of starting a new job abroad because tl1ey aren't familiar
+             with the routines. 11
+                                                           , VOCABULARY PLUS see page 141
+        MmlilFJ
+     96         Moving around
 
-                     Study Abroad with Language Travelers Institute!
-                                  Consider enrolling in one of LTl's affordable programs of language study abroad.
-                  ~               Then imagine yourself by the end of next year:
-                  ~               • You will have been studying your chosen language for 12 months.
-                                  • You wi ll have been interacting with people from other cu ltures, which will have
-                                    changed the way you view the world.
-                                  • You will have been living in a fascinating foreign land.
-                                  And, if you're like over 90% of LTl's former students, by this time next year:
-                                  • Your self-confidence will have increased.
-                                  • Your commitment to language study will have gotten st ronger.
-                                  • You will have made many fascinat ing new friends!
-                                  Study abroad with Language Travelers Institute
-                                  and the world will become your oyster.
+## PDF_PAGE 106 | BOOK_PAGE 97
+PDF_PAGE: 106
+BOOK_PAGE: 97
+
+GRAMMAR
+             Future perfect and future perfect continuous
+
+             Use the future perfect to emphasize that something will be completed or achieved by a
+             particular point in the future.
+             By this time next year, your self-confidence will have increased.
+             Use the future perfect continuous to emphasize the duration of an activity in progress
+             at a particular point in the future.
+             By the end of next year, you will have been studying your chosen language for 12 months.
+                                                       GRAMMAR PLUS see page 128
+                                                              \\ ,, 1 Ln nguag:e .com
+             A Look at the Starting Point on page 96 again. Can you find more examples
+              of the future perfect and the future perfect continuous?
+
+             B These sentences about Joon's year abroad all have mistakes. Correct the
+              mistakes using the future with will, the future perfect, or the future perfect
+              continuous. Then compare answers with a partner.
+                               will have been traveling
+              1. By this time tomorrow, Joon will travel for 24 hours.
+
+              2. By the end of next week, he will have been receiving
+                his student ID card and registered for classes.
+
+              3. He'll be going out more after a few weeks because
+                                                                               (
+                he will have been more familiar with the city.
+
+              4. After studying English for a few months, he will
+                have felt more confident about speaking to people.
+
+              5. By this time next year, his younger sister will have
+
+                been visiting him once or twice. When she's older,
+                she probably will have wanted to study abroad, too.
+
+               6. I'm sure he will change a lot by the time he comes
+
+                 back to Korea.
+
+               7. His family will have been surprised when he gets
+                 back because he will have been changing so much.
+
+               8. And just think - the next time we see him, Joon
+                 will turn 22 already, and he will be away for a year!
+
+             C Use these time expressions to write sentences using the future perfect or
+               future perfect continuous. Then share them with a partner.
+
+               1. Before this class ends, .. . 4. At the end of the year, ...
+               2. By the end of the day, .. . 5. In two years' time, .. .
+               3. By the end of the week, . . . 6. By the year 2030, . . .
 
 
-       B Pair work Discuss your choices. What are some other benefits of studying
-         or living abroad?
-
-         "/ think interacting with people from other cultures is the most important benefit.         11
-
-
- iC.o1J~V
-        _O_C
-           _A_B_U_L_A_R_
-                       Y_&
-                         _S_P
-                            _E_A
-                               _K_l_
-                                   N_G____________~~---
- ~ Words of encouragement
-       A Complete these verbs and phrases with a preposition from the box.
-
-           about         in       of    to     with
-
-         1. adjust ____JQ__                  4. be familiar                          7. look forward
-         2. be excited                       5. become aware                         8. participate _ _
-         3. be scared                        6. get accustomed _ _                   9. take advantage _ _
-
-       B Pair work What challenges do people face when they live or study abroad?
-         Discuss with a partner using the verbs and phrases in part A.
-         "Sometimes people are scared of starting a new job abroad because tl1ey aren't familiar
-          with the routines.      11
-
-
-                                                                                                          ,VOCABULARY PLUS see page 141
-
-
-96   MmlilFJ      Movi ng aro und
+                                                            4!Ef.~i•1~t;f Culture shock 97

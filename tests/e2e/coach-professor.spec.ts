@@ -67,6 +67,19 @@ test("can type answer", async ({ page }) => {
   await expect(page.getByRole("button", { name: /Enviar respuesta/i })).toBeEnabled();
 });
 
+test("keeps coach lesson readable on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openCoach(page);
+  await requireUi(page);
+
+  const chatPanel = page.locator("main > div > div.grid > section").first();
+  const lessonText = page.locator("article .prose p").first();
+
+  await expect(chatPanel).toHaveCSS("background-color", "rgb(248, 250, 252)");
+  await expect(lessonText).toHaveCSS("color", "rgb(15, 23, 42)");
+  await expect(lessonText).toBeVisible();
+});
+
 test("MCP endpoint smoke", async ({ request, baseURL }) => {
   const response = await request.get(`${baseURL}/api/mcp`);
   expect([200, 401, 403]).toContain(response.status());

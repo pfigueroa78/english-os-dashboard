@@ -8,14 +8,14 @@ on:
         required: false
         default: "coach-pedagogy-restore"
       base_url:
-        description: "Deployed URL to test"
+        description: "Deployed URL to test, optional when local mode is used"
         required: false
-        default: "https://english-os-dashboard-mkhgqavzi-pedro-figueroa-s-projects.vercel.app"
+        default: "http://127.0.0.1:3000"
 
 jobs:
   ui-traversal:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout selected ref
@@ -26,7 +26,7 @@ jobs:
       - name: Show selected target
         run: |
           echo "Testing ref: ${{ github.event.inputs.ref || 'coach-pedagogy-restore' }}"
-          echo "Testing URL: ${{ github.event.inputs.base_url || 'https://english-os-dashboard-mkhgqavzi-pedro-figueroa-s-projects.vercel.app' }}"
+          echo "Testing URL: ${{ github.event.inputs.base_url || 'http://127.0.0.1:3000' }}"
           git log -1 --format='%H %s'
 
       - name: Setup Node
@@ -40,10 +40,18 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
+      - name: Build app
+        env:
+          NEXT_PUBLIC_E2E_DEMO: "1"
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_demo"
+        run: npm run build
+
       - name: Run UI traversal tests
         env:
-          E2E_BASE_URL: ${{ github.event.inputs.base_url || 'https://english-os-dashboard-mkhgqavzi-pedro-figueroa-s-projects.vercel.app' }}
-          E2E_USE_WEB_SERVER: "0"
+          E2E_BASE_URL: http://127.0.0.1:3000
+          E2E_USE_WEB_SERVER: "1"
+          NEXT_PUBLIC_E2E_DEMO: "1"
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_demo"
         run: npm run test:e2e
 
       - name: Upload Playwright report

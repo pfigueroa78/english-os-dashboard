@@ -16,9 +16,19 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: [["list"], ["html", { open: "never" }]],
   webServer: useLocalWebServer
-    ? {
-        command: "npm run start -- --hostname 127.0.0.1 --port 3000",
+      ? {
+        command: "npm run build && npm run start -- --hostname 127.0.0.1 --port 3000",
         url: "http://127.0.0.1:3000",
+        env: {
+          ...process.env,
+          E2E_DEMO: "1",
+          NEXT_PUBLIC_E2E_DEMO: "1",
+          // Test-only Clerk key. Demo middleware bypasses authentication and no
+          // request is made to a real Clerk tenant.
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
+            process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+            "pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk",
+        },
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
         stdout: "pipe",

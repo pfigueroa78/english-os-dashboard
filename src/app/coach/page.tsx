@@ -480,7 +480,7 @@ export default function CoachPage() {
   return (
     <main className="min-h-[100dvh] bg-[radial-gradient(circle_at_top_left,#1e3a8a_0,#020617_34%,#020617_100%)] text-white">
       <div className="mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-3 py-3 sm:px-4 lg:px-6 lg:py-5">
-        <header className="mb-3 rounded-[2rem] border border-white/10 bg-slate-950/80 p-4 shadow-2xl shadow-black/30 lg:sticky lg:top-3 lg:z-20 lg:backdrop-blur">
+        <header className="hidden">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-blue-300">English OS</p>
@@ -528,8 +528,8 @@ export default function CoachPage() {
 
         {error && <div className="mb-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">{error}</div>}
 
-        <div className="grid flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <section className="flex min-h-[70dvh] min-w-0 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/70 shadow-2xl lg:h-[calc(100dvh-245px)]">
+        <div className="grid flex-1 gap-3 lg:grid-cols-[340px_minmax(0,1fr)]">
+          <section className="order-2 flex min-h-[70dvh] min-w-0 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/70 shadow-2xl lg:h-[calc(100dvh-40px)]">
             <div className="flex-1 space-y-4 overflow-y-auto p-3 sm:p-5 lg:p-6">
               {messages.map((message, index) => (
                 <article key={index} className={message.role === "user" ? "ml-auto max-w-[92%] rounded-3xl bg-blue-600 p-4 shadow-lg sm:max-w-2xl" : "mr-auto max-w-[96%] rounded-3xl border border-white/10 bg-white p-4 text-slate-950 shadow-lg sm:max-w-4xl lg:p-5"}>
@@ -568,7 +568,7 @@ export default function CoachPage() {
             </footer>
           </section>
 
-          <aside className="space-y-3 lg:h-[calc(100dvh-245px)] lg:overflow-y-auto">
+          <aside className="order-1 space-y-3 lg:h-[calc(100dvh-40px)] lg:overflow-y-auto">
             <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
               <p className="text-xs uppercase tracking-wide text-blue-300">Tu clase</p>
               <h2 className="mt-1 text-lg font-bold">{activeStudyUnitLabel}</h2>

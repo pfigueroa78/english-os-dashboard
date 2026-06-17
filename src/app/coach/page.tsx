@@ -54,6 +54,7 @@ type SpecialistAgent = {
 const E2E_DEMO = process.env.NEXT_PUBLIC_E2E_DEMO === "1";
 const DEMO_UNIT = "Unit 1";
 const DEMO_LESSON = "Business advice speaking practice";
+const PROGRESS_STATUS = "Evaluación pendiente";
 
 const SPECIALIST_AGENTS: SpecialistAgent[] = [
   {
@@ -299,7 +300,7 @@ export default function CoachPage() {
       window.open(data.exportUrl || data.fileUrl, "_blank", "noopener,noreferrer");
       setMessages((current) => [
         ...current,
-        { role: "coach", content: `Listo. Generé el Excel de ${isGrammar ? "gramática" : "vocabulario"} para ${unitLabel(unit)}.` },
+        { role: "coach", content: `Listo. Generé la guía de ${isGrammar ? "gramática" : "vocabulario"} para ${unitLabel(unit)}.` },
       ]);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown workbook error";
@@ -483,8 +484,9 @@ export default function CoachPage() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-blue-300">English OS</p>
-              <h1 className="mt-1 text-2xl font-bold sm:text-3xl">Profesor IA</h1>
-              <p className="mt-1 truncate text-xs text-slate-400 sm:text-sm">{email}</p>
+              <h1 className="mt-1 text-2xl font-bold sm:text-3xl">English OS Coach</h1>
+              <p className="mt-1 text-sm text-slate-300">Profesor IA para clase guiada, práctica y evaluación.</p>
+              <p className="mt-1 truncate text-xs text-slate-500 sm:text-sm">{email}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className="hidden rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200 sm:inline-flex">Clase guiada</span>
@@ -502,8 +504,8 @@ export default function CoachPage() {
               <p className="mt-1 truncate text-sm font-semibold text-white">{currentLesson || "Guided class"}</p>
             </div>
             <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3">
-              <p className="text-[10px] uppercase tracking-wide text-amber-200/80">Estado</p>
-              <p className="mt-1 truncate text-sm font-semibold text-amber-100">Evaluación pendiente</p>
+              <p className="text-[10px] uppercase tracking-wide text-amber-200/80">Progreso de clase</p>
+              <p className="mt-1 truncate text-sm font-semibold text-amber-100">{PROGRESS_STATUS}</p>
             </div>
           </div>
 
@@ -533,7 +535,6 @@ export default function CoachPage() {
                 <article key={index} className={message.role === "user" ? "ml-auto max-w-[92%] rounded-3xl bg-blue-600 p-4 shadow-lg sm:max-w-2xl" : "mr-auto max-w-[96%] rounded-3xl border border-white/10 bg-white p-4 text-slate-950 shadow-lg sm:max-w-4xl lg:p-5"}>
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <p className={message.role === "user" ? "text-[11px] font-semibold uppercase tracking-wide text-blue-100" : "text-[11px] font-semibold uppercase tracking-wide text-slate-500"}>{message.role === "user" ? "Tú" : "Profesor"}</p>
-                    {message.usage && <p className="text-[11px] text-slate-400">{message.usage.totalTokens} · ${message.usage.estimatedCostUSD.toFixed(6)}</p>}
                   </div>
                   <div className={message.role === "user" ? "prose prose-invert max-w-none whitespace-pre-wrap text-sm leading-7 text-white sm:text-base sm:leading-8" : "prose max-w-none whitespace-pre-wrap text-sm leading-7 text-slate-950 sm:text-base sm:leading-8"}>
                     <MarkdownMessage content={message.content} />
@@ -545,6 +546,7 @@ export default function CoachPage() {
             </div>
 
             <footer className="sticky bottom-0 z-10 border-t border-white/10 bg-slate-950/95 p-3 backdrop-blur sm:p-4">
+              <p className="mb-2 text-xs font-medium text-slate-300">Responde en inglés. Yo corregiré gramática, vocabulario y naturalidad.</p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <textarea
                   value={input}
@@ -584,20 +586,20 @@ export default function CoachPage() {
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-blue-300">Guías descargables</p>
-              <p className="mt-1 text-sm text-slate-400">Acciones ligadas a {activeStudyUnitLabel}. No usan una unidad fija.</p>
+              <p className="text-xs uppercase tracking-wide text-blue-300">Guías de estudio</p>
+              <p className="mt-1 text-sm text-slate-400">Material descargable para {activeStudyUnitLabel}.</p>
               <div className="mt-3 grid gap-2">
                 <button type="button" onClick={() => createWorkbook("grammar")} disabled={grammarWorkbookLoading || !activeStudyUnit || E2E_DEMO} className="rounded-2xl bg-emerald-600 px-3 py-3 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
-                  {grammarWorkbookLoading ? "Generando..." : `Excel gramática · ${activeStudyUnitLabel}`}
+                  {grammarWorkbookLoading ? "Generando..." : `Guía de gramática · ${activeStudyUnitLabel}`}
                 </button>
                 <button type="button" onClick={() => createWorkbook("vocabulary")} disabled={vocabularyWorkbookLoading || !activeStudyUnit || E2E_DEMO} className="rounded-2xl bg-cyan-600 px-3 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50">
-                  {vocabularyWorkbookLoading ? "Generando..." : `Excel vocabulario · ${activeStudyUnitLabel}`}
+                  {vocabularyWorkbookLoading ? "Generando..." : `Guía de vocabulario · ${activeStudyUnitLabel}`}
                 </button>
                 <button type="button" onClick={requestUnitGrammar} disabled={loading || !activeStudyUnit} className="rounded-2xl border border-emerald-700 px-3 py-3 text-sm font-semibold text-emerald-100 hover:bg-emerald-950 disabled:opacity-50">
-                  Guía de gramática en chat
+                  Explicar gramática en chat
                 </button>
                 <button type="button" onClick={requestUnitVocabulary} disabled={loading || !activeStudyUnit} className="rounded-2xl border border-cyan-700 px-3 py-3 text-sm font-semibold text-cyan-100 hover:bg-cyan-950 disabled:opacity-50">
-                  Guía de vocabulario en chat
+                  Explicar vocabulario en chat
                 </button>
               </div>
               <div className="mt-3 space-y-3">

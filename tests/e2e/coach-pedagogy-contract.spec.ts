@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 
+// Validation scope: UI shell + source contracts + pedagogy-first coach routing.
 const root = process.cwd();
 const packsRoot = path.join(root, "knowledge", "class-packs-lesson-vision");
 const promptFile = path.join(root, "src", "lib", "passagesTeacherStyle.ts");

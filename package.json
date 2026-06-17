@@ -7,6 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
     "passages:knowledge": "node scripts/openai-passages-knowledge.mjs",
     "passages:audit-contracts": "node scripts/audit-passages-contracts.mjs",
     "passages:publish-result": "node scripts/publish-passages-workflow-result.mjs"
@@ -21,6 +25,7 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

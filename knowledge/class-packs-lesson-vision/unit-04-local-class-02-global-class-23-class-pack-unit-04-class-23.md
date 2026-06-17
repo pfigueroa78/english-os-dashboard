@@ -16,17 +16,17 @@ Teacher instruction: Use this file as the primary source for this exact class. D
 - Lesson title: Unit 4 Lesson A extension
 - Active class book pages: 30-31
 - Active class PDF pages: 39-40
-- Active class section names: Lesson A extension + Listening/Reading/Writing + Speaking
-- Active class skill focus: Listening, speaking, reading/writing
-- Active class grammar focus: Extract exact grammar focus from Unit 4 Lesson A extension indexed pages; do not infer unindexed wording.
-- Active class vocabulary focus: Extract vocabulary from Unit 4 Lesson A extension indexed pages; recycle only confirmed unit vocabulary.
-- Active class functions: Teach from the indexed page range, then ask controlled practice before advancing.
-- Active class target structures: Use the target language from the indexed page range. Do not invent structures outside the class pack.
-- Expected learner production: Controlled and personalized answers based on the indexed Student Book prompts.
-- Source status: Source extraction blocker: expected page marker(s) not found in existing extracted content: BOOK_PAGE 31; PDF_PAGE 40. Do not invent missing page text.
+- Active class section names: Listening & Speaking + Role Play + Writing
+- Active class skill focus: listening for main causes and solutions; asking for and giving advice; writing effective topic sentences
+- Active class grammar focus: not a grammar-centered class; writing skill focus is effective topic sentences
+- Active class vocabulary focus: stress; fatigue; lack of energy; worn out; worried about my health; sleep and energy problems; giving advice expressions
+- Active class functions: identify stress/sleep/energy problems; ask follow-up questions; give advice politely; choose and write effective topic sentences
+- Active class target structures: Have you ever thought of (going)...?; You might want to...; It might not be a bad idea to...; The way I see it, you ought to...; effective topic sentence + supporting details
+- Expected learner production: short advice role play and short writing practice with an effective topic sentence
+- Source status: Source repaired from visible Student Book pages 30-31 and PDF pages 39-40. Preserve the visible sections and do not substitute another class.
 
 ### Safety rule
-Preserve the existing extracted Student Book content exactly as indexed. Do not fabricate missing page text, transcript text, answer keys, audio scripts, or exercises.
+Preserve the existing extracted Student Book content exactly as indexed. Do not fabricate answer keys, audio scripts, or exercises. When audio is not available, provide a short teacher-created listening simulation clearly labeled as practice, not transcript.
 <!-- PASSAGES_ACTIVE_CONTRACT_END -->
 
 ---
@@ -54,60 +54,71 @@ PDF_PAGE: 39
 BOOK_PAGE: 30
 
 ~ LISTENING & SPEAKING
-        Chilling out
-        A Stress can cause fatigue and a lack of energy. Select the things you do to
-          cope with stress. Can you add other suggestions to the list?
-           0 call a friend                   0 get a massage            D vent your feelings
-           0 do yoga                         D listen to music          D _ _ _ __
-           0 exercise vigorously             D take a hot bath          D ~~~~~~~
-     af .,> B Listen to Sean (S}, Lisa (L}, and Victor (V) talk about stress. What is the main
-           cause of stress for each person? Write the correct letter.
-                 too litt le time            too much traffic        __ too many responsibilities
+Chilling out
 
-     a4.,> C Listen again. What solution has each person found? Complete the chart.
+A Stress can cause fatigue and a lack of energy. Select the things you do to cope with stress. Can you add other suggestions to the list?
+- call a friend
+- do yoga
+- exercise vigorously
+- get a massage
+- listen to music
+- take a hot bath
+- vent your feelings
 
+B Listen to Sean, Lisa, and Victor talk about stress. What is the main cause of stress for each person? Write the correct letter.
+- too little time
+- too much traffic
+- too many responsibilities
 
-              1. Sean
-              2. Lisa
-              3. Victor
+C Listen again. What solution has each person found? Complete the chart.
+1. Sean
+2. Lisa
+3. Victor
 
+~ ROLE PLAY
+I need some advice.
 
-      ROLE PLAY
-     .-       - --
-      1 need some advice.
-                                                              -             -                         -
-        A Look at the problems below. Have you ever had problems like these?
-          What other problems do people have with sleep and energy levels?
+A Look at the problems below. Have you ever had problems like these? What other problems do people have with sleep and energy levels?
 
-                                                                                                               I alw ays put off studying unt il
-                                                                                                               the night before a t est. I stay
-                                                                                                               up all night st udying, but after
-              I've been working day and night                                                                  that, I still don't do ver y well.
-              on an important project. It's going
-              we ll, but I'm feeling so wo rn out.
-              I'm worried about my health .
+Problem situations include:
+- I've been working day and night on an important project. It's going well, but I'm feeling so worn out. I'm worried about my health.
+- I always put off studying until the night before a test. I stay up all night studying, but after that, I still don't do very well.
+- Whenever my friends call or text me late at night, we chat for hours and hours. The next day, I can't keep my eyes open!
+- I get so nervous before I have to give a presentation that I can't sleep the night before, and then I'm not at my best.
 
+B Pair work. Imagine you have one of the problems in part A. Take turns asking for and giving advice.
 
-                                                                                                  Whenever my friend s call or
-                                                                                                  text me late at night, we chat
-                                                                                                  for ho urs and hours. The next
-          I get so nervous before I have
-                                                                                                  day, I can't keep m y eyes open!
-          t o g ive a presentation that I
-          can't sleep the night b efore,
-                                            r-=~~;;.----'-''"--~~...-.-...-- ...................................I
-          and then I'm not at my best.
+Model role play:
+A: I have a real problem. I've been working a lot on this project, and I'm so worn out. I'm worried about my health.
+B: So, how late do you usually work during the week?
+A: I usually stay until 9:00 P.M. or so.
+B: Have you ever thought of telling someone that you need a little help?
 
+Useful expressions: Giving advice
+- Have you ever thought of (going) ...?
+- You might want to ...
+- It might not be a bad idea to ...
+- The way I see it, you ought to ...
 
-         B Pair work Imagine you have one of the problems in part A.
-           Take turns asking for and giving advice.
-                                                                                                            Giving advice
-           "I have a real problem. I've been working a lot on this project, and                             Have you ever thought of (going) ... ?
-            I'm so wom out. I'm worried about my health."
-                                                                                                            You might want to ...
-           "So, how late do you usually work during the week?"                                              It might not be a bad idea to .. .
-           "I usually stay until 9:00 P.M. or so."                                                          The way I see it, you ought to .. .
-           "Have you ever thought of telling someone that you need a little help?"
+## PDF_PAGE 40 | BOOK_PAGE 31
+PDF_PAGE: 40
+BOOK_PAGE: 31
 
+~ WRITING
+Effective topic sentences
 
-30   Amlltr     Early birds and night owls
+Effective topic sentences are useful because they tell the reader the topic and the controlling idea of a paragraph. A good topic sentence is not too general and not only a detail. It prepares the reader for the supporting information in the paragraph.
+
+A Read the paragraph. Then choose the best topic sentence from the list.
+
+The example paragraph is about a sport and its positive effects. The strongest topic sentence introduces the main idea clearly and prepares the reader for supporting details.
+
+B Read another short paragraph and choose the best topic sentence. The correct choice should not be too broad and should connect clearly with the details that follow.
+
+Useful writing idea:
+- A weak topic sentence is too general.
+- A better topic sentence gives a clear main idea.
+- Supporting details should explain or prove the topic sentence.
+
+Teacher writing focus:
+Teach the learner to write one effective topic sentence and then add two supporting details.

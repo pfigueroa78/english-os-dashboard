@@ -71,12 +71,12 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
   }
 
   return (
-    <div className="english-os-message-markdown group relative text-current">
+    <div className="english-os-message-markdown group relative text-slate-50">
       <div className="not-prose mb-3 flex justify-end">
         <button
           type="button"
           onClick={copyContent}
-          className="rounded-full border border-slate-600 bg-slate-900/80 px-3 py-1.5 text-[11px] font-semibold text-slate-200 transition hover:border-blue-400 hover:bg-slate-800 hover:text-white"
+          className="rounded-full border border-slate-500/40 bg-slate-950/70 px-3 py-1.5 text-[11px] font-semibold text-slate-100 transition hover:border-blue-400 hover:bg-slate-900 hover:text-white"
           aria-label="Copy coach response"
         >
           {copied ? "Copied" : "Copy response"}
@@ -87,51 +87,51 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
         remarkPlugins={[remarkGfm]}
         components={{
           h1: ({ children }) => (
-            <h1 className="mb-1.5 mt-3 text-2xl font-bold text-current first:mt-0">
+            <h1 className="mb-1.5 mt-3 text-2xl font-bold text-slate-50 first:mt-0">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="mb-1.5 mt-3 text-xl font-bold text-current first:mt-0">
+            <h2 className="mb-1.5 mt-3 text-xl font-bold text-slate-50 first:mt-0">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="mb-1 mt-2.5 text-lg font-bold text-current first:mt-0">
+            <h3 className="mb-1 mt-2.5 text-lg font-bold text-slate-50 first:mt-0">
               {children}
             </h3>
           ),
           h4: ({ children }) => (
-            <h4 className="mb-1 mt-2 text-base font-semibold text-current first:mt-0">
+            <h4 className="mb-1 mt-2 text-base font-semibold text-slate-50 first:mt-0">
               {children}
             </h4>
           ),
           p: ({ children }) => (
-            <p className="mb-1.5 leading-7 text-current last:mb-0">
+            <p className="mb-1.5 leading-7 text-slate-100 last:mb-0">
               {children}
             </p>
           ),
           strong: ({ children }) => (
-            <strong className="font-bold text-current">{children}</strong>
+            <strong className="font-bold text-slate-50">{children}</strong>
           ),
-          em: ({ children }) => <em className="italic text-current">{children}</em>,
+          em: ({ children }) => <em className="italic text-slate-100">{children}</em>,
           ul: ({ children }) => (
-            <ul className="mb-1.5 ml-5 list-disc space-y-0 text-current">
+            <ul className="mb-1.5 ml-5 list-disc space-y-0 text-slate-100">
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="mb-1.5 ml-5 list-decimal space-y-0 text-current">
+            <ol className="mb-1.5 ml-5 list-decimal space-y-0 text-slate-100">
               {children}
             </ol>
           ),
           li: ({ children }) => (
-            <li className="leading-7 text-current [&>ol]:mb-1 [&>ol]:mt-1 [&>p]:mb-0 [&>ul]:mb-1 [&>ul]:mt-1">
+            <li className="leading-7 text-slate-100 [&>ol]:mb-1 [&>ol]:mt-1 [&>p]:mb-0 [&>ul]:mb-1 [&>ul]:mt-1">
               {children}
             </li>
           ),
           blockquote: ({ children }) => (
-            <blockquote className="my-2 border-l-4 border-blue-500 bg-slate-900/70 px-3 py-2 text-slate-200">
+            <blockquote className="my-2 border-l-4 border-blue-500 bg-slate-900/70 px-3 py-2 text-slate-100">
               {children}
             </blockquote>
           ),
@@ -159,7 +159,7 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
           ),
           table: ({ children }) => (
             <div className="my-2 overflow-x-auto rounded-xl border border-slate-700">
-              <table className="min-w-full border-collapse text-sm text-current">
+              <table className="min-w-full border-collapse text-sm text-slate-100">
                 {children}
               </table>
             </div>
@@ -170,12 +170,12 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
             <tr className="border-b border-slate-800 last:border-b-0">{children}</tr>
           ),
           th: ({ children }) => (
-            <th className="border-r border-slate-800 px-3 py-1.5 text-left font-bold text-current last:border-r-0">
+            <th className="border-r border-slate-800 px-3 py-1.5 text-left font-bold text-slate-100 last:border-r-0">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="border-r border-slate-800 px-3 py-1.5 align-top text-current last:border-r-0">
+            <td className="border-r border-slate-800 px-3 py-1.5 align-top text-slate-100 last:border-r-0">
               {children}
             </td>
           ),
@@ -184,7 +184,7 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
               href={href}
               target="_blank"
               rel="noreferrer"
-              className="font-semibold text-cyan-500 underline decoration-cyan-500/60 underline-offset-4 hover:text-cyan-400"
+              className="font-semibold text-cyan-300 underline decoration-cyan-300/60 underline-offset-4 hover:text-cyan-200"
             >
               {children}
             </a>

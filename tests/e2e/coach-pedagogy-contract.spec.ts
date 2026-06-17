@@ -41,6 +41,20 @@ test("teacher prompt keeps the general pedagogy workflow", async () => {
   expect(source).not.toContain("Critical correction for Unit");
 });
 
+test("coach API routes class requests to the pedagogy-first handler", async () => {
+  const middleware = readFile("middleware.ts");
+  const route = readFile("src/app/api/english-os/coach-pedagogy/route.ts");
+  const handler = readFile("src/lib/coachRouteHandler.ts");
+
+  expect(middleware).toContain("/api/english-os/coach");
+  expect(middleware).toContain("/api/english-os/coach-pedagogy");
+  expect(route).toContain("coachPost");
+  expect(handler).toContain("loadClassPack");
+  expect(handler).toContain("Local Class Pack + Pedagogy Prompt");
+  expect(handler).toContain("Never answer a class request with a metadata table");
+  expect(handler).toContain("Unsafe class reply contains metadata marker");
+});
+
 test("five sampled class packs keep active source contracts", async () => {
   const samples = [
     ["unit-01-local-class-01-global-class-01-class-pack-unit-01-class-01.md", ["Starting point", "Vocabulary & Speaking", "Grammar", "Speaking"], ["gerunds", "personality"]],

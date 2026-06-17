@@ -71,7 +71,7 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
   }
 
   return (
-    <div className="english-os-message-markdown group relative text-slate-50">
+    <div className="english-os-message-markdown group relative text-slate-950">
       <div className="not-prose mb-3 flex justify-end">
         <button
           type="button"
@@ -87,46 +87,46 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
         remarkPlugins={[remarkGfm]}
         components={{
           h1: ({ children }) => (
-            <h1 className="mb-1.5 mt-3 text-2xl font-bold text-slate-50 first:mt-0">
+            <h1 className="mb-1.5 mt-3 text-2xl font-bold text-slate-950 first:mt-0">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="mb-1.5 mt-3 text-xl font-bold text-slate-50 first:mt-0">
+            <h2 className="mb-1.5 mt-3 text-xl font-bold text-slate-950 first:mt-0">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="mb-1 mt-2.5 text-lg font-bold text-slate-50 first:mt-0">
+            <h3 className="mb-1 mt-2.5 text-lg font-bold text-slate-950 first:mt-0">
               {children}
             </h3>
           ),
           h4: ({ children }) => (
-            <h4 className="mb-1 mt-2 text-base font-semibold text-slate-50 first:mt-0">
+            <h4 className="mb-1 mt-2 text-base font-semibold text-slate-950 first:mt-0">
               {children}
             </h4>
           ),
           p: ({ children }) => (
-            <p className="mb-1.5 leading-7 text-slate-100 last:mb-0">
+            <p className="mb-1.5 leading-7 text-slate-900 last:mb-0">
               {children}
             </p>
           ),
           strong: ({ children }) => (
-            <strong className="font-bold text-slate-50">{children}</strong>
+            <strong className="font-bold text-slate-950">{children}</strong>
           ),
-          em: ({ children }) => <em className="italic text-slate-100">{children}</em>,
+          em: ({ children }) => <em className="italic text-slate-900">{children}</em>,
           ul: ({ children }) => (
-            <ul className="mb-1.5 ml-5 list-disc space-y-0 text-slate-100">
+            <ul className="mb-1.5 ml-5 list-disc space-y-0 text-slate-900">
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="mb-1.5 ml-5 list-decimal space-y-0 text-slate-100">
+            <ol className="mb-1.5 ml-5 list-decimal space-y-0 text-slate-900">
               {children}
             </ol>
           ),
           li: ({ children }) => (
-            <li className="leading-7 text-slate-100 [&>ol]:mb-1 [&>ol]:mt-1 [&>p]:mb-0 [&>ul]:mb-1 [&>ul]:mt-1">
+            <li className="leading-7 text-slate-900 [&>ol]:mb-1 [&>ol]:mt-1 [&>p]:mb-0 [&>ul]:mb-1 [&>ul]:mt-1">
               {children}
             </li>
           ),

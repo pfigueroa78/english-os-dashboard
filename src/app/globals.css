@@ -101,6 +101,15 @@ main > div > header {
 }
 
 /* Chat messages should read as a clean lesson document, not large bubbles. */
+main > div > div.grid > section {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+main > div > div.grid > section > div:first-child {
+  background: #f8fafc !important;
+}
+
 main > div > div.grid > section article {
   width: 100% !important;
   max-width: 100% !important;

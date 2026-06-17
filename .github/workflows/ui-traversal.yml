@@ -2,21 +2,26 @@ name: UI Traversal
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - main
-  push:
-    branches:
-      - uiv1
+    inputs:
+      ref:
+        description: "Branch or commit to test"
+        required: false
+        default: "baseline-20260616"
+      base_url:
+        description: "Deployed URL to test"
+        required: false
+        default: "https://english-os-dashboard.vercel.app"
 
 jobs:
   ui-traversal:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
-      - name: Checkout
+      - name: Checkout selected ref
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || 'baseline-20260616' }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -29,20 +34,9 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Build app
-        env:
-          NEXT_PUBLIC_E2E_DEMO: "1"
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_Y2xlcmsuZGVtbyQ"
-          CLERK_SECRET_KEY: "sk_test_dummy"
-        run: npm run build
-
       - name: Run UI traversal tests
         env:
-          E2E_BASE_URL: http://127.0.0.1:3000
-          E2E_USE_WEB_SERVER: "1"
-          NEXT_PUBLIC_E2E_DEMO: "1"
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_Y2xlcmsuZGVtbyQ"
-          CLERK_SECRET_KEY: "sk_test_dummy"
+          E2E_BASE_URL: ${{ github.event.inputs.base_url || 'https://english-os-dashboard.vercel.app' }}
         run: npm run test:e2e
 
       - name: Upload Playwright report

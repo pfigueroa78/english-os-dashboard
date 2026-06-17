@@ -537,11 +537,11 @@ export default function CoachPage() {
           <section className="order-2 flex min-h-[70dvh] min-w-0 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/70 shadow-2xl lg:h-[calc(100dvh-40px)]">
             <div className="flex-1 space-y-4 overflow-y-auto p-3 sm:p-5 lg:p-6">
               {messages.map((message, index) => (
-                <article key={index} className={message.role === "user" ? "ml-auto max-w-[92%] rounded-3xl bg-blue-600 p-4 shadow-lg sm:max-w-2xl" : "mr-auto max-w-[96%] rounded-3xl border border-white/10 bg-white p-4 text-slate-950 shadow-lg sm:max-w-4xl lg:p-5"}>
+                <article key={index} className={message.role === "user" ? "ml-auto max-w-[92%] rounded-3xl bg-blue-600 p-4 shadow-lg sm:max-w-2xl" : "mr-auto max-w-[96%] rounded-3xl border border-white/10 bg-slate-900 p-4 text-slate-100 shadow-lg sm:max-w-4xl lg:p-5"}>
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <p className={message.role === "user" ? "text-[11px] font-semibold uppercase tracking-wide text-blue-100" : "text-[11px] font-semibold uppercase tracking-wide text-slate-500"}>{message.role === "user" ? "Tú" : "Profesor"}</p>
                   </div>
-                  <div className={message.role === "user" ? "prose prose-invert max-w-none whitespace-pre-wrap text-sm leading-7 text-white sm:text-base sm:leading-8" : "prose max-w-none whitespace-pre-wrap text-sm leading-7 text-slate-950 sm:text-base sm:leading-8"}>
+                  <div className={message.role === "user" ? "prose prose-invert max-w-none whitespace-pre-wrap text-sm leading-7 text-white sm:text-base sm:leading-8" : "prose prose-invert max-w-none whitespace-pre-wrap text-sm leading-7 text-slate-100 sm:text-base sm:leading-8"}>
                     <MarkdownMessage content={message.content} />
                   </div>
                 </article>

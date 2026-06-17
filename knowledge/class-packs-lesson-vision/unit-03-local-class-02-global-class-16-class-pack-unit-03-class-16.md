@@ -10,6 +10,25 @@ PDF pages retrieval key: PDF_PAGES_29_30
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+<!-- PASSAGES_ACTIVE_CONTRACT_START -->
+### Active class teaching contract
+- Active class: Unit 3, local class 2, global class 16
+- Lesson title: What makes a city?
+- Active class book pages: 20-21
+- Active class PDF pages: 29-30
+- Active class section names: Vocabulary + Listening + Discussion + Writing
+- Active class skill focus: vocabulary, listening, discussion, and writing about city features and quality of life
+- Active class grammar focus: This class is not grammar-centered; the real focus is vocabulary for city features plus listening, discussion, and writing about places
+- Active class vocabulary focus: climate; crime rate; green spaces; job market; neighborhoods; shopping; cost of living; cuisine; hotels; landmarks; nightlife; transportation system; San Francisco; city features; quality-of-life issues; affordable housing; pleasant weather; low crime rates
+- Active class functions: classifying city features for tourists, residents, or both; describing a city with examples; expressing opinions about places; agreeing and disagreeing with opinions; brainstorming and organizing ideas for a paragraph
+- Active class target structures: important to tourists; important to residents; important to both; agreeing with an opinion; disagreeing with an opinion; a mind map
+- Expected learner production: sort city features into categories and add ideas of their own,describe their city using the features from the vocabulary set,identify which city features are mentioned in a listening about San Francisco,rank and discuss quality-of-life issues,write a paragraph using a mind map and exchange paragraphs for peer feedback
+- Source status: Verified against visible Student Book pages 20-21 / PDF pages 29-30.
+
+### Safety rule
+Preserve the verified sections, sequence, focus, and target language. Do not fabricate answer keys, audio transcripts, exercises, or source wording.
+<!-- PASSAGES_ACTIVE_CONTRACT_END -->
+
 ### Active class teaching contract
 - Active class: Unit 3, local class 2, global class 16
 - Lesson title: Exploring new cities
@@ -47,53 +66,116 @@ Use this class pack as the primary source when the learner asks for Unit 3, Clas
 PDF_PAGE: 29
 BOOK_PAGE: 20
 
-l!j VOCABULARY
-        What makes a city?
-        A Are these features of cities more important to tourists or to residents?
-          Put the words in the correct columns. Add ideas of your ow n.
+l!j
+           VOCABULARY
+           What makes  a city?
+           A Are these features of cities more important to tourists or to residents?
+             Put the words in the correct columns. Add ideas of your own.
 
-              climate           crime rate     green spaces       job market       neighborhoods             shopping
-              cost of living    cuisine        hotels             landmarks        nightlife                 transportation system
+              climate  crime rate green spaces job market neighborhoods shopping
+              cost of living cuisine hotels landmarks nightlife transportation system
 
-        B Pair w ork Use the features from part A to talk about your city. Give examples
-          and add extra information.
+
+
+
+           B Pair work Use the features from part A to talk about your city. Give examples
+             and add extra information.
+
              "Salvador is famous all over Brazil for its cuisine. Acaraje is one of the most popular foods,
-              and it's really delicious. It's a deep-fried cake that's made from mashed beans."
-                                                                                                          ~ VOCABULARY J»LUS see page 132
+             and it's really delicious. It's a deep-fried cake that's made from mashed beans."
+                                                          ~VOCABULARY J»LUS see page 132
+           LISTENING
+        . 1    -   -  -   -  --         --            -
+           What's the city like?
+         ~·»A Listen to Carlos and Vicki talk about San Francisco. Who seems to like the city better?
 
-       LISTENING
-     . 1   - - - - -- --                                                                     -
-        What's the city like?
-     ~ ·» A Listen to Carlos and Vicki talk about San Francisco. Who seems to like the city better?
+         ~») B Listen again. Choose the city features that Carlos and Vicki mention.
+             D 1. climate D 3. shopping D 5. hotels D 7. landmarks D 9. cuisine
+             D 2. architecture D 4. customs D 6. job market D 8. nightlife
 
-     ~») B   Listen again. Choose the city features that Carlos and Vicki mention.
-             D 1. climate              D 3. shopping          D 5. hotels              D 7. landmarks                D 9. cuisine
-             D 2. architecture         D 4. customs           D 6. job market          D 8. nightlife
+                     ________________________________        .
+       rt72J~D~l~S~C~U~SS_l_O_N                           ~
+       ..  Perfect places
 
- rt72J~D
-       ~l~
-         S~C~
-            U~SS
-               _l_
-                 O_N________________________________~.
-. . Perfect places
-        A Answer the questions w ith your own ideas.
-                                                                                        ;:       .•....
-                   a good city for bud get t ravelers? _ _ __ _ _ _ __ _ __
-                   a good city for a honeymoon? _ _ _ _ _ _ _ _ _ __ _
-                   a p lace that would make a g reat fam ily vacatio n spot? _ _ _ _ _ _ _ _ _ _ __
-                   a c ity w here you'd like to live for a few years?--   - - - - --             ----
-                   a good city to go to school in? _ _ _ _ __ _ __ _ __
-                   a place that you wou ld never want to visit? _ _ _ _ _ _ __ _ _ __
+           A Answer the questions with your own ideas.  ...
+                                                        .•.
+                                                    ;:
+                a good city for budget travelers? ____________
+                a good city for a honeymoon? _ _ _________ _
+                a place that would make a great family vacation spot? ____________
+                a city where you'd like to live for a few years?-- ------ ----
+                a good city to go to school in? ____________
+                a place that you would never want to visit? _ ___________
 
-        B Pair work Discuss your answers.
-             "I think New York is a good place                 Agreeing with an opinion                   Disagreeing wit h an opinion
-              for budget travelers."                           I think you're right.                      I'm not sure I agree.
-             "I'm not sure I agree. New York is                I'm with you.                              Maybe, but don't you think ... ?
-              incredibly expensive."                           That's true.                               Really?
-             "That's true, but there are lots of               I think so, too.                           I know what you mean, but ...
-              cheap fast-food restaurants . . ."
+           B Pair work Discuss your answers.
 
-         C Group work Join another pair and try to agree on one answer for each question.
+             "I think New York is a good place
+                                       Agreeing with an opinion Disagreeing with an opinion
+              for budget travelers."
+                                        I think you're right. I'm not sure I agree.
+             "I'm not sure I agree. New York is I'm with you. Maybe, but don't you think ... ?
+             incredibly expensive."     That's true.      Really?
+             "That's true, but there are lots of I think so, too. I know what you mean, but ...
+              cheap fast-food restaurants ..."
+            C Group work Join another pair and try to agree on one answer for each question.
+      20 llWiff Exploring new cities
 
-20   llWiff       Explorin g n e w cit i es
+## PDF_PAGE 30 | BOOK_PAGE 21
+PDF_PAGE: 30
+BOOK_PAGE: 21
+
+WRITING
+             Organizing ideas with a mind map
+
+
+               Making a mind map is a good way of organizing your brainstorming ideas.
+               Mind maps help you map out the supporting details about your topic.
+
+
+             A Look at the phrases in the box about Cuzco, Peru. Choose the main idea and write it in
+               the center of the mind map. Then write the supporting details around it.
+                a mix of history and culture  something for everyone
+                beautiful architecture        wonderful restaurants
+
+
+
+
+
+
+
+
+
+
+
+
+             B Read the paragraph about Cuzco. Underline the ideas from the mind map in the paragraph.
+
+
+           =
+              Cuzco has something for everyone. It's one of the oldest
+           =
+           =- cities in the Americas, and it was once the capital of the Inca
+              empire. Today, Cuzco is Peru's tourist capital because of its
+           =
+           =  unique mix of history and culture. People who are interested
+              in architecture will love the nearby Inca ruins of Machu Picchu
+           =
+              and the palace of Inca Roca. Cuzco has many places to stay,
+           =
+           =- which range from first-class hotels to cozy inns. There are also
+           =
+              many cafes and restaurants where you can eat delicious local
+           =
+           =  dishes or international cuisine. Also, Cuzco has great markets
+              where you can shop for local arts and crafts. When you visit
+           =  Cuzco, you should try to experience all it has to offer.
+             C Choose a place you know and make your own mind map. Be sure the main idea is
+               general and the map contains several supporting ideas.
+             D Write a paragraph based on the ideas in your mind map.
+             E Pair work Exchange paragraphs with a partner. Then answer the questions.
+               1. Are there enough supporting details? Are there any details you'd like your partner to add?
+               2. Does the content of the paragraph reflect the ideas in the mind map?
+               3. Would you like to visit the place your partner wrote about? Why or why not?
+
+
+                                                        4!~~1•1a·Y Popular destinations 21

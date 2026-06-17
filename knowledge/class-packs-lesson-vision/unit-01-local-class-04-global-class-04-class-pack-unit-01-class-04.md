@@ -30,15 +30,24 @@ Use this class pack as the primary source when the learner asks for Unit 1, Clas
 ## Unit-level lesson vision context
 This block was generated from full-unit page-image analysis. It provides the full lesson context. Teach only the active class sections.
 
+<!-- PASSAGES_ACTIVE_CONTRACT_START -->
 ### Active class teaching contract
 - Active class: Unit 1, local class 4, global class 4
+- Lesson title: Every family is different.
 - Active class book pages: 6-7
 - Active class PDF pages: 15-16
 - Active class section names: Starting point + Listening & Speaking + Grammar + Discussion
-- Active class grammar focus: noun clauses after be; Noun clauses after be
-- Active class functions: describe and compare family types; ask and answer about family similarities and differences; explain advantages, troubles, and family situations; express opinions and ask follow-up questions about family
-- Active class vocabulary focus: extended family; nuclear family; two-income family; grandma; babysit; only one bathroom; in-laws; sister-in-law; law student; three brothers; two daughters; advantage; trouble; bad part; worst thing; youngest; oldest; twin
-- Active class target structures: We're an extended family now...; The big advantage of having... is that...; The only trouble with... is that...; How are their families different?; How is your family similar to...?; The only trouble with being... is (that)...; The big advantage of having... is (that)...; The nice thing about... is that...; The bad part is that...; What's the best thing about... ?
+- Active class skill focus: listening, speaking, and discussion
+- Active class grammar focus: Grammar centered on noun clauses after be, with that optional in noun clauses after be.
+- Active class vocabulary focus: extended family; two-income family; nuclear family; grandma has moved in; babysit more often; spend as much time together; in-laws; law student; close family; strict parents; same chores; advantages and disadvantages
+- Active class functions: describe different types of families; compare family advantages and disadvantages; talk about family members and roles; discuss family changes; state opinions in group discussion
+- Active class target structures: The only trouble with being a two-income family is that we don't spend as much time together.; The big advantage of having Grandma at home is that she can babysit more often.; The nice thing about being the youngest in the family is that I get a lot of attention.; The trouble is she always wants to borrow my clothes.; The bad part is that I miss my family.
+- Expected learner production: compare family types from pictures,discuss family advantages and disadvantages in pairs,listen for details about two families,match family people to descriptions,combine sentences using noun clauses after be,complete opinion sentences about family roles,choose discussion questions and participate in group talk
+- Source status: Verified against visible Student Book pages 6-7 / PDF pages 15-16.
+
+### Safety rule
+Preserve the verified sections, sequence, focus, and target language. Do not fabricate answer keys, audio transcripts, exercises, or source wording.
+<!-- PASSAGES_ACTIVE_CONTRACT_END -->
 
 ### Full lesson context
 - Unit theme: See unit map.
@@ -179,49 +188,115 @@ Use the full lesson context to understand continuity across Starting point, List
 PDF_PAGE: 15
 BOOK_PAGE: 6
 
-:i            LESSO-N Ii'"' ...,.. Every family is different.
-     fCTJ~S_T._A_R_
-                  T_IN_G~PO
-                          ~ IN_T~~~~~~~~~~~~~~~­
-     . . Different types of families
-              A Look at the families in the pictures. What's different about each type of family?
+:i      LESSO-N   Ii'"''...,.. Every family is different.
+
+     fCTJ~S_T_.A_R_T_IN_G~PO~IN_T~~~~~~~~~~~~~~~­
+     ..   Different types of families
+
+          A Look at the families in the pictures. What's different about each type of family?
+
+          What's!Y       our   Family    Like?
 
 
-               What's!Your Family Like?
-                                                         The Wangs, Vancouver
-                                                         "We're an extended family now
-                                                         that Grandma has moved in. The big
-                                                         advantage of having her at home is
-                                                         that she can babysit more often."
+                                 The Wangs, Vancouver
+                                 "We're an extended family now
+                                 that Grandma has moved in. The big
+                                 advantage of having her at home is
+                                 that she can babysit more often."
 
 
-                The Wa t sons, Sydn ey
-                "My wife and I both work now, and the                                         "We're a typical nuclear family - it's
-                extra money is great. The only trouble                                        just my sister, my parents, and me.
-                with being a two-income family is we                                          The only bad thing about living in our
-                don't spend as much time together."                                           house is there's only one bathroom!"
 
 
-              B Pair work What are some more advantages and disadvantages of each type
-                of family in part A? Compare ideas.
-                "In a nuclear family, you might not see your grandparents every day. That's a disadvantage. "
 
 
-         ~ LISTENING & SPEAKING
-              How are their families different?
-           ~ o1) A Listen to Paul and Andrea talk about their families. What kind of family did
-                 each person grow up in? How have their families changed?
 
-           ~») B Listen again. Match the people on the left with the phrases on the right.
+           The Watsons, Sydney
+           "My wife and I both work now, and the       "We're a typical nuclear family - it's
+           extra money is great. The only trouble      just my sister, my parents, and me.
+           with being a two-income family is we        The only bad thing about living in our
+           don't spend as much time together."         house is there's only one bathroom!"
 
-                 1. Andrea _12_                            a. has two daughters.
-                 2. Andrea's husband                       b. doesn't know her in-laws very well.
-                 3. Andrea's sister-in-law                 c. has three brothers.
-                 4. Paul's sister                          d. is looking forward to seeing the family.
-                 5. Paul                                   e. will be cooking for 12 people.
-                 6. Paul's mother                          f. is a law student.
 
-              C Pair work Is your family similar to Paul's or Andrea's? How is it similar?
-                How is it different?
+          B Pair work What are some more advantages and disadvantages of each type
+           of family in part A? Compare ideas.
+           "In a nuclear family, you might not see your grandparents every day. That's a disadvantage."
 
-     6    u@il#     Fri ends an d fa mily
+
+     ~    LISTENING & SPEAKING
+
+          How are their families different?
+
+        ~o1) A Listen to Paul and Andrea talk about their families. What kind of family did
+            each person grow up in? How have their families changed?
+        ~») B Listen again. Match the people on the left with the phrases on the right.
+
+            1. Andrea _12_        a. has two daughters.
+            2. Andrea's husband   b. doesn't know her in-laws very well.
+            3. Andrea's sister-in-law c. has three brothers.
+            4. Paul's sister      d. is looking forward to seeing the family.
+
+            5. Paul               e. will be cooking for 12 people.
+            6. Paul's mother      f. is a law student.
+
+          C Pair work Is your family similar to Paul's or Andrea's? How is it similar?
+            How is it different?
+    6  u@il# Friends and family
+
+## PDF_PAGE 16 | BOOK_PAGE 7
+PDF_PAGE: 16
+BOOK_PAGE: 7
+
+GRAMMAR
+            Noun  clauses after be
+
+            A noun clause is a part of a sentence with a subject and a predicate that functions as a noun.
+             That is optional in noun clauses after be. Also notice the prepositions followed by gerunds in
+            the first part of the sentences.
+            The only trouble with being a two-income family is (that) we don't spend as much time together.
+            The big advantage of having Grandma at home is (that) she can babysit more often.
+                                                       GRAMMAR PLUS see page 107
+
+            A Look at the Starting Point on page 6 again. Can you find the noun clause in the
+              last paragraph? Which preposition is used in the first part of the sentence?
+
+            B Combine the sentences. Then compare answers with a partner.
+              1. I'm the youngest in the family. The nice thing is I get a lot of attention.
+                The nice thing about being the youngest in the family is that I get a lot
+                of attention.
+
+              2. I have a younger sister. The trouble is she always wants to borrow my clothes.
+              3. I'm away at college. The bad part is that I miss my family.
+              4. I work at night. The worst thing is I can't have dinner with my family.
+              5. I'm the oldest in the family. One bad thing is that I always have to babysit.
+
+            C Complete the sentences with your own ideas.
+              Then compare answers with a partner.
+
+              1. An advantage of being a twin is ...
+                that you always have someone to hang out with.
+              2. A problem with being an only child is ...
+              ~- One benefit of being the oldest is ...
+              4. A big disadvantage of having an older sibling is ...
+
+              5. The best thing about having a big family is ...
+
+
+        1i~f ]_D_l_S_C_U_S_S_IO_N~~~~~~~~~~~~~~~~~­
+        \;J  Family matters
+
+             A Choose at least three questions you'd like to talk about with your group.
+               D What's the best thing about spending time with your family? What's the worst thing?
+
+               D What's one advantage of having a close family?
+               D What are some rules that people have to follow in your family?
+               D What's a benefit of having strict parents?
+               D Are you most likely to confide in a parent, a sibling, or a friend?
+               0
+                 Do you believe mothers and fathers should do the same chores?
+               D What are the advantages and disadvantages of having a two-income family?
+
+             B Group work Discuss the questions you chose in part A. Ask follow-up
+              questions and make sure everyone in your group participates.
+
+
+                                                     d$.i--{1]¢':f Every family is different. 7

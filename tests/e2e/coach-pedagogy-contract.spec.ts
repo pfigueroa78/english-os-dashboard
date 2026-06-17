@@ -53,6 +53,9 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("Local Class Pack + Pedagogy Prompt");
   expect(handler).toContain("Never answer a class request with a metadata table");
   expect(handler).toContain("Unsafe class reply contains metadata marker");
+  expect(handler).toContain("loadUnitTeachingContracts");
+  expect(handler).toContain("Seven Local Teaching Contracts + Review Pedagogy Prompt");
+  expect(handler).toContain("activeUnit: unit");
 
   const forbiddenLegacyClassDelivery = [
     "formatCurrentClassContentReply",
@@ -60,6 +63,39 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
     "Book Content Index",
   ];
   for (const marker of forbiddenLegacyClassDelivery) expect(publicRoute).not.toContain(marker);
+});
+
+test("coach UI follows the explicitly requested unit for materials", async () => {
+  const source = readFile("src/app/coach/page.tsx");
+  expect(source).toContain("data.activeUnit ? `Unit ${data.activeUnit}`");
+  expect(source).toContain("setStudyUnit(unit)");
+});
+
+test("all 84 class packs expose usable learner-safe teaching contracts", async () => {
+  const filenames = fs.readdirSync(packsRoot).filter((filename) => filename.endsWith(".md")).sort();
+  expect(filenames).toHaveLength(84);
+
+  const requiredFields = [
+    "Active class section names",
+    "Active class grammar focus",
+    "Active class vocabulary focus",
+    "Active class target structures",
+    "Expected learner production",
+  ];
+  const forbidden = [
+    "Extract exact",
+    "Extract vocabulary",
+    "Use the target language from the indexed page range",
+    "anchored to Student Book pages",
+    "viewing_current_class",
+  ];
+
+  for (const filename of filenames) {
+    const contract = activeContract(readPack(filename));
+    expect(contract, filename).toContain("Active class teaching contract");
+    for (const field of requiredFields) expect(contract, `${filename}: ${field}`).toContain(field);
+    for (const marker of forbidden) expect(contract, `${filename}: ${marker}`).not.toContain(marker);
+  }
 });
 
 test("five sampled class packs keep active source contracts", async () => {

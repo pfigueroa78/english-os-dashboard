@@ -33,15 +33,24 @@ Use this class pack as the primary source when the learner asks for Unit 1, Clas
 ## Unit-level lesson vision context
 This block was generated from full-unit page-image analysis. It provides the full lesson context. Teach only the active class sections.
 
+<!-- PASSAGES_ACTIVE_CONTRACT_START -->
 ### Active class teaching contract
 - Active class: Unit 1, local class 5, global class 5
+- Lesson title: Family reunion
 - Active class book pages: 8-9
 - Active class PDF pages: 17-18
 - Active class section names: Vocabulary + Listening + Reading
-- Active class grammar focus: compound nouns and family prefixes/suffixes; compound family terms; family-like support language
-- Active class functions: define and name extended family relationships; identify relatives and family participants; discuss reliance on friends and the idea of a chosen family
-- Active class vocabulary focus: great-aunt; granddaughter; sister-in-law; great-grandmother; great-nephew; aunt; daughter; mother; niece; son; brother; father; nephew; sister; uncle; family reunion; grandfather; uncle's cousin
-- Active class target structures: Your great-aunt is...; Your granddaughter is...; Your sister-in-law is...; Your great-grandmother is...; Your great-nephew is your brother's or sister's grandson.; Who else was at the reunion?; Select the people mentioned.; Do you tend to rely more on friends or family for help and advice?; How does a group of friends become a tribe?; What are some advantages and disadvantages of relying on friends?
+- Active class skill focus: vocabulary, listening, and reading
+- Active class grammar focus: The class is not grammar-centered; its real focus is family vocabulary, a family reunion listening, and a reading about friends as family.
+- Active class vocabulary focus: compound family terms; great-aunt; granddaughter; sister-in-law; great-grandmother; great-nephew; great-grandson; family reunion; friends of the family; in-laws; tribe; family of choice; circle of friends
+- Active class functions: identify family members from definitions; build compound family terms; talk about a family reunion; select people mentioned in a listening; discuss relying on friends or family; answer reading questions about family-like support
+- Active class target structures: your father's or mother's grandmother; your mother's or father's aunt; your son's or daughter's daughter; your wife's or husband's sister, or your brother's wife; your brother's or sister's grandson; Who celebrates birthdays and holidays with you?; Who do you call when a crisis hits?; my friends
+- Expected learner production: match family terms with definitions,complete a family-term chart,listen for the purpose of a reunion,identify which relatives were at the reunion,discuss friends versus family for help and advice,read an article about modern tribes and answer comprehension questions,share opinions about family-like support
+- Source status: Verified against visible Student Book pages 8-9 / PDF pages 17-18.
+
+### Safety rule
+Preserve the verified sections, sequence, focus, and target language. Do not fabricate answer keys, audio transcripts, exercises, or source wording.
+<!-- PASSAGES_ACTIVE_CONTRACT_END -->
 
 ### Full lesson context
 - Unit theme: See unit map.
@@ -172,40 +181,137 @@ Use the full lesson context to understand continuity across Starting point, List
 PDF_PAGE: 17
 BOOK_PAGE: 8
 
-~ VOCABULARY
-           Compound family terms
-           A Match the family members on the left with the definitions on the right.
-              1. Your great-aunt is _ _                        a. your father's or mother's grandmother.
-              2. Your granddaughter is __                      b. your mother's or father's aunt.
-              3. Your sister-in-law is                         c . your son's or daughter's daughter.
-              4. Your great-grandmother is __                  d. your wife's or husband's sister, or your brother's wife.
+~    VOCABULARY
+          Compound  family terms
 
-           B Pair work Which of the family members in the box can be combined with a prefix or
-             suffix in the chart? Complete the chart with a partner. What does each term mean?
+          A Match the family members on the left with the definitions on the right.
+           1. Your great-aunt is _ _ a. your father's or mother's grandmother.
 
-               aunt        daughter      mother       niece       son
-               brother     father        nephew       sister      uncle
+           2. Your granddaughter is __ b. your mother's or father's aunt.
+           3. Your sister-in-law is  c. your son's or daughter's daughter.
+           4. Your great-grandmother is __ d. your wife's or husband's sister, or your brother's wife.
 
+          B Pair work Which of the family members in the box can be combined with a prefix or
+           suffix in the chart? Complete the chart with a partner. What does each term mean?
 
-                 aunt                     daughter                   mother
-
-
-              " Your great-nephew is your brother's or sister's grandson. "
-                                                                                                 1VOCABULARY PLUS see page 130
+            aunt   daughter mother niece son
+            brother father nephew sister uncle
 
 
-    m
-    •
-           LISTENING
-           Family reunion
+             aunt          daughter      mother
+
+
+
+
+           "Your great-nephew is your brother's or sister's grandson."
+     m                                                     1V OCABULARY PLUS see page 130
+
+          LISTENING
+       •  Family reunion
+
         a4»> A Listen to Victor tell a friend about his family reunion. What were they
-              celebrating at the reunion?
+            celebrating at the reunion?
 
 
-        a4·» B Listen again . In addition to Victor, who else was at the reunion? Select the
-              people mentioned.
-              D 1. his grandfather              D 4. his sister-in-law          D 7. his mother-in-law
-              D 2. his uncle's cousin           D 5. his niece                  D 8. his cousin
-              D 3. his brother                  D 6. his son                    D 9. friends of the family
 
-8   ''1~111r     Frie nds and fa mily
+
+
+
+
+
+
+
+
+
+
+
+
+
+        a4·»
+          B Listen again. In addition to Victor, who else was at the reunion? Select the
+            people mentioned.
+            D 1. his grandfather D 4. his sister-in-law D 7. his mother-in-law
+            D 2. his uncle's cousin D 5. his niece D 8. his cousin
+            D 3. his brother  D 6. his son      D 9. friends of the family
+
+     8 ''1~111r Friends and family
+
+## PDF_PAGE 18 | BOOK_PAGE 9
+PDF_PAGE: 18
+BOOK_PAGE: 9
+
+m~~
+
+                                                                          ~
+                                                                          irLanguage
+             A Group work Do you tend to rely more on friends or family for help and advice?
+               Why? Discuss with your group.
+
+
+
+
+
+                Who celebrates birthdays and holidays with you? Who do you call when a crisis hits
+                or when good luck strikes? If your answer is "my friends," you may have a "tribe."
+                                             family - offering support without expectation of
+              hen Ethan Watters took stock of his life
+                                             repayment; sheltering each other from gossip,
+              a few years ago, the San Francisco writer
+                                             stress, and attack; and looking out for everyone's
+           realized that he was more dependent on friends
+           than family, who lived hundreds of miles away. overall well-being in life, work, and relationships.
+                                                Modern tribes often have a regular
+           "My friends were the centerpiece of
+                                                   meeting place, annual parties, and
+           my social life," he says. "They had
+                                                    group trips. Shared rites and
+           taken on all the responsibilities
+                                                      rituals create a tribal story. "The
+           that family members typically
+                                                      members of the group may
+           tackle - connecting me to the
+                                                       change," Watters says, "but the
+           city, being a matchmaker, and
+                                                       story of that group has central
+           helping me find jobs and
+                                                        elements that remain. It gives
+           places to live."
+                                                        the group a history."
+           This circle of friends had
+                                                        Every tribe usually has an
+           become a tribe, which
+                                                       individual or core group that
+           started when a group
+                                                       tends to its growth and survival.
+           of artists, writers, and
+           photographers began meeting                These tribal leaders are the ones
+           for dinner every Tuesday night.            who get everyone together on a
+                                                    regular basis and make the phone
+           Before long, they had begun
+                                                   calls that get members excited about
+           functioning as a family of choice.
+                                                upcoming events.
+           Watters grew to believe that non-family
+                                             Like families, tribes have a way of shaping their
+           members forming close-knit social networks was
+                                             members: Individuals feel more confident,
+            a growing trend in the United States, and he
+            wrote a book about it called Urban Tribes: secure, loved, and stable. Even. if your own family
+                                             is close-knit, you may benefit from cultivating
+            Are Friends the New Family?
+                                             a family-like circle of friends. "The love and
+            Modern tribes like Watters's often grow out of support we get from one," Watters says, "does
+            a shared interest or experience, but not every not take away from the love and support we get
+            group of friends becomes a tribe. from another."
+            The shift from "circle of friends" to tribe happens
+            when members begin to treat each other like Source: "My Tribe," by Erin Peterson, Experience Life
+             B Read the article and answer the questions. Then compare answers with a partner.
+               1. In what ways does Watter:-'s circle of friends function as a family?
+               2. According to the article, what are some differences between a tribe and a family?
+               3. How does a group of friends become a tribe?
+              C Group work Discuss these questions. Then share your answers with the class.
+               1. What are some advantages and disadvantages of relying on friends for
+                 family-like support?
+               2. Do you consider yourself a member of a modern tribe? Why or why not?
+                                                      41=M'-i•1H
+                                                             ;f Every family is different. 9

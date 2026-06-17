@@ -13,20 +13,20 @@ Teacher instruction: Use this file as the primary source for this exact class. D
 <!-- PASSAGES_ACTIVE_CONTRACT_START -->
 ### Active class teaching contract
 - Active class: Unit 10, local class 4, global class 67
-- Lesson title: Unit 10 Lesson B
+- Lesson title: Let's do something about it!
 - Active class book pages: 84-85
 - Active class PDF pages: 93-94
-- Active class section names: Lesson B + Vocabulary + Grammar + Speaking
-- Active class skill focus: Vocabulary, grammar, speaking
-- Active class grammar focus: Extract exact grammar focus from Unit 10 Lesson B indexed pages; do not infer unindexed wording.
-- Active class vocabulary focus: Extract vocabulary from Unit 10 Lesson B indexed pages; recycle only confirmed unit vocabulary.
-- Active class functions: Teach from the indexed page range, then ask controlled practice before advancing.
-- Active class target structures: Use the target language from the indexed page range. Do not invent structures outside the class pack.
-- Expected learner production: Controlled and personalized answers based on the indexed Student Book prompts.
-- Source status: Source extraction blocker: expected page marker(s) not found in existing extracted content: BOOK_PAGE 85; PDF_PAGE 94. Do not invent missing page text.
+- Active class section names: Starting point + Listening + Grammar + Vocabulary & Speaking
+- Active class skill focus: Listening, speaking, grammar, and vocabulary for reacting to problems, indirect questions, and feelings.
+- Active class grammar focus: Simple and complex indirect questions.
+- Active class vocabulary focus: annoyed; confused; depressed; enraged; humiliated; insulted; mystified; stunned; baffled; demoralized; discouraged; frustrated; infuriated; irritated; saddened
+- Active class functions: agree and show sympathy; express concern; ask indirect questions; describe feelings; make a complaint return request; sympathize with problems
+- Active class target structures: I know (exactly) what you mean.; Yeah, I hate that too.; You can say that again.; I wonder why they don't have more buses at rush hour.; My big concern is whether I'll be able to get into the class.; How anyone can afford them is beyond me.
+- Expected learner production: Students discuss which everyday problems bother them most and respond with agreement and sympathy.,Students listen to Gabriel's automated-phone-menu situation and answer comprehension questions.,Students rewrite direct questions as simple or complex indirect questions and identify indirect-question types.,Students sort feeling words into categories and complete personal sentences about their own feelings.,Students discuss a consumer-problem experience and role-play customer-clerk returns conversations.
+- Source status: Verified against visible Student Book pages 84-85 / PDF pages 93-94.
 
 ### Safety rule
-Preserve the existing extracted Student Book content exactly as indexed. Do not fabricate missing page text, transcript text, answer keys, audio scripts, or exercises.
+Preserve the verified sections, sequence, focus, and target language. Do not fabricate answer keys, audio transcripts, exercises, or source wording.
 <!-- PASSAGES_ACTIVE_CONTRACT_END -->
 
 
@@ -50,57 +50,118 @@ Use this class pack as the primary source when the learner asks for Unit 10, Cla
 PDF_PAGE: 93
 BOOK_PAGE: 84
 
-~   -~   _... ,, -
-                                  ..      .     ~
+_
+                     ... ,, .. - .
+    ·     LESS~O -N~ B .._   ~
+                          Let's do something about it!
+     fCLl~S_T_.A_R_T_I_NG~P_O_IN_T~~~~~~~~~~~~~~~~
+     ...  Why don't they do something about it?
+
+          A How many of these problems have you experienced? Compare with a partner.
 
 
-·        LESSON B .._ Let's do something about it!
-    fCLl~S
-         _T._A_R_T_
-                  IN_G
-                     ~ P_
-                        O_IN_T~~~~~~~~~~~~~~~~
-    . . . Why don't they do something about it?
-        A How many of these problems have you experienced? Compare w ith a partner.
 
 
-                                                    [.-
-
-           "Overcrowded buses really make me        "Umbrellas are so poorly made these
-            mad. I wonder why they don't have        days. I don't know why they always
-            more buses at rush hour."                break in the wind."
 
 
-            "Automated phone menus drive me crazy. "The clothes in those shops are         "The college course I want is really
-             What I don't get is why companies don't unbelievably expensive. How anyone     popular. My big concern is whether
-             have people answer their phones."       can afford them is beyond me."         I'll be able to get into the class."
+
+                               [.
+           "Overcrowded buses really make me "Umbrellas are so poorly made these
+            mad. I wonder why they don't have days. I don't know why they always
+            more buses at rush hour." break in the wind."
 
 
-         B Pair work Which of the problems in part A bother
+
+
+
+
+
+
+           "Automated phone menus drive me crazy. "The clothes in those shops are "The college course I want is really
+            What I don't get is why companies don't unbelievably expensive. How anyone popular. My big concern is whether
+            have people answer their phones." can afford them is beyond me." I'll be able to get into the class."
+
+          B Pair work Which of the problems in part A bother
            you the most? Explain.
-                                                                                      Agreeing and showing sympathy
+                                                 Agreeing and showing sympathy
            "Broken umbrellas definitely bother me the most.
-                                                                                      I know (exactly) what you mean.
-             That happened to me just the other day."
-                                                                                      Yeah, I hate that too.
-           " You can say that again. I j ust hate it when that happens."              You can say that again.
-
-
-    (OlJ_L_IS
-            ~T_E_N_l_
-                    N~G ~~~~~~~~~~~~~~~~
-    ~ If thi s is correct, say, "Yes."
-         A Have you ever had problems w ith automated phone menus? What happened?
-
-      ~ ») B Listen to Gabriel using an automated phone menu. Is he successful? Choose the
+                                                 I know (exactly) what you mean.
+            That happened to me just the other day."
+                                                 Yeah, I hate that too.
+           "You can say that again. I just hate it when that happens."
+                                                 You can say that again.
+     (OlJ_L_I~ST_E_N_l_N~G ~~~~~~~~~~~~~~~~
+     ~    If this is correct, say, "Yes."
+          A Have you ever had problems with automated phone menus? What happened?
+        ~») B Listen to Gabriel using an automated phone menu. Is he successful? Choose the
             best summary.
-            D a. He completed his business successfully and will pick up his prescription this evening.
-            D b. He can't fill his prescription because the machine didn't recognize what he said.
-            D c. His pronunciation is so poor that the system didn't understand anything he said .
 
-      ~ ») C Listen again . Answer the questions.
+           D  a. He completed his business successfully and will pick up his prescription this evening.
+           D  b. He can't fill his prescription because the machine didn't recognize what he said.
+           D  c. His pronunciation is so poor that the system didn't understand anything he said.
 
-            1. What's the name of the store?                    3. What is his phone number?
-            2. What is his prescription number?                 4. What time does he want to pick up his prescription?
+        ~») C Listen again. Answer the questions.
+            1. What's the name of the store? 3. What is his phone number?
 
-84    A!Jmlt•t     The art of complaining
+            2. What is his prescription number? 4. What time does he want to pick up his prescription?
+    84 A!Jmlt•t The art of complaining
+
+## PDF_PAGE 94 | BOOK_PAGE 85
+PDF_PAGE: 94
+BOOK_PAGE: 85
+
+GRAMMAR
+             Simple and complex  indirect questions
+
+             Simple indirect questions use statement word order and begin with expressions such as
+             I wonder, I'd like to know, or I can't understand.
+             Why don't they have more buses at rush hour? I wonder why they don't have more buses at rush hour.
+             Complex indirect questions also use statement word order. In addition, they begin or end with
+             clauses or phrases with be.
+
+             Will I be able to get into the class? My big concern is whether I'll be able to get into the class.
+             How can anyone afford them? How anyone can afford them is beyond me.
+
+
+             A Look at the Starting Point on page 84 again. Can you find more indirect questions?
+               Which ones are simple indirect questions? Which are complex?
+
+             B Rewrite these questions using the words in parentheses. Then compare
+               answers with a partner.
+               1. Will airlines ever stop losing passengers' luggage? (I wonder . . .)
+                 I wonder if airlines will ever stop losing passengers' luggage.
+               2. How do I correct a mistake on my phone bill? (I'd like to know ...)
+
+               3. Why can't I use my cell phone in an elevator? {The thing I don't get is ...)
+               4. How can I get tickets to sold-out concerts? (I want to ~ind out . . .)
+               5. When will the government deal with global warming? (I'd like to know . . .)
+               6. Why do people complain so much? (. .. is something I can't understand.)
+
+                                   _      _      _       _
+                    _
+            ,_V_O_C_A__B_U LARY & SPEAKING
+          ~                ______;
+             I'm totally baffled!
+             A Look at these words that describe feelings. Put them in the correct columns.
+                annoyed confused depressed enraged humiliated insulted mystified stunned
+                baffled demoralized discouraged frustrated infuriated irritated saddened
+
+                  •   •
+                      •
+                 baffled              annoyed
+
+
+
+
+             B Pair work Complete the sentences with your own information. Then discuss
+               your answers with a partner.
+               1. I'm totally baffled by ... 4. I wouldn't be demoralized even if . . .
+               2. I get so infuriated when ... 5. I remember feeling stunned when .. .
+               3. I always get discouraged when ... 6. I would feel insulted if ...
+
+               "I'm totally baffled by people who can speak a lot of languages. How do they remember so
+                many different words and grammar rules?"
+                                                            tVOCABULARY P, US seepage 139
+
+                                                   aii1•]a;J
+                                                            Let's do something about it! 85

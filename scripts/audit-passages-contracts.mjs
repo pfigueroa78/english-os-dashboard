@@ -14,6 +14,9 @@ const knowledgePath = argValue("--knowledge-path", "knowledge/class-packs-lesson
 const unitFilter = Number(argValue("--unit", "0")) || 0;
 const failOnWarnings = hasArg("--fail-on-warnings");
 const outputJson = hasArg("--json");
+const contractReportPath = argValue("--contract-report", "knowledge/passages-contract-audit.json");
+const contractReport = fs.existsSync(contractReportPath) ? JSON.parse(fs.readFileSync(contractReportPath, "utf8")) : null;
+const reportByFilename = new Map((contractReport?.classes || []).map((item) => [item.filename, item]));
 
 const STANDARD_SECTION_RULES = [
   { label: "Starting point", patterns: [/STARTING\s+POINT/i] },
@@ -21,6 +24,7 @@ const STANDARD_SECTION_RULES = [
   { label: "Vocabulary & Speaking", patterns: [/VOCABULARY\s*&\s*SPEAKING/i] },
   { label: "Listening", patterns: [/\bLISTENING\b/i, /LISTENING\s*&\s*SPEAKING/i] },
   { label: "Listening & Speaking", patterns: [/LISTENING\s*&\s*SPEAKING/i] },
+  { label: "Role Play", patterns: [/ROLE\s+PLAY/i] },
   { label: "Grammar", patterns: [/\bGRAMMAR\b/i] },
   { label: "Discussion", patterns: [/\bDISCUSSION\b/i] },
   { label: "Reading", patterns: [/\bREADING\b/i] },
@@ -124,13 +128,16 @@ function detectBookPages(text) {
 }
 
 function detectSections(sourceText) {
-  const found = new Set();
+  const found = [];
   for (const rule of STANDARD_SECTION_RULES) {
-    if (rule.patterns.some((pattern) => pattern.test(sourceText))) found.add(rule.label);
+    const indexes = rule.patterns.map((pattern) => sourceText.search(pattern)).filter((index) => index >= 0);
+    if (indexes.length) found.push({ label: rule.label, index: Math.min(...indexes) });
   }
-  if (found.has("Vocabulary & Speaking")) found.delete("Vocabulary");
-  if (found.has("Listening & Speaking")) found.delete("Listening");
-  return Array.from(found);
+  let ordered = found.sort((a, b) => a.index - b.index).map((item) => item.label);
+  if (ordered.includes("Vocabulary & Speaking")) ordered = ordered.filter((item) => item !== "Vocabulary");
+  if (ordered.includes("Listening & Speaking")) ordered = ordered.filter((item) => item !== "Listening");
+  if (ordered.some((item) => item.endsWith("& Speaking"))) ordered = ordered.filter((item) => item !== "Speaking");
+  return Array.from(new Set(ordered));
 }
 
 function splitContractSections(sections) {
@@ -175,7 +182,8 @@ function auditFile(file) {
   const meta = parseMetadata(file.text);
   const contract = parseContract(file.text);
   const source = extractedContent(file.text);
-  const detectedSections = detectSections(source);
+  const reportEntry = reportByFilename.get(file.filename);
+  const detectedSections = reportEntry?.contract?.sections || detectSections(source);
   const contractSections = splitContractSections(contract.sections);
   const pdfPages = detectPdfPages(source);
   const bookPages = detectBookPages(source);
@@ -183,8 +191,6 @@ function auditFile(file) {
   const expectedBookPages = parsePageRange(meta.bookPages);
   const lessonType = meta.lessonType.toLowerCase();
   const isSpecial = SPECIAL_CLASS_TYPES.has(lessonType);
-  const hasSourceBlocker = /Source extraction blocker/i.test(contract.sourceStatus || "");
-  const allowMissingPageWarning = contract.exists || hasSourceBlocker;
   const issues = [];
   const warnings = [];
 
@@ -193,6 +199,16 @@ function auditFile(file) {
   if (!contract.grammarFocus) issues.push("Missing Active class grammar focus.");
   if (!contract.vocabularyFocus) warnings.push("Missing Active class vocabulary focus.");
   if (!contract.targetStructures) warnings.push("Missing Active class target structures.");
+  if (!contract.expectedProduction) issues.push("Missing Expected learner production.");
+  if (/Extract exact|Extract vocabulary|indexed page range|recycle only confirmed/i.test(JSON.stringify(contract))) {
+    issues.push("Contract contains learner-unsafe placeholder instructions.");
+  }
+  if (/^Unit\s+\d+\s+Lesson\s+[AB](?:\s+extension)?$/i.test(meta.lessonTitle)) {
+    issues.push("Lesson title is generic instead of the visible Student Book title.");
+  }
+  if (/^Lesson\s+[AB](?:\s+extension)?$/i.test(contract.sections) || contractSections.some((section) => /^Lesson\s+[AB]/i.test(section))) {
+    issues.push("Active class sections contain a generic lesson wrapper instead of visible section names.");
+  }
   if (!meta.lessonTitle && !isSpecial) warnings.push("Missing Lesson title. This can cause the model to borrow a title from another retrieved class.");
 
   const expected = expectedFilename(meta);
@@ -205,8 +221,8 @@ function auditFile(file) {
 
     const missingPdf = missingExpectedPages(expectedPdfPages, pdfPages);
     const missingBook = missingExpectedPages(expectedBookPages, bookPages);
-    recordMissingPageFinding({ missingPages: missingPdf, pageType: "PDF", expectedRange: meta.pdfPages, allowWarning: allowMissingPageWarning, issues, warnings });
-    recordMissingPageFinding({ missingPages: missingBook, pageType: "BOOK", expectedRange: meta.bookPages, allowWarning: allowMissingPageWarning, issues, warnings });
+    recordMissingPageFinding({ missingPages: missingPdf, pageType: "PDF", expectedRange: meta.pdfPages, allowWarning: false, issues, warnings });
+    recordMissingPageFinding({ missingPages: missingBook, pageType: "BOOK", expectedRange: meta.bookPages, allowWarning: false, issues, warnings });
 
     if (!detectedSections.length) warnings.push("No visible section headings detected in extracted source text.");
 
@@ -215,11 +231,18 @@ function auditFile(file) {
         recordSectionCoverageFinding(`Detected section '${detectedSection}' in source, but it is missing from Active class section names.`, contract, issues, warnings);
       }
     }
+    const coveredDetected = detectedSections.filter((section) => sectionCovered(section, contractSections));
+    const coveredContract = contractSections.filter((section) => sectionCovered(section, detectedSections));
+    if (coveredDetected.join("|").toLowerCase() !== coveredContract.join("|").toLowerCase()) {
+      issues.push(`Section order mismatch. Source: ${detectedSections.join(" + ")}; contract: ${contractSections.join(" + ")}.`);
+    }
 
-    if (/\bGRAMMAR\b/i.test(source) && !sectionCovered("Grammar", contractSections)) recordSectionCoverageFinding("Source contains GRAMMAR, but contract omits Grammar.", contract, issues, warnings);
-    if (/\bDISCUSSION\b/i.test(source) && !sectionCovered("Discussion", contractSections)) recordSectionCoverageFinding("Source contains DISCUSSION, but contract omits Discussion.", contract, issues, warnings);
-    if (/\bLISTENING\b/i.test(source) && !contractSections.some((section) => /listening/i.test(section))) recordSectionCoverageFinding("Source contains LISTENING, but contract omits Listening.", contract, issues, warnings);
-    if (/\bWRITING\b/i.test(source) && !sectionCovered("Writing", contractSections)) recordSectionCoverageFinding("Source contains WRITING, but contract omits Writing.", contract, issues, warnings);
+    if (!reportEntry) {
+      if (/\bGRAMMAR\b/i.test(source) && !sectionCovered("Grammar", contractSections)) recordSectionCoverageFinding("Source contains GRAMMAR, but contract omits Grammar.", contract, issues, warnings);
+      if (/\bDISCUSSION\b/i.test(source) && !sectionCovered("Discussion", contractSections)) recordSectionCoverageFinding("Source contains DISCUSSION, but contract omits Discussion.", contract, issues, warnings);
+      if (/\bLISTENING\b/i.test(source) && !contractSections.some((section) => /listening/i.test(section))) recordSectionCoverageFinding("Source contains LISTENING, but contract omits Listening.", contract, issues, warnings);
+      if (/\bWRITING\b/i.test(source) && !sectionCovered("Writing", contractSections)) recordSectionCoverageFinding("Source contains WRITING, but contract omits Writing.", contract, issues, warnings);
+    }
   }
 
   if (lessonType === "grammar plus") {

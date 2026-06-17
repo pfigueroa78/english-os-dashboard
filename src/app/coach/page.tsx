@@ -162,6 +162,7 @@ export default function CoachPage() {
 
   const [messages, setMessages] = useState<Message[]>(initialCoachMessages);
   const [input, setInput] = useState("");
+  const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [agentLoading, setAgentLoading] = useState(false);
   const [error, setError] = useState("");
@@ -187,6 +188,10 @@ export default function CoachPage() {
   const activeStudyUnit = studyUnit || currentUnit;
   const activeStudyUnitLabel = unitLabel(activeStudyUnit);
   const conversationStorageKey = email ? `english-os-coach:${email}` : "";
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -386,12 +391,12 @@ export default function CoachPage() {
       if (!response.ok || !data.ok) throw new Error(data.error || "Coach request failed.");
 
       const missionControl = data.context?.missionControl || data.missionControl || data.context || {};
-      const unit = missionControl.currentUnit || missionControl.CurrentUnit || missionControl.unit || "";
+      const unit = data.activeUnit ? `Unit ${data.activeUnit}` : missionControl.currentUnit || missionControl.CurrentUnit || missionControl.unit || "";
       const lesson = missionControl.currentLesson || missionControl.CurrentLesson || missionControl.lesson || "";
 
       if (unit) {
         setCurrentUnit(unit);
-        setStudyUnit((current) => current || unit);
+        setStudyUnit(unit);
       }
       if (lesson) setCurrentLesson(lesson);
 
@@ -550,6 +555,7 @@ export default function CoachPage() {
               <div className="flex flex-col gap-2 sm:flex-row">
                 <textarea
                   value={input}
+                  disabled={!hydrated}
                   onChange={(event) => setInput(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
@@ -560,7 +566,7 @@ export default function CoachPage() {
                   placeholder="Escribe tu respuesta en inglés o pide una explicación..."
                   className="min-h-24 flex-1 resize-none rounded-2xl border border-slate-700 bg-slate-900 p-3 text-base text-white outline-none focus:border-blue-500"
                 />
-                <button onClick={() => sendMessage()} disabled={loading || !input.trim()} className="rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-36">
+                <button onClick={() => sendMessage()} disabled={!hydrated || loading || !input.trim()} className="rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-36">
                   {loading ? "..." : "Enviar respuesta"}
                 </button>
               </div>

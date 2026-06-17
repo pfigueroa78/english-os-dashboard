@@ -60,7 +60,9 @@ test("can type answer", async ({ page }) => {
   await requireUi(page);
   await expectVisibleText(page, /Responde en inglés/i);
   const input = page.getByPlaceholder(/Escribe tu respuesta en inglés/i);
-  await input.pressSequentially("The way I see it, you ought to improve communication first.");
+  await expect(input).toBeEditable();
+  await page.waitForTimeout(250);
+  await input.fill("The way I see it, you ought to improve communication first.");
   await expect(input).toHaveValue(/ought to improve communication/);
   await expect(page.getByRole("button", { name: /Enviar respuesta/i })).toBeEnabled();
 });

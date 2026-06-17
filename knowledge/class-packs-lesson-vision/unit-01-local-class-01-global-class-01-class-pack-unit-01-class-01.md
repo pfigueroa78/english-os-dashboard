@@ -30,15 +30,24 @@ Use this class pack as the primary source when the learner asks for Unit 1, Clas
 ## Unit-level lesson vision context
 This block was generated from full-unit page-image analysis. It provides the full lesson context. Teach only the active class sections.
 
+<!-- PASSAGES_ACTIVE_CONTRACT_START -->
 ### Active class teaching contract
 - Active class: Unit 1, local class 1, global class 1
+- Lesson title: What kind of person are you?
 - Active class book pages: 2-3
 - Active class PDF pages: 11-12
 - Active class section names: Starting point + Vocabulary & Speaking + Grammar + Speaking
-- Active class grammar focus: verbs followed by gerunds; same and different traits expressions; Verbs followed by gerunds
-- Active class functions: express agreement/disagreement and describe personal traits; describe yourself and compare traits; talk about likes, dislikes, habits, and reactions; ask and answer about personality and lifestyle
-- Active class vocabulary focus: afraid of; giving speeches; going to parties; expressing feelings and ideas in public; making my own decisions; giving up my time; getting places on time; going dancing; being in a messy, disorganized room; telling people how I feel; friendly and outgoing; strong and independent; laid-back and relaxed; kind and generous; honest and sincere; shy and reserved; wild and crazy; calm and cool
-- Active class target structures: I'm not afraid of...; I enjoy...; I avoid...; I insist on...; I don't mind...; I never worry about...; I always feel like...; I can't stand...; I prefer...; So am I.
+- Active class skill focus: speaking
+- Active class grammar focus: Grammar centered on verbs followed by gerunds, including gerund or infinitive after certain verbs and gerunds after expressions with prepositions.
+- Active class vocabulary focus: personality survey statements; friendly and outgoing; strong and independent; laid-back and relaxed; kind and generous; honest and sincere; shy and reserved; wild and crazy; calm and cool; neat and tidy; same traits; different traits; personal profiles
+- Active class functions: describe personality; compare survey responses; find common and different traits; ask and answer about self-description; talk about personal profiles
+- Active class target structures: I enjoy going to parties.; I avoid expressing my feelings and ideas in public.; I don't mind giving up my time.; I insist on making my own decisions.; I always feel like going dancing.; I can't stand being in a messy room.; So am I.; So do I.; Neither do I.
+- Expected learner production: complete a personality survey,compare answers in pairs,match personality statements to traits,use expressions for agreement and difference,discuss feelings about activities using gerunds and infinitives,write and share a short personal profile,ask classmates questions to identify a profile
+- Source status: Verified against visible Student Book pages 2-3 / PDF pages 11-12.
+
+### Safety rule
+Preserve the verified sections, sequence, focus, and target language. Do not fabricate answer keys, audio transcripts, exercises, or source wording.
+<!-- PASSAGES_ACTIVE_CONTRACT_END -->
 
 ### Full lesson context
 - Unit theme: See unit map.
@@ -179,66 +188,115 @@ Use the full lesson context to understand continuity across Starting point, List
 PDF_PAGE: 11
 BOOK_PAGE: 2
 
-~-·~~·-·.                  ·1         .
-              ~1~ES.SON A ...,.., What kind of person are you?
+~-·~~·-·.A    ·.1.., .., .
+            ~1~ES.SON         What kind of person are you?
 
-    rClJ_S_T._
-             A_R_
-                T_I N_G_P
-                        _O_l_N_
-                              T~~~~~~~~~~~~~~~~.
-    WJ Personality survey
-        A Do you agree with these statements? Complete the survey.
+     rClJ_S_T._A_R_T_IN_G_P_O_l_N_T~~~~~~~~~~~~~~~~.
+     WJ
+          Personality survey
+          A Do you agree with these statements? Complete the survey.
 
+                             Survey
+          (person..~lity
 
-        (person..~lity Survey
-               I'm not afraid of giving speeches in front of the class.
-                                                                                  0             0                 0
-               I enjoy going to parties where I don't know everyone.
-                                                                                  0             0                 0
-               I avoid expressing my feelings and ideas in public.
-          •    I insist on making my own decisions.
-                                                                                  0             0                 0
-                                                                                  0             0                 0
-               I don't mind giving up my time to help other people.
-                                                                                  0             0                 0
-               I never worry about getting places on time.
-                                                                                  0             0                 0
-               I always feel like going dancing!
-                                                                                  0             0                 0
-               I ca n't stand being in a messy, disorganiied room.
-                                                                                  0             0                 0
-               I prefer telling people how I feel, even if it's embarrassing.
-                                                                                  0             0                 0
-        B Pair work Compare your responses to the survey. Find two ways you and
-          your partner are different.
-          "I'm not afraid of giving speeches in front of the class. How about you?"
-          "Oh, I'm definitely afraid of doing that!"
+             I'm not afraid of giving speeches in front of the class. 0 0 0
+             I enjoy going to parties where I don't know everyone. 0 0 0
+             I avoid expressing my feelings and ideas in public. 0 0 0
+           • I insist on making my own decisions. 0      0      0
+
+             I don't mind giving up my time to help other people. 0 0 0
+             I never worry about getting places on time. 0 0    0
+             I always feel like going dancing!    0      0      0
+             I can't stand being in a messy, disorganiied room. 0 0 0
+
+             I prefer telling people how I feel, even if it's embarrassing. 0 0 0
+
+          B Pair work Compare your responses to the survey. Find two ways you and
+           your partner are different.
+
+           "I'm not afraid of giving speeches in front of the class. How about you?"
+           "Oh, I'm definitely afraid of doing that!"
 
 
-    (i}l~V
-         _O_C_A_B_U_L_A_R_
-                         Y_&_S
-                             _P_E_A_K_l_
-                                       N_G~~~~~~~~~~~~~~
-    ~ How would you describe yourself?
-        A Which statement from the survey best matches these personality traits?
-          Write the correct number. Then compare answers with a partner.
-          _l_ a. friendly and outgoing                            d. kind and generous           _ _ g. wild and crazy
-                  b. strong and independent                       e. honest and sincere                 h. calm and cool
-                  c. laid-back and relaxed                        f. shy and reserved                   i. neat and tidy
+     (i}l~V_O_C_A_B_U_L_A_R_Y_&_S_P_E_A_K_l_N_G~~~~~~~~~~~~~~
+     ~    How would  you describe yourself?
 
-        B Pair work Choose another partner.
-          Find t wo traits you have in common.
-          Find one way that you're different.                                   Same traits
-                                                                                So am I. (I am, too.)
-          "So, how would you describe yourself?"
-                                                                                I'm the same way.                     I'd say I'm more . ..
-          "Well, I'd say I'm pretty /aid-back and relaxed."                     So do I. (I do, too.)                 Really? I don't.
-          "Me, too. I never worry about getting places on time."                Neither do I. (I don't either.)       That's not true for me.
-          "/don't either. I like taking it easy and . .. "
+          A Which statement from the survey best matches these personality traits?
+           Write the correct number. Then compare answers with a partner.
+           _l_ a. friendly and outgoing d. kind and generous _ _ g. wild and crazy
 
-                                                                                                    1VOCABULARY PLUS see page 130
+               b. strong and independent e. honest and sincere h. calm and cool
+               c. laid-back and relaxed f. shy and reserved i. neat and tidy
+
+          B Pair work Choose another partner.
+           Find two traits you have in common.
+           Find one way that you're different.   Same traits
+                                                 So am I. (I am, too.)
+           "So, how would you describe yourself?"
+                                                 I'm the same way. I'd say I'm more ...
+           "Well, I'd say I'm pretty /aid-back and relaxed."
+                                                 So do I. (I do, too.) Really? I don't.
+           "Me, too. I never worry about getting places on time." Neither do I. (I don't either.) That's not true for me.
+           "/don't either. I like taking it easy and ..."
+                                                          1V OCABULARY PLUS see page 130
+    2  AIWilt Friends and family
+
+## PDF_PAGE 12 | BOOK_PAGE 3
+PDF_PAGE: 12
+BOOK_PAGE: 3
+
+GRAMMAR
+             Verbs followed by gerunds
+
+             Use the gerund form after these verbs. Use the gerund or infinitive form after these verbs.
+             I enjoy going to parties where I don't know everyone. I can't stand being I to be in a messy room.
+             I avoid expressing my feelings and ideas in public. I love taking I to take my friends to cool new clubs.
+             I don't mind giving up my time to help other people. I hate getting up I to get up for early morning classes.
+             Use the gerund form after these expressions containing prepositions.
+             I insist on making my own decisions.
+             I always feel like going dancing!
+             I'm into going out to new foreign restaurants.
+                                                          ~GRAMMAR PLUS see page 106
+
+             A Look at the Starting Point on page 2 again. Can you find other expressions that are
+               followed by gerunds? Which of them can also be followed by infinitives?
+
+             B Pair work How do you feel about these things? Discuss your answers using
+               verbs or expressions followed by gerunds and infinitives.
+               1. tell people that I'm angry with them 4. eat a full meal late at night
+
+               2. help with chores around the house 5. start conversations with people I don't know
+               3. listen to people's personal problems 6. go to places where I have to use English
+
+               "I usually avoid telling people that I'm angry with them. I guess I'm just afraid of making
+               them angry at me."
+                   _       _      __            _       _
+             SPEAKING
+          ~ ,_____
+             Personal profiles
+             A Look at the information about these people. Which person is most similar to you? Why?
 
 
-2    AIWilt    Friends a nd fa mily
+
+
+
+
+
+
+
+
+               .Job      college student artist     lawyer
+                Personality friendly and outgoing wild and crazy shy and reserved laid-bacl-1
+                                                                 and relaHed
+                lifestyle • loves playing • loves to dance • into watching old • enjoys cooking
+                          sports                     movies       meals for_ frie,n_ds
+                                      • can't stand going
+                         • into traveling home early             • loves to tell jokes
+
+             B Class activity Write a similar profile for yourself. Don't write your name.
+               Your teacher will take your profile and give you the profile of another student.
+               Ask questions around the class to find the other student.
+
+
+
+                                                  A!~i-1•la·Y What kind of person are you? 3

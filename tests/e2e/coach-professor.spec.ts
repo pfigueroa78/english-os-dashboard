@@ -7,7 +7,7 @@ async function openCoach(page: any) {
 async function requireUi(page: any) {
   const signIn = page.getByRole("button", { name: /sign in/i });
   if (await signIn.isVisible().catch(() => false)) test.skip(true, "Auth or demo required.");
-  await expect(page.getByRole("heading", { name: /Profesor IA|Coach/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /English OS Coach|Profesor IA|Coach/i })).toBeVisible();
 }
 
 async function expectVisibleText(page: any, pattern: RegExp) {
@@ -16,13 +16,14 @@ async function expectVisibleText(page: any, pattern: RegExp) {
 
 test("loads coach or sign in", async ({ page }) => {
   await openCoach(page);
-  await expect(page.getByRole("button", { name: /sign in/i }).or(page.getByRole("heading", { name: /Profesor IA|Coach/i }))).toBeVisible();
+  await expect(page.getByRole("button", { name: /sign in/i }).or(page.getByRole("heading", { name: /English OS Coach|Profesor IA|Coach/i }))).toBeVisible();
 });
 
 test("shows teacher first shell", async ({ page }) => {
   await openCoach(page);
   await requireUi(page);
   await expect(page.getByText("English OS", { exact: true }).first()).toBeVisible();
+  await expectVisibleText(page, /Profesor IA para clase guiada/i);
   await expectVisibleText(page, /Unidad actual/i);
   await expectVisibleText(page, /Clase de hoy/i);
   await expectVisibleText(page, /Evaluación pendiente/i);
@@ -45,16 +46,17 @@ test("shows support panel", async ({ page }) => {
   await openCoach(page);
   await requireUi(page);
   await expectVisibleText(page, /Tu clase/i);
-  await expectVisibleText(page, /Guías descargables/i);
+  await expectVisibleText(page, /Guías de estudio/i);
   await expectVisibleText(page, /Ayudas rápidas/i);
   await expectVisibleText(page, /Materiales de clase/i);
-  await expect(page.getByRole("button", { name: /Excel gramática/i }).first()).toBeVisible();
-  await expect(page.getByRole("button", { name: /Excel vocabulario/i }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /Guía de gramática/i }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /Guía de vocabulario/i }).first()).toBeVisible();
 });
 
 test("can type answer", async ({ page }) => {
   await openCoach(page);
   await requireUi(page);
+  await expectVisibleText(page, /Responde en inglés/i);
   const input = page.getByPlaceholder(/Escribe tu respuesta en inglés/i);
   await input.fill("The way I see it, you ought to improve communication first.");
   await expect(input).toHaveValue(/ought to improve communication/);

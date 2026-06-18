@@ -95,6 +95,12 @@ main > div > header {
 }
 
 @media (max-width: 640px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
   main > div {
     padding: 0.5rem !important;
   }

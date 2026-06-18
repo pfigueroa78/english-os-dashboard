@@ -95,6 +95,7 @@ function parseMetadata(text) {
     globalClass: Number(firstMatch(text, [/^- Global English OS class:\s*(\d+)/im])) || 0,
     lessonType: firstMatch(text, [/^- Lesson type:\s*([^\n]+)/im]),
     lessonTitle: firstMatch(text, [/^Lesson title:\s*([^\n]+)/im, /^- Lesson title:\s*([^\n]+)/im, /^Lesson\s+[A-Z]:\s*([^\n]+)/im]),
+    fullLessonTitle: firstMatch(text, [/^### Full lesson context[\s\S]*?^- Lesson title:\s*([^\n]+)/im]),
     bookPages: firstMatch(text, [/^- Active class book pages:\s*([^\n]+)/im, /^- Book pages:\s*([^\n]+)/im]),
     pdfPages: firstMatch(text, [/^- Active class PDF pages:\s*([^\n]+)/im, /^- PDF pages:\s*([^\n]+)/im]),
   };
@@ -210,6 +211,9 @@ function auditFile(file) {
     issues.push("Active class sections contain a generic lesson wrapper instead of visible section names.");
   }
   if (!meta.lessonTitle && !isSpecial) warnings.push("Missing Lesson title. This can cause the model to borrow a title from another retrieved class.");
+  if (!isSpecial && meta.fullLessonTitle && normalizeSpace(meta.lessonTitle).toLowerCase() !== normalizeSpace(meta.fullLessonTitle).toLowerCase()) {
+    issues.push(`Active lesson title '${meta.lessonTitle}' does not match full lesson title '${meta.fullLessonTitle}'.`);
+  }
 
   const expected = expectedFilename(meta);
   if (expected && expected !== file.filename) issues.push(`Filename mismatch. Expected ${expected} from metadata, got ${file.filename}.`);

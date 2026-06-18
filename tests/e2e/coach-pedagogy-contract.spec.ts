@@ -62,6 +62,12 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("activeUnit: unit");
   expect(handler).toContain("Do not use the class-mode metadata header");
   expect(handler).toContain("finish with exactly four numbered checkpoint items");
+  expect(handler).toContain("deterministicIdentity: true");
+  expect(handler).toContain("renderClassReply");
+  expect(handler).toContain("renderReviewReply");
+  expect(handler).toContain("stripModelOwnedIdentity");
+  expect(handler).toContain("assertCompleteModelResponse");
+  expect(handler).toContain("OPENAI_COACH_MAX_OUTPUT_TOKENS || 3600");
 
   const forbiddenLegacyClassDelivery = [
     "formatCurrentClassContentReply",
@@ -135,6 +141,34 @@ test("Unit 1 Class 2 keeps the full lesson title and treats Changes as an activi
   expect(contract).toContain("not grammar-centered");
   expect(source).toContain("LISTENING");
   expect(source).toContain("Changes");
+});
+
+test("Unit 4 Class 2 keeps Chilling out separate from the unit theme", async () => {
+  const source = readPack("unit-04-local-class-02-global-class-23-class-pack-unit-04-class-23.md");
+  const contract = activeContract(source);
+
+  expect(contract).toContain("Lesson title: Chilling out");
+  expect(contract).toContain("Listening & Speaking + Role Play + Writing");
+  expect(contract).toContain("stress; fatigue; lack of energy");
+  expect(contract).toContain("effective topic sentences");
+  expect(contract).not.toContain("positive messages");
+  expect(contract).not.toContain("sleepiness is at its peak");
+  expect(source).toContain("Early birds and night owls");
+});
+
+test("application-owned identity precedes model-authored teaching", async () => {
+  const handler = readFile("src/lib/coachRouteHandler.ts");
+  const rendererStart = handler.indexOf("function renderClassReply");
+  const rendererEnd = handler.indexOf("function renderReviewReply");
+  const renderer = handler.slice(rendererStart, rendererEnd);
+
+  expect(renderer).toContain(
+    'return [params.position, "", ...header, "", stripModelOwnedIdentity(params.body)]',
+  );
+  expect(renderer).toContain("`# Unit ${params.unit} — Class ${params.localClass}`");
+  expect(handler).toContain("The application renders learner position and lesson identity");
+  expect(handler).toContain("Keep the complete response under 1,500 words");
+  expect(handler).toContain("/\\bclass pack\\b/i");
 });
 
 test("contract generation and audit preserve the complete lesson title", async () => {

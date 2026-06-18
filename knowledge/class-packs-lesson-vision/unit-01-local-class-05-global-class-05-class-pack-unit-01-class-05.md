@@ -36,7 +36,7 @@ This block was generated from full-unit page-image analysis. It provides the ful
 <!-- PASSAGES_ACTIVE_CONTRACT_START -->
 ### Active class teaching contract
 - Active class: Unit 1, local class 5, global class 5
-- Lesson title: Family reunion
+- Lesson title: Every family is different.
 - Active class book pages: 8-9
 - Active class PDF pages: 17-18
 - Active class section names: Vocabulary + Listening + Reading

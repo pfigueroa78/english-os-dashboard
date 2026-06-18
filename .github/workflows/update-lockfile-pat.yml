@@ -1,0 +1,42 @@
+name: Auto-regenerate package-lock.json (using PAT)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  update-lock:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Regenerate package-lock only
+        run: |
+          npm ci || true
+          npm install --package-lock-only
+
+      - name: Commit package-lock.json if changed (using PAT)
+        env:
+          PAT: ${{ secrets.AUTOCOMMIT_PAT }}
+        run: |
+          git config user.name "auto-bot"
+          git config user.email "auto-bot@users.noreply.github.com"
+          # configure remote to use the PAT for auth
+          git remote set-url origin https://x-access-token:${PAT}@github.com/${{ github.repository }}
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json unchanged"
+          else
+            git add package-lock.json
+            git commit -m "chore: regenerate package-lock.json to match package.json [auto]"
+            git push origin HEAD:${{ github.ref_name }}
+          fi

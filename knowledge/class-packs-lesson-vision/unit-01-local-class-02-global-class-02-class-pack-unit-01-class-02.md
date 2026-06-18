@@ -36,7 +36,7 @@ This block was generated from full-unit page-image analysis. It provides the ful
 <!-- PASSAGES_ACTIVE_CONTRACT_START -->
 ### Active class teaching contract
 - Active class: Unit 1, local class 2, global class 2
-- Lesson title: Changes
+- Lesson title: What kind of person are you?
 - Active class book pages: 4-5
 - Active class PDF pages: 13-14
 - Active class section names: Listening + Discussion + Writing

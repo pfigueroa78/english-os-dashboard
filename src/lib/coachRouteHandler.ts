@@ -9,7 +9,7 @@ const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_COACH_MODEL = process.env.OPENAI_COACH_MODEL || "gpt-5.4-mini";
-const OPENAI_COACH_MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_COACH_MAX_OUTPUT_TOKENS || 1800);
+const OPENAI_COACH_MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_COACH_MAX_OUTPUT_TOKENS || 3600);
 
 const FORBIDDEN_METADATA_MARKERS = [
   "Clase actual / contenido de clase",
@@ -20,8 +20,24 @@ const FORBIDDEN_METADATA_MARKERS = [
   "anchored to Student Book pages",
 ];
 
+const FORBIDDEN_METADATA_PATTERNS = [
+  /\bclass pack\b/i,
+  /\blocal class\b/i,
+  /\bclass \d+\s*\/\s*class \d+ locally\b/i,
+  /unit-\d{2}-local-class-/i,
+  /CLASS_PACK_UNIT_/i,
+];
+
 type CoachMessage = { role: "user" | "coach"; content: string };
 type CoachRequest = { message: string; conversationHistory?: CoachMessage[] };
+
+type ClassIdentity = {
+  lessonTitle: string;
+  bookPages: string;
+  pdfPages: string;
+  sections: string;
+  skillFocus: string;
+};
 
 function normalize(value: string) {
   return String(value || "")
@@ -99,6 +115,91 @@ function activeTeachingContract(content: string) {
   return content.slice(start, end).trim();
 }
 
+function contractField(content: string, label: string) {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return content.match(new RegExp(`^- ${escaped}:\\s*([^\\n]+)`, "im"))?.[1]?.trim() || "";
+}
+
+function classIdentity(content: string): ClassIdentity {
+  const contract = activeTeachingContract(content);
+  return {
+    lessonTitle: contractField(contract, "Lesson title"),
+    bookPages: contractField(contract, "Active class book pages"),
+    pdfPages: contractField(contract, "Active class PDF pages"),
+    sections: contractField(contract, "Active class section names"),
+    skillFocus: contractField(contract, "Active class skill focus"),
+  };
+}
+
+function learnerName(context: any, fallback = "") {
+  const user = context?.user || {};
+  return String(user.Name || user.name || user["Full Name"] || context?.name || fallback || "").trim();
+}
+
+function learnerPositionLine(params: {
+  context: any;
+  name: string;
+  requestedUnit: number;
+  requestedClass?: number;
+  review?: boolean;
+}) {
+  const user = params.context?.user || {};
+  const currentUnit = user["Current Unit"] || params.context?.currentUnit || "";
+  const currentLesson = user["Current Lesson"] || params.context?.currentLesson || "";
+  const greeting = params.name ? `${params.name}, ` : "";
+  const savedPosition = [currentUnit, currentLesson].filter(Boolean).join(" — ");
+  const target = params.review
+    ? `Unit ${params.requestedUnit} review`
+    : `Unit ${params.requestedUnit}, Class ${params.requestedClass}`;
+
+  if (savedPosition) {
+    return `${greeting}I found your current position in English OS: **${savedPosition}**. You asked for **${target}**, so that is our active target now.`;
+  }
+  return `${greeting}you asked for **${target}**, so that is our active target now.`;
+}
+
+function stripModelOwnedIdentity(reply: string) {
+  return String(reply || "")
+    .split("\n")
+    .filter((line) => {
+      const clean = line.replace(/[*#]/g, "").trim();
+      return !/^(Unit \d+\s*[—-]\s*Class \d+|Global Class|Lesson:|Book pages:|PDF pages:|Class sections:|Main focus:|Grammar focus:|Language support:|Vocabulary focus:)/i.test(clean);
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function renderClassReply(params: {
+  body: string;
+  position: string;
+  identity: ClassIdentity;
+  unit: number;
+  localClass: number;
+}) {
+  const identity = params.identity;
+  const header = [
+    `# Unit ${params.unit} — Class ${params.localClass}`,
+    identity.lessonTitle ? `**Lesson:** ${identity.lessonTitle}` : "",
+    identity.sections ? `**Learning path:** ${identity.sections}` : "",
+    identity.skillFocus ? `**Skill focus:** ${identity.skillFocus}` : "",
+    identity.bookPages || identity.pdfPages
+      ? `**Course reference:** Book ${identity.bookPages || "—"} · PDF ${identity.pdfPages || "—"}`
+      : "",
+  ].filter(Boolean);
+
+  return [params.position, "", ...header, "", stripModelOwnedIdentity(params.body)]
+    .join("\n")
+    .trim();
+}
+
+function renderReviewReply(params: { body: string; position: string; unit: number }) {
+  return [params.position, "", `# Unit ${params.unit} — Strategic review`, "", stripModelOwnedIdentity(params.body)]
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function loadUnitTeachingContracts(unit: number) {
   return Array.from({ length: 7 }, (_, index) => {
     const localClass = index + 1;
@@ -135,6 +236,16 @@ function usage(openaiResponse: any) {
 function assertNoMetadataFallback(reply: string) {
   const found = FORBIDDEN_METADATA_MARKERS.find((marker) => reply.includes(marker));
   if (found) throw new Error(`Unsafe class reply contains metadata marker: ${found}`);
+  const pattern = FORBIDDEN_METADATA_PATTERNS.find((candidate) => candidate.test(reply));
+  if (pattern) throw new Error(`Unsafe class reply contains internal planning language: ${pattern}`);
+}
+
+function assertCompleteModelResponse(data: any, reply: string) {
+  const reason = data?.incomplete_details?.reason || data?.incompleteDetails?.reason || "";
+  if (data?.status === "incomplete" || reason === "max_output_tokens") {
+    throw new Error("The coach response reached its output limit before the class was complete. Please retry the class request.");
+  }
+  if (!reply.trim()) throw new Error("The coach returned an empty response.");
 }
 
 async function callEnglishOSAction(action: string, params: Record<string, string>) {
@@ -180,6 +291,11 @@ Hard rule for class delivery:
 - Build one continuous teaching sequence. Each active section must reuse language or learner output from the previous section.
 - Distinguish the complete lesson title from activity/subsection headings.
 - Do not invent or attribute an audio transcript or answer key to people named in the source.
+- The application renders learner position and lesson identity. Do not write the learner-position paragraph, Unit/Class header, Global Class, lesson title, pages, class sections, main focus, language support, or vocabulary-focus metadata.
+- Start with the learning objective, then the communication mission, then the exact active teaching sections.
+- Keep the complete response under 1,500 words. Use no more than two model examples per active section and avoid nested generic wrappers.
+- Teach interactively: explain briefly, model, ask the learner to produce, and make the final instruction unmistakable.
+- Use English for teaching. Use brief Spanish support only for a genuinely difficult B1/B2 concept or a known transfer error.
       `.trim(),
     },
     {
@@ -260,6 +376,8 @@ Hard rule for unit review:
 - Use one realistic communication scenario as the thread connecting grammar, vocabulary, models, and checkpoint.
 - Select at most two language priorities and 5-7 chunks. Include one B1 model and one stronger B2 model for the same prompt.
 - Keep the complete review concise and finish with exactly four numbered checkpoint items.
+- The application renders learner position and the review title. Do not repeat either one.
+- Keep the review under 900 words and end by waiting for the learner's answers.
       `.trim(),
     },
     {
@@ -334,8 +452,17 @@ export async function coachPost(request: Request) {
     const openaiData = await callCoachModel(
       buildClassInput({ message, learnerContext: context, classContent, classPack: content, filename, conversationHistory })
     );
-    const reply = getOutputText(openaiData);
-    assertNoMetadataFallback(reply);
+    const modelBody = getOutputText(openaiData);
+    assertCompleteModelResponse(openaiData, modelBody);
+    assertNoMetadataFallback(modelBody);
+    const identity = classIdentity(content);
+    const position = learnerPositionLine({
+      context,
+      name: learnerName(context, clerkUser?.firstName || ""),
+      requestedUnit: unit,
+      requestedClass: localClass,
+    });
+    const reply = renderClassReply({ body: modelBody, position, identity, unit, localClass });
     const u = usage(openaiData);
 
     return NextResponse.json({
@@ -345,7 +472,7 @@ export async function coachPost(request: Request) {
       activeUnit: unit,
       activeClass: localClass,
       source: "Local Class Pack + Pedagogy Prompt",
-      deterministic: false,
+      deterministicIdentity: true,
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
   }
@@ -366,8 +493,16 @@ export async function coachPost(request: Request) {
     const openaiData = await callCoachModel(
       buildReviewInput({ message, learnerContext: context, unit, contracts, conversationHistory })
     );
-    const reply = getOutputText(openaiData);
-    assertNoMetadataFallback(reply);
+    const modelBody = getOutputText(openaiData);
+    assertCompleteModelResponse(openaiData, modelBody);
+    assertNoMetadataFallback(modelBody);
+    const position = learnerPositionLine({
+      context,
+      name: learnerName(context, clerkUser?.firstName || ""),
+      requestedUnit: unit,
+      review: true,
+    });
+    const reply = renderReviewReply({ body: modelBody, position, unit });
     const u = usage(openaiData);
     return NextResponse.json({
       ok: true,
@@ -375,7 +510,7 @@ export async function coachPost(request: Request) {
       reply,
       activeUnit: unit,
       source: "Seven Local Teaching Contracts + Review Pedagogy Prompt",
-      deterministic: false,
+      deterministicIdentity: true,
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
   }

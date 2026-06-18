@@ -79,6 +79,21 @@ test("keeps coach lesson readable on mobile", async ({ page }) => {
   await expect(chatPanel).toHaveCSS("background-color", "rgb(248, 250, 252)");
   await expect(lessonText).toHaveCSS("color", "rgb(15, 23, 42)");
   await expect(lessonText).toBeVisible();
+
+  const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
+  const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(documentWidth).toBeLessThanOrEqual(viewportWidth);
+});
+
+test("resource players are width-contained and load on demand", async () => {
+  const source = await import("node:fs/promises").then((fs) => fs.readFile("src/app/coach/page.tsx", "utf8"));
+
+  expect(source).toContain('data-testid="resource-card"');
+  expect(source).toContain("Cargar reproductor");
+  expect(source).toContain("expandedResourceId === resource.resourceId");
+  expect(source).toContain("min-w-0 max-w-full overflow-hidden");
+  expect(source).toContain("grid-cols-[minmax(0,1fr)_minmax(0,1fr)]");
+  expect(source).toContain('loading="lazy"');
 });
 
 test("captures the verified coach UI", async ({ page }, testInfo) => {

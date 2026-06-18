@@ -176,6 +176,7 @@ export default function CoachPage() {
   const [resources, setResources] = useState<DriveUnitResource[]>([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
   const [resourcesError, setResourcesError] = useState("");
+  const [expandedResourceId, setExpandedResourceId] = useState<string | null>(null);
   const [grammarWorkbook, setGrammarWorkbook] = useState<Workbook | null>(null);
   const [grammarWorkbookLoading, setGrammarWorkbookLoading] = useState(false);
   const [grammarWorkbookError, setGrammarWorkbookError] = useState("");
@@ -483,8 +484,8 @@ export default function CoachPage() {
   }
 
   return (
-    <main className="min-h-[100dvh] bg-[radial-gradient(circle_at_top_left,#1e3a8a_0,#020617_34%,#020617_100%)] text-white">
-      <div className="mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-3 py-3 sm:px-4 lg:px-6 lg:py-5">
+    <main className="min-h-[100dvh] max-w-full overflow-x-clip bg-[radial-gradient(circle_at_top_left,#1e3a8a_0,#020617_34%,#020617_100%)] text-white">
+      <div className="mx-auto flex min-h-[100dvh] min-w-0 max-w-7xl flex-col px-3 py-3 sm:px-4 lg:px-6 lg:py-5">
         <header className="hidden">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -533,7 +534,7 @@ export default function CoachPage() {
 
         {error && <div className="mb-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">{error}</div>}
 
-        <div className="grid flex-1 gap-3 lg:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="grid min-w-0 max-w-full flex-1 gap-3 lg:grid-cols-[340px_minmax(0,1fr)]">
           <section className="order-2 flex min-h-[70dvh] min-w-0 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/70 shadow-2xl lg:h-[calc(100dvh-40px)]">
             <div className="flex-1 space-y-4 overflow-y-auto p-3 sm:p-5 lg:p-6">
               {messages.map((message, index) => (
@@ -574,8 +575,8 @@ export default function CoachPage() {
             </footer>
           </section>
 
-          <aside className="order-1 space-y-3 lg:h-[calc(100dvh-40px)] lg:overflow-y-auto">
-            <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
+          <aside className="order-1 min-w-0 max-w-full space-y-3 overflow-x-hidden lg:h-[calc(100dvh-40px)] lg:overflow-y-auto">
+            <section className="min-w-0 max-w-full overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 p-4">
               <p className="text-xs uppercase tracking-wide text-blue-300">Tu clase</p>
               <h2 className="mt-1 text-lg font-bold">{activeStudyUnitLabel}</h2>
               <p className="mt-1 text-sm text-slate-400">Material y práctica conectados con tu unidad actual.</p>
@@ -651,21 +652,35 @@ export default function CoachPage() {
               {resourcesLoading && <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">Loading resources...</div>}
               {resourcesError && <div className="mt-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">{resourcesError}</div>}
               {!resourcesLoading && !resourcesError && resources.length === 0 && <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">No hay materiales cargados para esta unidad.</div>}
-              <div className="mt-3 space-y-3">
+              <div className="mt-3 min-w-0 max-w-full space-y-3">
                 {resources.map((resource) => (
-                  <div key={resource.resourceId} className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
-                    <div className="mb-2 flex items-start justify-between gap-2">
-                      <h3 className="text-sm font-semibold text-slate-100">{resource.title}</h3>
-                      <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] uppercase text-slate-400">{resource.type}</span>
+                  <div key={resource.resourceId} data-testid="resource-card" className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                    <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
+                      <h3 className="min-w-0 flex-1 break-all text-sm font-semibold text-slate-100" title={resource.title}>{resource.title}</h3>
+                      <span className="shrink-0 rounded-full border border-slate-700 px-2 py-1 text-[10px] uppercase text-slate-400">{resource.type}</span>
                     </div>
-                    <p className="mb-3 text-xs leading-5 text-slate-400">{resource.description}</p>
-                    {resource.type === "audio" && resource.embedUrl && <iframe src={resource.embedUrl} className="mb-3 h-20 w-full rounded-2xl border border-slate-800 bg-black" allow="autoplay" />}
-                    {resource.type === "video" && resource.embedUrl && (
-                      <div className="mb-3 aspect-video overflow-hidden rounded-2xl border border-slate-800 bg-black">
-                        <iframe src={resource.embedUrl} title={resource.title} className="h-full w-full" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+                    <p className="mb-3 break-words text-xs leading-5 text-slate-400">{resource.description}</p>
+                    {resource.embedUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedResourceId((current) => current === resource.resourceId ? null : resource.resourceId)}
+                        className="mb-3 w-full rounded-2xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800"
+                        aria-expanded={expandedResourceId === resource.resourceId}
+                      >
+                        {expandedResourceId === resource.resourceId ? "Ocultar reproductor" : "Cargar reproductor"}
+                      </button>
+                    )}
+                    {expandedResourceId === resource.resourceId && resource.type === "audio" && resource.embedUrl && (
+                      <div className="mb-3 min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-800 bg-black">
+                        <iframe src={resource.embedUrl} title={resource.title} className="block h-20 w-full min-w-0 max-w-full border-0" allow="autoplay" loading="lazy" />
                       </div>
                     )}
-                    <div className="grid grid-cols-2 gap-2">
+                    {expandedResourceId === resource.resourceId && resource.type === "video" && resource.embedUrl && (
+                      <div className="mb-3 aspect-video min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-800 bg-black">
+                        <iframe src={resource.embedUrl} title={resource.title} className="block h-full w-full min-w-0 max-w-full border-0" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" />
+                      </div>
+                    )}
+                    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
                       <a href={resource.url} target="_blank" rel="noreferrer" className="rounded-2xl border border-slate-700 px-3 py-2 text-center text-sm font-semibold hover:bg-slate-800">
                         Abrir
                       </a>

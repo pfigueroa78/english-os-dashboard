@@ -177,6 +177,9 @@ Hard rule for class delivery:
 - Use the class pack and lesson context as teacher planning input.
 - Produce a didactic class: learner position, lesson header, warm-up, teacher explanation, examples, controlled practice, vocabulary/key language, speaking or writing practice, and evaluation gate.
 - If the source is incomplete, say what is missing instead of inventing.
+- Build one continuous teaching sequence. Each active section must reuse language or learner output from the previous section.
+- Distinguish the complete lesson title from activity/subsection headings.
+- Do not invent or attribute an audio transcript or answer key to people named in the source.
       `.trim(),
     },
     {
@@ -253,6 +256,10 @@ Hard rule for unit review:
 - Include grammar review, vocabulary/useful expressions, speaking themes, model B1/B2 answers, and a mini-checkpoint.
 - Explain and model target language before asking the learner to produce it.
 - Do not expose filenames, class packs, retrieval details, or internal metadata.
+- Do not use the class-mode metadata header. Never show Global Class numbers, book/PDF pages, or a combined list of every section.
+- Use one realistic communication scenario as the thread connecting grammar, vocabulary, models, and checkpoint.
+- Select at most two language priorities and 5-7 chunks. Include one B1 model and one stronger B2 model for the same prompt.
+- Keep the complete review concise and finish with exactly four numbered checkpoint items.
       `.trim(),
     },
     {

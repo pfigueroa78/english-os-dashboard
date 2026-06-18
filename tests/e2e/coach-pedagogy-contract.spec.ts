@@ -40,6 +40,10 @@ test("teacher prompt keeps the general pedagogy workflow", async () => {
 
   for (const item of required) expect(source).toContain(item);
   expect(source).not.toContain("Critical correction for Unit");
+  expect(source).toContain("Cohesive lesson thread");
+  expect(source).toContain("Review-mode architecture");
+  expect(source).toContain("Never show Global Class numbers");
+  expect(source).toContain("Never attribute a teacher-created simulation");
 });
 
 test("coach API routes class requests to the pedagogy-first handler", async () => {
@@ -56,6 +60,8 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("loadUnitTeachingContracts");
   expect(handler).toContain("Seven Local Teaching Contracts + Review Pedagogy Prompt");
   expect(handler).toContain("activeUnit: unit");
+  expect(handler).toContain("Do not use the class-mode metadata header");
+  expect(handler).toContain("finish with exactly four numbered checkpoint items");
 
   const forbiddenLegacyClassDelivery = [
     "formatCurrentClassContentReply",
@@ -118,4 +124,24 @@ test("five sampled class packs keep active source contracts", async () => {
     for (const section of sections) expect(contract, `${filename} section ${section}`).toContain(section);
     for (const term of focusTerms) expect(source, `${filename} focus ${term}`).toContain(term);
   }
+});
+
+test("Unit 1 Class 2 keeps the full lesson title and treats Changes as an activity focus", async () => {
+  const source = readPack("unit-01-local-class-02-global-class-02-class-pack-unit-01-class-02.md");
+  const contract = activeContract(source);
+
+  expect(contract).toContain("Lesson title: What kind of person are you?");
+  expect(contract).toContain("Listening + Discussion + Writing");
+  expect(contract).toContain("not grammar-centered");
+  expect(source).toContain("LISTENING");
+  expect(source).toContain("Changes");
+});
+
+test("contract generation and audit preserve the complete lesson title", async () => {
+  const generator = readFile("scripts/generate-passages-teaching-contracts.mjs");
+  const audit = readFile("scripts/audit-passages-contracts.mjs");
+
+  expect(generator).toContain("canonicalLessonTitle");
+  expect(generator).toContain("Never promote an activity, subsection, listening, reading, or writing heading");
+  expect(audit).toContain("does not match full lesson title");
 });

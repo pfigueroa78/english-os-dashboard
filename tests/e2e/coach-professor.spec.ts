@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
 
 async function openCoach(page: any) {
   await page.goto("/coach", { waitUntil: "domcontentloaded" });
@@ -78,6 +79,17 @@ test("keeps coach lesson readable on mobile", async ({ page }) => {
   await expect(chatPanel).toHaveCSS("background-color", "rgb(248, 250, 252)");
   await expect(lessonText).toHaveCSS("color", "rgb(15, 23, 42)");
   await expect(lessonText).toBeVisible();
+});
+
+test("captures the verified coach UI", async ({ page }, testInfo) => {
+  await openCoach(page);
+  await requireUi(page);
+
+  await mkdir("artifacts/ui", { recursive: true });
+  await page.screenshot({
+    path: `artifacts/ui/coach-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
 });
 
 test("MCP endpoint smoke", async ({ request, baseURL }) => {

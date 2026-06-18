@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/artifacts/
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/
@@ -63,3 +66,6 @@ knowledge/passages-level-1-students-book-page-map.md
 !knowledge/class-packs-lesson-vision/
 !knowledge/class-packs-lesson-vision/*.md
 !knowledge/class-packs-lesson-vision/.gitkeep
+
+# clerk configuration (can include secrets)
+/.clerk/

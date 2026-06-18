@@ -36,6 +36,14 @@ function list(value) {
   return Array.isArray(value) ? value.map(clean).filter(Boolean) : [];
 }
 
+function canonicalLessonTitle(filename) {
+  const packPath = path.join(PACK_DIR, filename);
+  if (!fs.existsSync(packPath)) return "";
+  const source = fs.readFileSync(packPath, "utf8");
+  const fullLessonContext = source.match(/### Full lesson context[\s\S]*?^- Lesson title:\s*([^\n]+)/im);
+  return clean(fullLessonContext?.[1]);
+}
+
 function validateContract(contract, evidence) {
   const required = ["lessonTitle", "skillFocus", "grammarFocus", "vocabularyFocus", "functions", "targetStructures", "expectedLearnerProduction"];
   for (const key of required) if (!contract[key] || (Array.isArray(contract[key]) && !contract[key].length)) throw new Error(`${evidence.filename}: missing ${key}`);
@@ -66,7 +74,7 @@ For each entry use: filename, lessonTitle, sections, skillFocus, grammarFocus, v
 Rules:
 - sections must copy the visible standard section headings from the supplied page images in their visual order; never add generic wrappers or labels such as Language.
 - detectedSections is an OCR hint that can omit graphic headings, but every detected section must remain present in order.
-- lessonTitle must be the real visible lesson title, not "Unit X Lesson A" or "extension".
+- lessonTitle must be the real visible title of the complete Lesson A/B that contains the active pages. Never promote an activity, subsection, listening, reading, or writing heading to lessonTitle.
 - grammarFocus must name visible grammar when Grammar is active; otherwise explicitly say the class is not grammar-centered and name its real skill focus.
 - vocabularyFocus, functions, and targetStructures must be arrays of concise, confirmed items from the supplied page text.
 - every schema field must be present and non-empty; when there is no Vocabulary section, vocabularyFocus must still list confirmed chunks from the active listening, grammar, speaking, reading, or writing activities.
@@ -161,7 +169,8 @@ async function main() {
         verified = classes.map((item) => {
           const raw = generated.find((entry) => entry.filename === item.filename);
           if (!raw) throw new Error(`${item.filename}: model omitted class`);
-          return { item, contract: validateContract(raw, item) };
+          const lessonTitle = canonicalLessonTitle(item.filename) || raw.lessonTitle;
+          return { item, contract: validateContract({ ...raw, lessonTitle }, item) };
         });
       } catch (error) {
         lastError = error;

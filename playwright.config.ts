@@ -3,6 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 const baseURL = process.env.E2E_BASE_URL || "http://127.0.0.1:3000";
 const storageState = process.env.E2E_AUTH_STATE || undefined;
 const useLocalWebServer = process.env.E2E_USE_WEB_SERVER !== "0";
+const usePrebuiltApp = process.env.E2E_PREBUILT === "1";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -17,7 +18,9 @@ export default defineConfig({
   reporter: [["list"], ["html", { open: "never" }]],
   webServer: useLocalWebServer
       ? {
-        command: "npm run build && npm run start -- --hostname 127.0.0.1 --port 3000",
+        command: usePrebuiltApp
+          ? "npm run start -- --hostname 127.0.0.1 --port 3000"
+          : "npm run build && npm run start -- --hostname 127.0.0.1 --port 3000",
         url: "http://127.0.0.1:3000",
         env: {
           ...process.env,

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
 
 async function openCoach(page: any) {
   await page.goto("/coach", { waitUntil: "domcontentloaded" });
@@ -65,6 +66,30 @@ test("can type answer", async ({ page }) => {
   await input.fill("The way I see it, you ought to improve communication first.");
   await expect(input).toHaveValue(/ought to improve communication/);
   await expect(page.getByRole("button", { name: /Enviar respuesta/i })).toBeEnabled();
+});
+
+test("keeps coach lesson readable on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openCoach(page);
+  await requireUi(page);
+
+  const chatPanel = page.locator("main > div > div.grid > section").first();
+  const lessonText = page.locator("article .prose p").first();
+
+  await expect(chatPanel).toHaveCSS("background-color", "rgb(248, 250, 252)");
+  await expect(lessonText).toHaveCSS("color", "rgb(15, 23, 42)");
+  await expect(lessonText).toBeVisible();
+});
+
+test("captures the verified coach UI", async ({ page }, testInfo) => {
+  await openCoach(page);
+  await requireUi(page);
+
+  await mkdir("artifacts/ui", { recursive: true });
+  await page.screenshot({
+    path: `artifacts/ui/coach-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
 });
 
 test("MCP endpoint smoke", async ({ request, baseURL }) => {

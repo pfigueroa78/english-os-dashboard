@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - coach-pedagogy-restore-verified
+      - add/vercel-deploy-workflow
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   build-and-deploy:
@@ -38,9 +41,10 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const vercelUrl = process.env.PREVIEW_URL || '';
-            const body = vercelUrl
-              ? `Preview deployment: ${vercelUrl}`
+            const vercelOutputs = (steps.vercel && steps.vercel.outputs) || {};
+            const previewUrl = vercelOutputs.preview_url || vercelOutputs.url || process.env.PREVIEW_URL || '';
+            const body = previewUrl
+              ? `Preview deployment: ${previewUrl}`
               : `Vercel deploy finished but URL not found in action outputs. Check Vercel dashboard for this commit.`;
             await github.rest.repos.createCommitComment({
               owner: context.repo.owner,

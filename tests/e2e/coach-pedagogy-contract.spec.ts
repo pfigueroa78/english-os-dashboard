@@ -1,7 +1,7 @@
-
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
+import { isGiveClassQuestion } from "../../src/lib/coachIntent";
 
 // Validation scope: UI shell + source contracts + pedagogy-first coach routing.
 const root = process.cwd();
@@ -74,6 +74,16 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("callCompleteCoachModel");
   expect(handler).toContain("incomplete model response; retrying");
   expect(handler).toContain("request failed");
+  expect(handler).toContain("using development-only learner context");
+  expect(handler).toContain("localValidationMode: true");
+  expect(handler).toContain('process.env.NODE_ENV === "development"');
+  expect(handler).toContain("limitToOpeningClassTurn");
+  expect(handler).toContain("stripPrematureClassClosure");
+  expect(handler).toContain("This response is the opening turn of a teacher-led class");
+  expect(handler).toContain("Keep this opening turn under 450 words");
+  expect(handler).toContain("openingSectionInstruction");
+  expect(handler).toContain("Activate the topic only");
+  expect(handler).toContain("Do not teach grammar rules, structure tables, or vocabulary lists yet");
 
   const forbiddenLegacyClassDelivery = [
     "formatCurrentClassContentReply",
@@ -89,7 +99,21 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(source).toContain("setStudyUnit(unit)");
   expect(source).toContain("No pude completar la respuesta esta vez");
   expect(source).toContain("readJsonResponse(response)");
-  expect(source).toContain("El servidor no devolviÃ³ contenido");
+  expect(source).toContain("El servidor no devolvió contenido");
+});
+
+test("explicit unit and class switches always use class delivery", async () => {
+  const classRequests = [
+    "Ahora la clase 1 de la unidad 4",
+    "Unidad 4, clase 1",
+    "Cambiemos a la unidad 4 clase 1",
+    "Let's switch to Unit 4 Class 1",
+    "Dame clase 1 de unidad 4",
+  ];
+  for (const request of classRequests) expect(isGiveClassQuestion(request), request).toBe(true);
+
+  expect(isGiveClassQuestion("Hazme un repaso de la unidad 4 clase 1")).toBe(false);
+  expect(isGiveClassQuestion("¿Qué gramática tiene la unidad 4?")).toBe(false);
 });
 
 test("all 84 class packs expose usable learner-safe teaching contracts", async () => {
@@ -171,13 +195,62 @@ test("application-owned identity precedes model-authored teaching", async () => 
   const rendererEnd = handler.indexOf("function renderReviewReply");
   const renderer = handler.slice(rendererStart, rendererEnd);
 
-  expect(renderer).toContain(
-    'return [params.position, "", ...header, "", stripModelOwnedIdentity(params.body)]',
-  );
-  expect(renderer).toContain("`# Unit ${params.unit} â€” Class ${params.localClass}`");
+  expect(renderer).toContain("const teachingBody = limitToOpeningClassTurn");
+  expect(renderer).toContain('return [params.position, "", ...header, "", teachingBody]');
+  expect(renderer).toContain('`# Unit ${params.unit}${title ? ` — ${title}` : ""}`');
+  expect(renderer).toContain('`**Class:** ${params.localClass}`');
+  expect(renderer).toContain('`**Lesson:** ${displayLesson}`');
   expect(handler).toContain("The application renders learner position and lesson identity");
-  expect(handler).toContain("Keep the complete response under 1,500 words");
+  expect(handler).toContain("your saved position in English OS is");
+  expect(handler).toContain("For this request, the active learning target is");
   expect(handler).toContain("/\\bclass pack\\b/i");
+});
+
+test("all classes display the canonical curriculum unit name", async () => {
+  const titles = JSON.parse(readFile("knowledge/passages-unit-titles.json"));
+  const handler = readFile("src/lib/coachRouteHandler.ts");
+
+  expect(Object.keys(titles.units)).toHaveLength(12);
+  expect(titles.units[2]).toBe("Mistakes and mysteries");
+  expect(titles.units[3]).toBe("Exploring new cities");
+  expect(titles.units[4]).toBe("Early birds and night owls");
+  expect(handler).toContain("passages-unit-titles.json");
+  expect(handler).toContain("const displayLesson = identity.lessonTitle || identity.sections.split");
+});
+
+test("class opening cannot invent evaluation or logging results", async () => {
+  const handler = readFile("src/lib/coachRouteHandler.ts");
+  const behavior = readFile("src/lib/englishOsCoachPrompt.ts");
+
+  expect(handler).toContain("PREMATURE_CLASS_CLOSURE");
+  expect(handler).toContain("Do not include the evaluation gate, recap, achievement, weakness");
+  expect(behavior).toContain("SESSION CLOSING — ONLY AFTER LEARNER EVIDENCE");
+  expect(behavior).toContain("Never claim that a session was logged unless");
+  expect(behavior).toContain("only after confirmed success");
+});
+
+test("UTF-8 integrity is enforced before every build", async () => {
+  const packageJson = readFile("package.json");
+  const encodingCheck = readFile("scripts/check-text-encoding.mjs");
+  const files = [
+    "src/lib/coachRouteHandler.ts",
+    "src/lib/passagesTeacherStyle.ts",
+    "src/lib/englishOsCoachPrompt.ts",
+    "src/app/coach/page.tsx",
+  ].map(readFile);
+  const forbidden = [
+    String.fromCodePoint(0x00e2, 0x20ac, 0x201d),
+    String.fromCodePoint(0x00e2, 0x20ac, 0x0153),
+    String.fromCodePoint(0x00e2, 0x20ac, 0x2122),
+    String.fromCodePoint(0x00c2, 0x00b7),
+    String.fromCodePoint(0xfffd),
+  ];
+
+  expect(packageJson).toContain('"build": "npm run check:encoding && next build"');
+  expect(encodingCheck).toContain("Encoding check failed");
+  for (const source of files) {
+    for (const marker of forbidden) expect(source).not.toContain(marker);
+  }
 });
 
 test("contract generation and audit preserve the complete lesson title", async () => {
@@ -188,4 +261,3 @@ test("contract generation and audit preserve the complete lesson title", async (
   expect(generator).toContain("Never promote an activity, subsection, listening, reading, or writing heading");
   expect(audit).toContain("does not match full lesson title");
 });
-

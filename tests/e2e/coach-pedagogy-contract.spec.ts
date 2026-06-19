@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
+import { isGiveClassQuestion } from "../../src/lib/coachIntent";
 
 // Validation scope: UI shell + source contracts + pedagogy-first coach routing.
 const root = process.cwd();
@@ -73,6 +74,9 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("callCompleteCoachModel");
   expect(handler).toContain("incomplete model response; retrying");
   expect(handler).toContain("request failed");
+  expect(handler).toContain("using development-only learner context");
+  expect(handler).toContain("localValidationMode: true");
+  expect(handler).toContain('process.env.NODE_ENV === "development"');
   expect(handler).toContain("limitToOpeningClassTurn");
   expect(handler).toContain("stripPrematureClassClosure");
   expect(handler).toContain("This response is the opening turn of a teacher-led class");
@@ -93,6 +97,20 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(source).toContain("No pude completar la respuesta esta vez");
   expect(source).toContain("readJsonResponse(response)");
   expect(source).toContain("El servidor no devolvió contenido");
+});
+
+test("explicit unit and class switches always use class delivery", async () => {
+  const classRequests = [
+    "Ahora la clase 1 de la unidad 4",
+    "Unidad 4, clase 1",
+    "Cambiemos a la unidad 4 clase 1",
+    "Let's switch to Unit 4 Class 1",
+    "Dame clase 1 de unidad 4",
+  ];
+  for (const request of classRequests) expect(isGiveClassQuestion(request), request).toBe(true);
+
+  expect(isGiveClassQuestion("Hazme un repaso de la unidad 4 clase 1")).toBe(false);
+  expect(isGiveClassQuestion("¿Qué gramática tiene la unidad 4?")).toBe(false);
 });
 
 test("all 84 class packs expose usable learner-safe teaching contracts", async () => {

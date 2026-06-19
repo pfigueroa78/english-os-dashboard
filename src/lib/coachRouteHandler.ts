@@ -4,6 +4,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
+import {
+  extractRequestedClassNumber,
+  extractRequestedUnitNumber,
+  isGiveClassQuestion,
+  normalizeCoachMessage as normalize,
+} from "@/lib/coachIntent";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
@@ -40,45 +46,8 @@ type ClassIdentity = {
   skillFocus: string;
 };
 
-function normalize(value: string) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[¿?¡!.,;:]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function pad2(value: number | string) {
   return String(value).padStart(2, "0");
-}
-
-function extractRequestedUnitNumber(message: string): number | null {
-  const match = normalize(message).match(/(?:unidad|unit)\s+(\d{1,2})/);
-  return match?.[1] ? Number(match[1]) : null;
-}
-
-function extractRequestedClassNumber(message: string): number | null {
-  const match = normalize(message).match(/(?:clase|class)\s+(\d{1,2})/);
-  return match?.[1] ? Number(match[1]) : null;
-}
-
-function isGiveClassQuestion(message: string) {
-  const n = normalize(message);
-  return [
-    "dame la clase",
-    "dar la clase",
-    "ensename la clase",
-    "continua la clase",
-    "continuar la clase",
-    "empezar la clase",
-    "empecemos la clase",
-    "give me class",
-    "teach me class",
-    "start class",
-    "continue class",
-  ].some((phrase) => n.includes(phrase));
 }
 
 function isReviewQuestion(message: string) {
@@ -298,6 +267,16 @@ async function callEnglishOSAction(action: string, params: Record<string, string
 }
 
 async function getLearnerContext(email: string) {
+  if (process.env.NODE_ENV === "development" && (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN)) {
+    console.warn("[coach] using development-only learner context; English OS read/write is unavailable");
+    return {
+      ok: true,
+      learnerId: email,
+      localValidationMode: true,
+      user: { "Learner ID": email },
+      missionControl: {},
+    };
+  }
   const data = await callEnglishOSAction("getLearnerContext", { userEmail: email, learnerId: email });
   if (!data?.ok) throw new Error(data?.error || "Unable to read learner context.");
   return data;

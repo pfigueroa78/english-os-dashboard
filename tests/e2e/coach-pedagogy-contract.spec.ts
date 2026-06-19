@@ -73,6 +73,10 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("callCompleteCoachModel");
   expect(handler).toContain("incomplete model response; retrying");
   expect(handler).toContain("request failed");
+  expect(handler).toContain("limitToOpeningClassTurn");
+  expect(handler).toContain("stripPrematureClassClosure");
+  expect(handler).toContain("This response is the opening turn of a teacher-led class");
+  expect(handler).toContain("Keep this opening turn under 650 words");
 
   const forbiddenLegacyClassDelivery = [
     "formatCurrentClassContentReply",
@@ -170,13 +174,48 @@ test("application-owned identity precedes model-authored teaching", async () => 
   const rendererEnd = handler.indexOf("function renderReviewReply");
   const renderer = handler.slice(rendererStart, rendererEnd);
 
-  expect(renderer).toContain(
-    'return [params.position, "", ...header, "", stripModelOwnedIdentity(params.body)]',
-  );
+  expect(renderer).toContain("const teachingBody = limitToOpeningClassTurn");
+  expect(renderer).toContain('return [params.position, "", ...header, "", teachingBody]');
   expect(renderer).toContain("`# Unit ${params.unit} — Class ${params.localClass}`");
   expect(handler).toContain("The application renders learner position and lesson identity");
-  expect(handler).toContain("Keep the complete response under 1,500 words");
+  expect(handler).toContain("your saved position in English OS is");
+  expect(handler).toContain("For this request, the active learning target is");
   expect(handler).toContain("/\\bclass pack\\b/i");
+});
+
+test("class opening cannot invent evaluation or logging results", async () => {
+  const handler = readFile("src/lib/coachRouteHandler.ts");
+  const behavior = readFile("src/lib/englishOsCoachPrompt.ts");
+
+  expect(handler).toContain("PREMATURE_CLASS_CLOSURE");
+  expect(handler).toContain("Do not include the evaluation gate, recap, achievement, weakness");
+  expect(behavior).toContain("SESSION CLOSING — ONLY AFTER LEARNER EVIDENCE");
+  expect(behavior).toContain("Never claim that a session was logged unless");
+  expect(behavior).toContain("only after confirmed success");
+});
+
+test("UTF-8 integrity is enforced before every build", async () => {
+  const packageJson = readFile("package.json");
+  const encodingCheck = readFile("scripts/check-text-encoding.mjs");
+  const files = [
+    "src/lib/coachRouteHandler.ts",
+    "src/lib/passagesTeacherStyle.ts",
+    "src/lib/englishOsCoachPrompt.ts",
+    "src/app/coach/page.tsx",
+  ].map(readFile);
+  const forbidden = [
+    String.fromCodePoint(0x00e2, 0x20ac, 0x201d),
+    String.fromCodePoint(0x00e2, 0x20ac, 0x0153),
+    String.fromCodePoint(0x00e2, 0x20ac, 0x2122),
+    String.fromCodePoint(0x00c2, 0x00b7),
+    String.fromCodePoint(0xfffd),
+  ];
+
+  expect(packageJson).toContain('"build": "npm run check:encoding && next build"');
+  expect(encodingCheck).toContain("Encoding check failed");
+  for (const source of files) {
+    for (const marker of forbidden) expect(source).not.toContain(marker);
+  }
 });
 
 test("contract generation and audit preserve the complete lesson title", async () => {

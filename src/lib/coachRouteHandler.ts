@@ -154,9 +154,9 @@ function learnerPositionLine(params: {
     : `Unit ${params.requestedUnit}, Class ${params.requestedClass}`;
 
   if (savedPosition) {
-    return `${greeting}I found your current position in English OS: **${savedPosition}**. You asked for **${target}**, so that is our active target now.`;
+    return `${greeting}your saved position in English OS is **${savedPosition}**.\n\nFor this request, the active learning target is **${target}**.`;
   }
-  return `${greeting}you asked for **${target}**, so that is our active target now.`;
+  return `${greeting}the active learning target for this request is **${target}**.`;
 }
 
 function stripModelOwnedIdentity(reply: string) {
@@ -171,6 +171,37 @@ function stripModelOwnedIdentity(reply: string) {
     .trim();
 }
 
+const PREMATURE_CLASS_CLOSURE = /^(evaluation gate|recap|main achievement|main weakness|priority correction|new vocabulary\/chunks|next action|session logged(?: in english os)?)[\s:]*$/i;
+
+function stripPrematureClassClosure(reply: string) {
+  const lines = String(reply || "").split("\n");
+  const boundary = lines.findIndex((line) => {
+    const clean = line.replace(/[*#]/g, "").trim();
+    return PREMATURE_CLASS_CLOSURE.test(clean);
+  });
+  const kept = boundary >= 0 ? lines.slice(0, boundary) : lines;
+  return kept
+    .filter((line) => !/session logged(?: in english os)?/i.test(line))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function limitToOpeningClassTurn(reply: string, sectionList: string) {
+  const sections = sectionList.split("+").map((section) => section.trim()).filter(Boolean);
+  if (sections.length < 2) return stripPrematureClassClosure(reply);
+
+  const laterSections = new Set(sections.slice(1).map((section) => section.toLowerCase()));
+  const lines = stripPrematureClassClosure(reply).split("\n");
+  const boundary = lines.findIndex((line) => {
+    const trimmed = line.trim();
+    const looksLikeHeading = /^#{1,6}\s+/.test(trimmed) || /^\*\*[^*]+\*\*:?$/.test(trimmed);
+    const clean = trimmed.replace(/^#{1,6}\s+/, "").replace(/[*:]/g, "").trim().toLowerCase();
+    return looksLikeHeading && laterSections.has(clean);
+  });
+  return (boundary >= 0 ? lines.slice(0, boundary) : lines).join("\n").trim();
+}
+
 function renderClassReply(params: {
   body: string;
   position: string;
@@ -179,6 +210,7 @@ function renderClassReply(params: {
   localClass: number;
 }) {
   const identity = params.identity;
+  const teachingBody = limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections);
   const header = [
     `# Unit ${params.unit} — Class ${params.localClass}`,
     identity.lessonTitle ? `**Lesson:** ${identity.lessonTitle}` : "",
@@ -189,7 +221,7 @@ function renderClassReply(params: {
       : "",
   ].filter(Boolean);
 
-  return [params.position, "", ...header, "", stripModelOwnedIdentity(params.body)]
+  return [params.position, "", ...header, "", teachingBody]
     .join("\n")
     .trim();
 }
@@ -292,15 +324,19 @@ Hard rule for class delivery:
 - Never expose internal modes such as viewing_current_class.
 - Never expose placeholders such as Extract exact or Extract vocabulary.
 - Use the class pack and lesson context as teacher planning input.
-- Produce a didactic class: learner position, lesson header, warm-up, teacher explanation, examples, controlled practice, vocabulary/key language, speaking or writing practice, and evaluation gate.
+- This response is the opening turn of a teacher-led class, not the entire class transcript.
+- Give the learning objective, communication mission, and only the first active teaching section. Explain briefly, give no more than two examples, ask one compact learner task, and stop for the learner's answer.
+- Do not teach the second or later active section yet. Do not include the evaluation gate, recap, achievement, weakness, correction priority, next action, approval, or session-log language in this opening turn.
+- Continue with the next active section only after the learner answers. Present the evaluation gate only after the learner has practised the active sections.
 - If the source is incomplete, say what is missing instead of inventing.
 - Build one continuous teaching sequence. Each active section must reuse language or learner output from the previous section.
 - Distinguish the complete lesson title from activity/subsection headings.
 - Do not invent or attribute an audio transcript or answer key to people named in the source.
 - The application renders learner position and lesson identity. Do not write the learner-position paragraph, Unit/Class header, Global Class, lesson title, pages, class sections, main focus, language support, or vocabulary-focus metadata.
 - Start with the learning objective, then the communication mission, then the exact active teaching sections.
-- Keep the complete response under 1,500 words. Use no more than two model examples per active section and avoid nested generic wrappers.
+- Keep this opening turn under 650 words and avoid nested generic wrappers.
 - Teach interactively: explain briefly, model, ask the learner to produce, and make the final instruction unmistakable.
+- Every grammar form and vocabulary item taught must be supported by the active teaching contract or visible source. Do not broaden the lesson with adjacent language systems.
 - Use English for teaching. Use brief Spanish support only for a genuinely difficult B1/B2 concept or a known transfer error.
       `.trim(),
     },
@@ -339,6 +375,7 @@ ${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}
 ${PASSAGES_TEACHER_STYLE_GUIDANCE}
 
 Answer as English OS Coach. If the learner is in review mode, use summary + mini-checkpoint. If correcting answers, use Cambridge-style correction.
+If recent conversation shows a class in progress, continue with only the next pedagogical step, ask one compact task, and wait. Do not repeat the class header or claim evaluation, approval, progress, or logging without learner evidence and a successful write action.
       `.trim(),
     },
     {

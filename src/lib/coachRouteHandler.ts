@@ -10,6 +10,7 @@ import {
   isGiveClassQuestion,
   normalizeCoachMessage as normalize,
 } from "@/lib/coachIntent";
+import passagesUnitTitles from "../../knowledge/passages-unit-titles.json";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
@@ -101,6 +102,36 @@ function classIdentity(content: string): ClassIdentity {
   };
 }
 
+function unitTitle(unit: number) {
+  const units = passagesUnitTitles.units as Record<string, string>;
+  return String(units[String(unit)] || "").trim();
+}
+
+function openingSectionInstruction(sectionList: string) {
+  const section = sectionList.split("+")[0]?.trim() || "Starting point";
+  const normalized = section.toLowerCase();
+
+  if (normalized === "starting point") {
+    return `OPENING SECTION: ${section}. Activate the topic only. Give at most two short model reactions and ask one personal or situational question. Do not teach grammar rules, structure tables, or vocabulary lists yet.`;
+  }
+  if (normalized.includes("listening")) {
+    return `OPENING SECTION: ${section}. Provide one short teacher-created listening input when exact audio is unavailable, then ask one gist question and at most one detail question. Do not begin later role-play, grammar, discussion, or writing sections.`;
+  }
+  if (normalized.includes("vocabulary")) {
+    return `OPENING SECTION: ${section}. Teach at most five contract-supported chunks with two short models, then ask one compact reuse task. Do not begin later sections.`;
+  }
+  if (normalized.includes("grammar")) {
+    return `OPENING SECTION: ${section}. Explain one target structure briefly, give two examples, and ask two controlled items. Do not begin later sections.`;
+  }
+  if (normalized.includes("discussion") || normalized.includes("speaking") || normalized.includes("role play")) {
+    return `OPENING SECTION: ${section}. Set one realistic communication situation, give two short model turns, and ask one compact spoken or written response. Do not begin later sections.`;
+  }
+  if (normalized.includes("video") || normalized.includes("before watching")) {
+    return `OPENING SECTION: ${section}. Do only the before-watching activation with one prediction task. Do not invent video content or begin later sections.`;
+  }
+  return `OPENING SECTION: ${section}. Teach only this section with two short models and one learner task. Do not begin later sections.`;
+}
+
 function learnerName(context: any, fallback = "") {
   const user = context?.user || {};
   return String(user.Name || user.name || user["Full Name"] || context?.name || fallback || "").trim();
@@ -133,7 +164,7 @@ function stripModelOwnedIdentity(reply: string) {
     .split("\n")
     .filter((line) => {
       const clean = line.replace(/[*#]/g, "").trim();
-      return !/^(Unit \d+\s*[—-]\s*Class \d+|Global Class|Lesson:|Book pages:|PDF pages:|Class sections:|Main focus:|Grammar focus:|Language support:|Vocabulary focus:)/i.test(clean);
+      return !/^(Unit \d+\b|Class:|Global Class|Lesson:|Book pages:|PDF pages:|Class sections:|Main focus:|Grammar focus:|Language support:|Vocabulary focus:)/i.test(clean);
     })
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
@@ -179,12 +210,16 @@ function renderClassReply(params: {
   localClass: number;
 }) {
   const identity = params.identity;
+  const title = unitTitle(params.unit);
+  const displayLesson = identity.lessonTitle || identity.sections.split("+")[0]?.trim() || "Class session";
+  const formattedSkillFocus = identity.skillFocus.split(",").map((item) => item.trim()).filter(Boolean).join(", ");
   const teachingBody = limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections);
   const header = [
-    `# Unit ${params.unit} — Class ${params.localClass}`,
-    identity.lessonTitle ? `**Lesson:** ${identity.lessonTitle}` : "",
+    `# Unit ${params.unit}${title ? ` — ${title}` : ""}`,
+    `**Class:** ${params.localClass}`,
+    `**Lesson:** ${displayLesson}`,
     identity.sections ? `**Learning path:** ${identity.sections}` : "",
-    identity.skillFocus ? `**Skill focus:** ${identity.skillFocus}` : "",
+    formattedSkillFocus ? `**Skill focus:** ${formattedSkillFocus}` : "",
     identity.bookPages || identity.pdfPages
       ? `**Course reference:** Book ${identity.bookPages || "—"} · PDF ${identity.pdfPages || "—"}`
       : "",
@@ -196,7 +231,8 @@ function renderClassReply(params: {
 }
 
 function renderReviewReply(params: { body: string; position: string; unit: number }) {
-  return [params.position, "", `# Unit ${params.unit} — Strategic review`, "", stripModelOwnedIdentity(params.body)]
+  const title = unitTitle(params.unit);
+  return [params.position, "", `# Unit ${params.unit}${title ? ` — ${title}` : ""} — Strategic review`, "", stripModelOwnedIdentity(params.body)]
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -290,6 +326,7 @@ function buildClassInput(params: {
   filename: string;
   conversationHistory: CoachMessage[];
 }) {
+  const identity = classIdentity(params.classPack);
   return [
     {
       role: "system",
@@ -313,10 +350,12 @@ Hard rule for class delivery:
 - Do not invent or attribute an audio transcript or answer key to people named in the source.
 - The application renders learner position and lesson identity. Do not write the learner-position paragraph, Unit/Class header, Global Class, lesson title, pages, class sections, main focus, language support, or vocabulary-focus metadata.
 - Start with the learning objective, then the communication mission, then the exact active teaching sections.
-- Keep this opening turn under 650 words and avoid nested generic wrappers.
+- Keep this opening turn under 450 words and avoid nested generic wrappers.
 - Teach interactively: explain briefly, model, ask the learner to produce, and make the final instruction unmistakable.
 - Every grammar form and vocabulary item taught must be supported by the active teaching contract or visible source. Do not broaden the lesson with adjacent language systems.
 - Use English for teaching. Use brief Spanish support only for a genuinely difficult B1/B2 concept or a known transfer error.
+
+${openingSectionInstruction(identity.sections)}
       `.trim(),
     },
     {

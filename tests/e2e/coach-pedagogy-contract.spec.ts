@@ -80,7 +80,10 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("limitToOpeningClassTurn");
   expect(handler).toContain("stripPrematureClassClosure");
   expect(handler).toContain("This response is the opening turn of a teacher-led class");
-  expect(handler).toContain("Keep this opening turn under 650 words");
+  expect(handler).toContain("Keep this opening turn under 450 words");
+  expect(handler).toContain("openingSectionInstruction");
+  expect(handler).toContain("Activate the topic only");
+  expect(handler).toContain("Do not teach grammar rules, structure tables, or vocabulary lists yet");
 
   const forbiddenLegacyClassDelivery = [
     "formatCurrentClassContentReply",
@@ -194,11 +197,25 @@ test("application-owned identity precedes model-authored teaching", async () => 
 
   expect(renderer).toContain("const teachingBody = limitToOpeningClassTurn");
   expect(renderer).toContain('return [params.position, "", ...header, "", teachingBody]');
-  expect(renderer).toContain("`# Unit ${params.unit} — Class ${params.localClass}`");
+  expect(renderer).toContain('`# Unit ${params.unit}${title ? ` — ${title}` : ""}`');
+  expect(renderer).toContain('`**Class:** ${params.localClass}`');
+  expect(renderer).toContain('`**Lesson:** ${displayLesson}`');
   expect(handler).toContain("The application renders learner position and lesson identity");
   expect(handler).toContain("your saved position in English OS is");
   expect(handler).toContain("For this request, the active learning target is");
   expect(handler).toContain("/\\bclass pack\\b/i");
+});
+
+test("all classes display the canonical curriculum unit name", async () => {
+  const titles = JSON.parse(readFile("knowledge/passages-unit-titles.json"));
+  const handler = readFile("src/lib/coachRouteHandler.ts");
+
+  expect(Object.keys(titles.units)).toHaveLength(12);
+  expect(titles.units[2]).toBe("Mistakes and mysteries");
+  expect(titles.units[3]).toBe("Exploring new cities");
+  expect(titles.units[4]).toBe("Early birds and night owls");
+  expect(handler).toContain("passages-unit-titles.json");
+  expect(handler).toContain("const displayLesson = identity.lessonTitle || identity.sections.split");
 });
 
 test("class opening cannot invent evaluation or logging results", async () => {

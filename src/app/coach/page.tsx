@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -55,22 +54,22 @@ type SpecialistAgent = {
 const E2E_DEMO = process.env.NEXT_PUBLIC_E2E_DEMO === "1";
 const DEMO_UNIT = "Unit 1";
 const DEMO_LESSON = "Business advice speaking practice";
-const PROGRESS_STATUS = "EvaluaciÃ³n pendiente";
+const PROGRESS_STATUS = "Evaluación pendiente";
 
 const SPECIALIST_AGENTS: SpecialistAgent[] = [
   {
     id: "grammar_corrector",
-    name: "Corrector de gramÃ¡tica",
-    shortName: "GramÃ¡tica",
-    description: "Corrige estructura, artÃ­culos, preposiciones y naturalidad.",
+    name: "Corrector de gramática",
+    shortName: "Gramática",
+    description: "Corrige estructura, artículos, preposiciones y naturalidad.",
     defaultPrompt:
       "Please correct my English. Focus on grammar, sentence structure, articles, prepositions, fluency, and natural professional phrasing.",
   },
   {
     id: "speaking_partner",
-    name: "CompaÃ±ero de speaking",
+    name: "Compañero de speaking",
     shortName: "Speaking",
-    description: "Practica conversaciÃ³n, fluidez y respuestas profesionales.",
+    description: "Practica conversación, fluidez y respuestas profesionales.",
     defaultPrompt:
       "Let's practice speaking in a business context. Ask me one realistic question and correct important mistakes after my answer.",
   },
@@ -78,7 +77,7 @@ const SPECIALIST_AGENTS: SpecialistAgent[] = [
     id: "english_evaluator",
     name: "Evaluador B1/B2",
     shortName: "Evaluar",
-    description: "EvalÃºa CEFR, precisiÃ³n, vocabulario y prÃ³ximos pasos.",
+    description: "Evalúa CEFR, precisión, vocabulario y próximos pasos.",
     defaultPrompt:
       "Please evaluate my English objectively using CEFR criteria. Give me a score, weaknesses, recurring patterns, and targeted exercises.",
   },
@@ -99,9 +98,9 @@ function buildTodayClassMessage(unit: string, lesson: string) {
     "Hola, Pedro. Soy tu profesor de English OS y hoy vamos a trabajar paso a paso.",
     "",
     `Unidad activa: ${unitLabel(unit)}`,
-    `Clase / lecciÃ³n actual: ${lesson || "Clase guiada de English OS"}`,
+    `Clase / lección actual: ${lesson || "Clase guiada de English OS"}`,
     "",
-    "Puedes empezar la explicaciÃ³n, pedir una pista, practicar gramÃ¡tica o responder la evaluaciÃ³n pendiente. Yo mantengo el avance bloqueado hasta que la evaluaciÃ³n quede aprobada.",
+    "Puedes empezar la explicación, pedir una pista, practicar gramática o responder la evaluación pendiente. Yo mantengo el avance bloqueado hasta que la evaluación quede aprobada.",
   ].join("\n");
 }
 
@@ -123,7 +122,7 @@ function buildHintPrompt(unit: string, lesson: string) {
     "Dame una pista corta, no la respuesta completa.",
     `Unidad: ${unitLabel(unit)}`,
     lesson ? `Clase: ${lesson}` : "",
-    "La pista debe ayudarme a responder la evaluaciÃ³n en inglÃ©s.",
+    "La pista debe ayudarme a responder la evaluación en inglés.",
   ]
     .filter(Boolean)
     .join("\n");
@@ -132,18 +131,18 @@ function buildHintPrompt(unit: string, lesson: string) {
 function buildUnitGrammarPrompt(unit: string) {
   const number = extractUnitNumber(unit);
   return [
-    number ? `Dame una guÃ­a de gramÃ¡tica de la unidad ${number}.` : "Dame una guÃ­a de gramÃ¡tica de mi unidad actual.",
-    "Usa mi contexto de English OS y el contenido real del curso cuando estÃ© disponible.",
-    "Organiza la respuesta por clases/secciones reales de la unidad. Incluye estructuras, reglas en espaÃ±ol, ejemplos en inglÃ©s, errores frecuentes, tips B1/B2 y una evaluaciÃ³n corta al final.",
+    number ? `Dame una guía de gramática de la unidad ${number}.` : "Dame una guía de gramática de mi unidad actual.",
+    "Usa mi contexto de English OS y el contenido real del curso cuando esté disponible.",
+    "Organiza la respuesta por clases/secciones reales de la unidad. Incluye estructuras, reglas en español, ejemplos en inglés, errores frecuentes, tips B1/B2 y una evaluación corta al final.",
   ].join(" ");
 }
 
 function buildUnitVocabularyPrompt(unit: string) {
   const number = extractUnitNumber(unit);
   return [
-    number ? `Dame una guÃ­a de vocabulario de la unidad ${number}.` : "Dame una guÃ­a de vocabulario de mi unidad actual.",
-    "Usa mi contexto de English OS y el contenido real del curso cuando estÃ© disponible.",
-    "Organiza el vocabulario por clases/secciones reales de la unidad. Incluye chunks, collocations, significado en espaÃ±ol, ejemplos en inglÃ©s, tips de pronunciaciÃ³n y prÃ¡ctica corta al final.",
+    number ? `Dame una guía de vocabulario de la unidad ${number}.` : "Dame una guía de vocabulario de mi unidad actual.",
+    "Usa mi contexto de English OS y el contenido real del curso cuando esté disponible.",
+    "Organiza el vocabulario por clases/secciones reales de la unidad. Incluye chunks, collocations, significado en español, ejemplos en inglés, tips de pronunciación y práctica corta al final.",
   ].join(" ");
 }
 
@@ -159,12 +158,12 @@ function initialCoachMessages(): Message[] {
 async function readJsonResponse(response: Response) {
   const text = await response.text();
   if (!text.trim()) {
-    throw new Error(`El servidor no devolviÃ³ contenido (${response.status || "sin estado"}). Intenta nuevamente.`);
+    throw new Error(`El servidor no devolvió contenido (${response.status || "sin estado"}). Intenta nuevamente.`);
   }
   try {
     return JSON.parse(text);
   } catch {
-    throw new Error(`El servidor devolviÃ³ una respuesta invÃ¡lida (${response.status}). Intenta nuevamente.`);
+    throw new Error(`El servidor devolvió una respuesta inválida (${response.status}). Intenta nuevamente.`);
   }
 }
 
@@ -319,7 +318,7 @@ export default function CoachPage() {
       window.open(data.exportUrl || data.fileUrl, "_blank", "noopener,noreferrer");
       setMessages((current) => [
         ...current,
-        { role: "coach", content: `Listo. GenerÃ© la guÃ­a de ${isGrammar ? "gramÃ¡tica" : "vocabulario"} para ${unitLabel(unit)}.` },
+        { role: "coach", content: `Listo. Generé la guía de ${isGrammar ? "gramática" : "vocabulario"} para ${unitLabel(unit)}.` },
       ]);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown workbook error";
@@ -340,7 +339,7 @@ export default function CoachPage() {
       setMessages((current) => [
         ...current,
         { role: "user", content: `[${activeAgent.name}] ${message}` },
-        { role: "coach", content: `${activeAgent.name}\n\nModo demo: aquÃ­ aparecerÃ­a la retroalimentaciÃ³n especializada.` },
+        { role: "coach", content: `${activeAgent.name}\n\nModo demo: aquí aparecería la retroalimentación especializada.` },
       ]);
       return;
     }
@@ -385,7 +384,7 @@ export default function CoachPage() {
       setMessages((current) => [
         ...current,
         { role: "user", content: message },
-        { role: "coach", content: "Modo demo: el profesor responderÃ­a aquÃ­ usando el contexto real de la clase." },
+        { role: "coach", content: "Modo demo: el profesor respondería aquí usando el contexto real de la clase." },
       ]);
       return;
     }
@@ -465,10 +464,10 @@ export default function CoachPage() {
 
   function renderWorkbookCard(kind: "grammar" | "vocabulary", workbook: Workbook | null) {
     if (!workbook) return null;
-    const label = kind === "grammar" ? "gramÃ¡tica" : "vocabulario";
+    const label = kind === "grammar" ? "gramática" : "vocabulario";
     return (
       <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-100">
-        <p className="font-semibold">GuÃ­a de {label} generada</p>
+        <p className="font-semibold">Guía de {label} generada</p>
         <p className="mt-1 break-words text-xs text-slate-300">{workbook.title}</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <a href={workbook.exportUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-white/10 px-3 py-2 text-center text-xs font-semibold hover:bg-white/20">
@@ -512,7 +511,7 @@ export default function CoachPage() {
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-blue-300">English OS</p>
               <h1 className="mt-1 text-2xl font-bold sm:text-3xl">English OS Coach</h1>
-              <p className="mt-1 text-sm text-slate-300">Profesor IA para clase guiada, prÃ¡ctica y evaluaciÃ³n.</p>
+              <p className="mt-1 text-sm text-slate-300">Profesor IA para clase guiada, práctica y evaluación.</p>
               <p className="mt-1 truncate text-xs text-slate-500 sm:text-sm">{email}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -538,13 +537,13 @@ export default function CoachPage() {
 
           <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
             <button type="button" onClick={startTodayClass} disabled={loading || !activeStudyUnit} className="rounded-2xl bg-blue-600 px-3 py-3 text-xs font-bold text-white hover:bg-blue-500 disabled:opacity-50">
-              Empezar explicaciÃ³n
+              Empezar explicación
             </button>
             <button type="button" onClick={requestHint} disabled={loading || !activeStudyUnit} className="rounded-2xl border border-yellow-500/50 bg-yellow-500/10 px-3 py-3 text-xs font-bold text-yellow-100 hover:bg-yellow-500/20 disabled:opacity-50">
               Dame una pista
             </button>
             <button type="button" onClick={requestUnitGrammar} disabled={loading || !activeStudyUnit} className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100 hover:bg-emerald-500/20 disabled:opacity-50">
-              GramÃ¡tica
+              Gramática
             </button>
             <button type="button" onClick={requestUnitVocabulary} disabled={loading || !activeStudyUnit} className="rounded-2xl border border-cyan-500/40 bg-cyan-500/10 px-3 py-3 text-xs font-bold text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-50">
               Vocabulario
@@ -561,19 +560,19 @@ export default function CoachPage() {
               {messages.map((message, index) => (
                 <article key={index} className={message.role === "user" ? "ml-auto max-w-[92%] rounded-3xl bg-blue-600 p-4 shadow-lg sm:max-w-2xl" : "mr-auto max-w-[96%] rounded-3xl border border-slate-200 bg-white p-4 text-slate-950 shadow-lg sm:max-w-4xl lg:p-5"}>
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className={message.role === "user" ? "text-[11px] font-semibold uppercase tracking-wide text-blue-100" : "text-[11px] font-semibold uppercase tracking-wide text-slate-500"}>{message.role === "user" ? "TÃº" : "Profesor"}</p>
+                    <p className={message.role === "user" ? "text-[11px] font-semibold uppercase tracking-wide text-blue-100" : "text-[11px] font-semibold uppercase tracking-wide text-slate-500"}>{message.role === "user" ? "Tú" : "Profesor"}</p>
                   </div>
                   <div className={message.role === "user" ? "prose max-w-none whitespace-pre-wrap text-sm leading-7 text-slate-950 sm:text-base sm:leading-8" : "prose max-w-none whitespace-pre-wrap text-sm leading-7 text-slate-950 sm:text-base sm:leading-8"}>
                     <MarkdownMessage content={message.content} />
                   </div>
                 </article>
               ))}
-              {(loading || agentLoading) && <div className="mr-auto max-w-[92%] rounded-3xl bg-white p-4 text-sm text-slate-700">{agentLoading ? `${activeAgent.name} estÃ¡ pensando...` : "El profesor estÃ¡ pensando..."}</div>}
+              {(loading || agentLoading) && <div className="mr-auto max-w-[92%] rounded-3xl bg-white p-4 text-sm text-slate-700">{agentLoading ? `${activeAgent.name} está pensando...` : "El profesor está pensando..."}</div>}
               <div ref={bottomRef} />
             </div>
 
             <footer className="sticky bottom-0 z-10 border-t border-white/10 bg-slate-950/95 p-3 backdrop-blur sm:p-4">
-              <p className="mb-2 text-xs font-medium text-slate-300">Responde en inglÃ©s. Yo corregirÃ© gramÃ¡tica, vocabulario y naturalidad.</p>
+              <p className="mb-2 text-xs font-medium text-slate-300">Responde en inglés. Yo corregiré gramática, vocabulario y naturalidad.</p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <textarea
                   value={input}
@@ -585,14 +584,14 @@ export default function CoachPage() {
                       sendMessage();
                     }
                   }}
-                  placeholder="Escribe tu respuesta en inglÃ©s o pide una explicaciÃ³n..."
+                  placeholder="Escribe tu respuesta en inglés o pide una explicación..."
                   className="min-h-24 flex-1 resize-none rounded-2xl border border-slate-700 bg-slate-900 p-3 text-base text-white outline-none focus:border-blue-500"
                 />
                 <button onClick={() => sendMessage()} disabled={!hydrated || loading || !input.trim()} className="rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-36">
                   {loading ? "..." : "Enviar respuesta"}
                 </button>
               </div>
-              <p className="mt-2 text-[11px] text-slate-500">Enter envÃ­a. Shift + Enter agrega lÃ­nea. El avance se habilita solo despuÃ©s de aprobar la evaluaciÃ³n.</p>
+              <p className="mt-2 text-[11px] text-slate-500">Enter envía. Shift + Enter agrega línea. El avance se habilita solo después de aprobar la evaluación.</p>
             </footer>
           </section>
 
@@ -600,7 +599,7 @@ export default function CoachPage() {
             <section className="min-w-0 max-w-full overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 p-4">
               <p className="text-xs uppercase tracking-wide text-blue-300">Tu clase</p>
               <h2 className="mt-1 text-lg font-bold">{activeStudyUnitLabel}</h2>
-              <p className="mt-1 text-sm text-slate-400">Material y prÃ¡ctica conectados con tu unidad actual.</p>
+              <p className="mt-1 text-sm text-slate-400">Material y práctica conectados con tu unidad actual.</p>
               <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-500">Unidad de estudio</label>
               <input value={studyUnit} onChange={(event) => setStudyUnit(event.target.value)} placeholder={currentUnit || "Unit 1"} className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-white outline-none focus:border-blue-500" />
               <div className="mt-3 grid grid-cols-2 gap-2">
@@ -614,17 +613,17 @@ export default function CoachPage() {
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-blue-300">GuÃ­as de estudio</p>
+              <p className="text-xs uppercase tracking-wide text-blue-300">Guías de estudio</p>
               <p className="mt-1 text-sm text-slate-400">Material descargable para {activeStudyUnitLabel}.</p>
               <div className="mt-3 grid gap-2">
                 <button type="button" onClick={() => createWorkbook("grammar")} disabled={grammarWorkbookLoading || !activeStudyUnit || E2E_DEMO} className="rounded-2xl bg-emerald-600 px-3 py-3 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
-                  {grammarWorkbookLoading ? "Generando..." : `GuÃ­a de gramÃ¡tica Â· ${activeStudyUnitLabel}`}
+                  {grammarWorkbookLoading ? "Generando..." : `Guía de gramática · ${activeStudyUnitLabel}`}
                 </button>
                 <button type="button" onClick={() => createWorkbook("vocabulary")} disabled={vocabularyWorkbookLoading || !activeStudyUnit || E2E_DEMO} className="rounded-2xl bg-cyan-600 px-3 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50">
-                  {vocabularyWorkbookLoading ? "Generando..." : `GuÃ­a de vocabulario Â· ${activeStudyUnitLabel}`}
+                  {vocabularyWorkbookLoading ? "Generando..." : `Guía de vocabulario · ${activeStudyUnitLabel}`}
                 </button>
                 <button type="button" onClick={requestUnitGrammar} disabled={loading || !activeStudyUnit} className="rounded-2xl border border-emerald-700 px-3 py-3 text-sm font-semibold text-emerald-100 hover:bg-emerald-950 disabled:opacity-50">
-                  Explicar gramÃ¡tica en chat
+                  Explicar gramática en chat
                 </button>
                 <button type="button" onClick={requestUnitVocabulary} disabled={loading || !activeStudyUnit} className="rounded-2xl border border-cyan-700 px-3 py-3 text-sm font-semibold text-cyan-100 hover:bg-cyan-950 disabled:opacity-50">
                   Explicar vocabulario en chat
@@ -639,7 +638,7 @@ export default function CoachPage() {
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-blue-300">Ayudas rÃ¡pidas</p>
+              <p className="text-xs uppercase tracking-wide text-blue-300">Ayudas rápidas</p>
               <p className="mt-1 text-sm text-slate-400">{activeAgent.description}</p>
               <select value={activeAgentId} onChange={(event) => setActiveAgentId(event.target.value as AgentId)} style={{ colorScheme: "dark" }} className="mt-3 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-white outline-none focus:border-blue-500">
                 {SPECIALIST_AGENTS.map((agent) => (
@@ -719,4 +718,3 @@ export default function CoachPage() {
     </main>
   );
 }
-

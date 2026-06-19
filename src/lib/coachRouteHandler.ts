@@ -4,6 +4,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
+import {
+  extractRequestedClassNumber,
+  extractRequestedUnitNumber,
+  isGiveClassQuestion,
+  normalizeCoachMessage as normalize,
+} from "@/lib/coachIntent";
+import passagesUnitTitles from "../../knowledge/passages-unit-titles.json";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
@@ -40,45 +47,8 @@ type ClassIdentity = {
   skillFocus: string;
 };
 
-function normalize(value: string) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[Â¿?Â¡!.,;:]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function pad2(value: number | string) {
   return String(value).padStart(2, "0");
-}
-
-function extractRequestedUnitNumber(message: string): number | null {
-  const match = normalize(message).match(/(?:unidad|unit)\s+(\d{1,2})/);
-  return match?.[1] ? Number(match[1]) : null;
-}
-
-function extractRequestedClassNumber(message: string): number | null {
-  const match = normalize(message).match(/(?:clase|class)\s+(\d{1,2})/);
-  return match?.[1] ? Number(match[1]) : null;
-}
-
-function isGiveClassQuestion(message: string) {
-  const n = normalize(message);
-  return [
-    "dame la clase",
-    "dar la clase",
-    "ensename la clase",
-    "continua la clase",
-    "continuar la clase",
-    "empezar la clase",
-    "empecemos la clase",
-    "give me class",
-    "teach me class",
-    "start class",
-    "continue class",
-  ].some((phrase) => n.includes(phrase));
 }
 
 function isReviewQuestion(message: string) {
@@ -132,6 +102,36 @@ function classIdentity(content: string): ClassIdentity {
   };
 }
 
+function unitTitle(unit: number) {
+  const units = passagesUnitTitles.units as Record<string, string>;
+  return String(units[String(unit)] || "").trim();
+}
+
+function openingSectionInstruction(sectionList: string) {
+  const section = sectionList.split("+")[0]?.trim() || "Starting point";
+  const normalized = section.toLowerCase();
+
+  if (normalized === "starting point") {
+    return `OPENING SECTION: ${section}. Activate the topic only. Give at most two short model reactions and ask one personal or situational question. Do not teach grammar rules, structure tables, or vocabulary lists yet.`;
+  }
+  if (normalized.includes("listening")) {
+    return `OPENING SECTION: ${section}. Provide one short teacher-created listening input when exact audio is unavailable, then ask one gist question and at most one detail question. Do not begin later role-play, grammar, discussion, or writing sections.`;
+  }
+  if (normalized.includes("vocabulary")) {
+    return `OPENING SECTION: ${section}. Teach at most five contract-supported chunks with two short models, then ask one compact reuse task. Do not begin later sections.`;
+  }
+  if (normalized.includes("grammar")) {
+    return `OPENING SECTION: ${section}. Explain one target structure briefly, give two examples, and ask two controlled items. Do not begin later sections.`;
+  }
+  if (normalized.includes("discussion") || normalized.includes("speaking") || normalized.includes("role play")) {
+    return `OPENING SECTION: ${section}. Set one realistic communication situation, give two short model turns, and ask one compact spoken or written response. Do not begin later sections.`;
+  }
+  if (normalized.includes("video") || normalized.includes("before watching")) {
+    return `OPENING SECTION: ${section}. Do only the before-watching activation with one prediction task. Do not invent video content or begin later sections.`;
+  }
+  return `OPENING SECTION: ${section}. Teach only this section with two short models and one learner task. Do not begin later sections.`;
+}
+
 function learnerName(context: any, fallback = "") {
   const user = context?.user || {};
   return String(user.Name || user.name || user["Full Name"] || context?.name || fallback || "").trim();
@@ -148,15 +148,15 @@ function learnerPositionLine(params: {
   const currentUnit = user["Current Unit"] || params.context?.currentUnit || "";
   const currentLesson = user["Current Lesson"] || params.context?.currentLesson || "";
   const greeting = params.name ? `${params.name}, ` : "";
-  const savedPosition = [currentUnit, currentLesson].filter(Boolean).join(" â€” ");
+  const savedPosition = [currentUnit, currentLesson].filter(Boolean).join(" — ");
   const target = params.review
     ? `Unit ${params.requestedUnit} review`
     : `Unit ${params.requestedUnit}, Class ${params.requestedClass}`;
 
   if (savedPosition) {
-    return `${greeting}I found your current position in English OS: **${savedPosition}**. You asked for **${target}**, so that is our active target now.`;
+    return `${greeting}your saved position in English OS is **${savedPosition}**.\n\nFor this request, the active learning target is **${target}**.`;
   }
-  return `${greeting}you asked for **${target}**, so that is our active target now.`;
+  return `${greeting}the active learning target for this request is **${target}**.`;
 }
 
 function stripModelOwnedIdentity(reply: string) {
@@ -164,11 +164,42 @@ function stripModelOwnedIdentity(reply: string) {
     .split("\n")
     .filter((line) => {
       const clean = line.replace(/[*#]/g, "").trim();
-      return !/^(Unit \d+\s*[â€”-]\s*Class \d+|Global Class|Lesson:|Book pages:|PDF pages:|Class sections:|Main focus:|Grammar focus:|Language support:|Vocabulary focus:)/i.test(clean);
+      return !/^(Unit \d+\b|Class:|Global Class|Lesson:|Book pages:|PDF pages:|Class sections:|Main focus:|Grammar focus:|Language support:|Vocabulary focus:)/i.test(clean);
     })
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+const PREMATURE_CLASS_CLOSURE = /^(evaluation gate|recap|main achievement|main weakness|priority correction|new vocabulary\/chunks|next action|session logged(?: in english os)?)[\s:]*$/i;
+
+function stripPrematureClassClosure(reply: string) {
+  const lines = String(reply || "").split("\n");
+  const boundary = lines.findIndex((line) => {
+    const clean = line.replace(/[*#]/g, "").trim();
+    return PREMATURE_CLASS_CLOSURE.test(clean);
+  });
+  const kept = boundary >= 0 ? lines.slice(0, boundary) : lines;
+  return kept
+    .filter((line) => !/session logged(?: in english os)?/i.test(line))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function limitToOpeningClassTurn(reply: string, sectionList: string) {
+  const sections = sectionList.split("+").map((section) => section.trim()).filter(Boolean);
+  if (sections.length < 2) return stripPrematureClassClosure(reply);
+
+  const laterSections = new Set(sections.slice(1).map((section) => section.toLowerCase()));
+  const lines = stripPrematureClassClosure(reply).split("\n");
+  const boundary = lines.findIndex((line) => {
+    const trimmed = line.trim();
+    const looksLikeHeading = /^#{1,6}\s+/.test(trimmed) || /^\*\*[^*]+\*\*:?$/.test(trimmed);
+    const clean = trimmed.replace(/^#{1,6}\s+/, "").replace(/[*:]/g, "").trim().toLowerCase();
+    return looksLikeHeading && laterSections.has(clean);
+  });
+  return (boundary >= 0 ? lines.slice(0, boundary) : lines).join("\n").trim();
 }
 
 function renderClassReply(params: {
@@ -179,23 +210,29 @@ function renderClassReply(params: {
   localClass: number;
 }) {
   const identity = params.identity;
+  const title = unitTitle(params.unit);
+  const displayLesson = identity.lessonTitle || identity.sections.split("+")[0]?.trim() || "Class session";
+  const formattedSkillFocus = identity.skillFocus.split(",").map((item) => item.trim()).filter(Boolean).join(", ");
+  const teachingBody = limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections);
   const header = [
-    `# Unit ${params.unit} â€” Class ${params.localClass}`,
-    identity.lessonTitle ? `**Lesson:** ${identity.lessonTitle}` : "",
+    `# Unit ${params.unit}${title ? ` — ${title}` : ""}`,
+    `**Class:** ${params.localClass}`,
+    `**Lesson:** ${displayLesson}`,
     identity.sections ? `**Learning path:** ${identity.sections}` : "",
-    identity.skillFocus ? `**Skill focus:** ${identity.skillFocus}` : "",
+    formattedSkillFocus ? `**Skill focus:** ${formattedSkillFocus}` : "",
     identity.bookPages || identity.pdfPages
-      ? `**Course reference:** Book ${identity.bookPages || "â€”"} Â· PDF ${identity.pdfPages || "â€”"}`
+      ? `**Course reference:** Book ${identity.bookPages || "—"} · PDF ${identity.pdfPages || "—"}`
       : "",
   ].filter(Boolean);
 
-  return [params.position, "", ...header, "", stripModelOwnedIdentity(params.body)]
+  return [params.position, "", ...header, "", teachingBody]
     .join("\n")
     .trim();
 }
 
 function renderReviewReply(params: { body: string; position: string; unit: number }) {
-  return [params.position, "", `# Unit ${params.unit} â€” Strategic review`, "", stripModelOwnedIdentity(params.body)]
+  const title = unitTitle(params.unit);
+  return [params.position, "", `# Unit ${params.unit}${title ? ` — ${title}` : ""} — Strategic review`, "", stripModelOwnedIdentity(params.body)]
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -266,6 +303,16 @@ async function callEnglishOSAction(action: string, params: Record<string, string
 }
 
 async function getLearnerContext(email: string) {
+  if (process.env.NODE_ENV === "development" && (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN)) {
+    console.warn("[coach] using development-only learner context; English OS read/write is unavailable");
+    return {
+      ok: true,
+      learnerId: email,
+      localValidationMode: true,
+      user: { "Learner ID": email },
+      missionControl: {},
+    };
+  }
   const data = await callEnglishOSAction("getLearnerContext", { userEmail: email, learnerId: email });
   if (!data?.ok) throw new Error(data?.error || "Unable to read learner context.");
   return data;
@@ -279,6 +326,7 @@ function buildClassInput(params: {
   filename: string;
   conversationHistory: CoachMessage[];
 }) {
+  const identity = classIdentity(params.classPack);
   return [
     {
       role: "system",
@@ -292,16 +340,22 @@ Hard rule for class delivery:
 - Never expose internal modes such as viewing_current_class.
 - Never expose placeholders such as Extract exact or Extract vocabulary.
 - Use the class pack and lesson context as teacher planning input.
-- Produce a didactic class: learner position, lesson header, warm-up, teacher explanation, examples, controlled practice, vocabulary/key language, speaking or writing practice, and evaluation gate.
+- This response is the opening turn of a teacher-led class, not the entire class transcript.
+- Give the learning objective, communication mission, and only the first active teaching section. Explain briefly, give no more than two examples, ask one compact learner task, and stop for the learner's answer.
+- Do not teach the second or later active section yet. Do not include the evaluation gate, recap, achievement, weakness, correction priority, next action, approval, or session-log language in this opening turn.
+- Continue with the next active section only after the learner answers. Present the evaluation gate only after the learner has practised the active sections.
 - If the source is incomplete, say what is missing instead of inventing.
 - Build one continuous teaching sequence. Each active section must reuse language or learner output from the previous section.
 - Distinguish the complete lesson title from activity/subsection headings.
 - Do not invent or attribute an audio transcript or answer key to people named in the source.
 - The application renders learner position and lesson identity. Do not write the learner-position paragraph, Unit/Class header, Global Class, lesson title, pages, class sections, main focus, language support, or vocabulary-focus metadata.
 - Start with the learning objective, then the communication mission, then the exact active teaching sections.
-- Keep the complete response under 1,500 words. Use no more than two model examples per active section and avoid nested generic wrappers.
+- Keep this opening turn under 450 words and avoid nested generic wrappers.
 - Teach interactively: explain briefly, model, ask the learner to produce, and make the final instruction unmistakable.
+- Every grammar form and vocabulary item taught must be supported by the active teaching contract or visible source. Do not broaden the lesson with adjacent language systems.
 - Use English for teaching. Use brief Spanish support only for a genuinely difficult B1/B2 concept or a known transfer error.
+
+${openingSectionInstruction(identity.sections)}
       `.trim(),
     },
     {
@@ -339,6 +393,7 @@ ${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}
 ${PASSAGES_TEACHER_STYLE_GUIDANCE}
 
 Answer as English OS Coach. If the learner is in review mode, use summary + mini-checkpoint. If correcting answers, use Cambridge-style correction.
+If recent conversation shows a class in progress, continue with only the next pedagogical step, ask one compact task, and wait. Do not repeat the class header or claim evaluation, approval, progress, or logging without learner evidence and a successful write action.
       `.trim(),
     },
     {
@@ -562,4 +617,3 @@ export async function coachPostSafe(request: Request) {
     );
   }
 }
-

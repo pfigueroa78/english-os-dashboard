@@ -546,3 +546,19 @@ export async function coachPost(request: Request) {
     usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
   });
 }
+
+export async function coachPostSafe(request: Request) {
+  try {
+    return await coachPost(request);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown coach error";
+    console.error("[coach] request failed", {
+      message,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    return NextResponse.json(
+      { ok: false, error: message },
+      { status: 500 },
+    );
+  }
+}

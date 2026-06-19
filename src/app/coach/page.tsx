@@ -155,6 +155,18 @@ function initialCoachMessages(): Message[] {
   ];
 }
 
+async function readJsonResponse(response: Response) {
+  const text = await response.text();
+  if (!text.trim()) {
+    throw new Error(`El servidor no devolvió contenido (${response.status || "sin estado"}). Intenta nuevamente.`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`El servidor devolvió una respuesta inválida (${response.status}). Intenta nuevamente.`);
+  }
+}
+
 export default function CoachPage() {
   const { isLoaded, isSignedIn, user } = useUser();
   const signedIn = isSignedIn || E2E_DEMO;
@@ -388,7 +400,7 @@ export default function CoachPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message, conversationHistory: messages.slice(-12) }),
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response);
       if (!response.ok || !data.ok) throw new Error(data.error || "Coach request failed.");
 
       const missionControl = data.context?.missionControl || data.missionControl || data.context || {};

@@ -1,3 +1,4 @@
+
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
@@ -51,8 +52,9 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   const route = readFile("src/app/api/english-os/coach-pedagogy/route.ts");
   const handler = readFile("src/lib/coachRouteHandler.ts");
 
-  expect(publicRoute).toContain('export { coachPost as POST } from "@/lib/coachRouteHandler"');
-  expect(route).toContain("coachPost");
+  expect(publicRoute).toContain('export { coachPostSafe as POST } from "@/lib/coachRouteHandler"');
+  expect(publicRoute).toContain("export const maxDuration = 120");
+  expect(route).toContain("coachPostSafe");
   expect(handler).toContain("loadClassPack");
   expect(handler).toContain("Local Class Pack + Pedagogy Prompt");
   expect(handler).toContain("Never answer a class request with a metadata table");
@@ -67,7 +69,11 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("renderReviewReply");
   expect(handler).toContain("stripModelOwnedIdentity");
   expect(handler).toContain("assertCompleteModelResponse");
-  expect(handler).toContain("OPENAI_COACH_MAX_OUTPUT_TOKENS || 3600");
+  expect(handler).toContain("OPENAI_COACH_MAX_OUTPUT_TOKENS || 8000");
+  expect(handler).toContain("OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS || 12000");
+  expect(handler).toContain("callCompleteCoachModel");
+  expect(handler).toContain("incomplete model response; retrying");
+  expect(handler).toContain("request failed");
 
   const forbiddenLegacyClassDelivery = [
     "formatCurrentClassContentReply",
@@ -81,6 +87,9 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   const source = readFile("src/app/coach/page.tsx");
   expect(source).toContain("data.activeUnit ? `Unit ${data.activeUnit}`");
   expect(source).toContain("setStudyUnit(unit)");
+  expect(source).toContain("No pude completar la respuesta esta vez");
+  expect(source).toContain("readJsonResponse(response)");
+  expect(source).toContain("El servidor no devolviÃ³ contenido");
 });
 
 test("all 84 class packs expose usable learner-safe teaching contracts", async () => {
@@ -165,7 +174,7 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(renderer).toContain(
     'return [params.position, "", ...header, "", stripModelOwnedIdentity(params.body)]',
   );
-  expect(renderer).toContain("`# Unit ${params.unit} — Class ${params.localClass}`");
+  expect(renderer).toContain("`# Unit ${params.unit} â€” Class ${params.localClass}`");
   expect(handler).toContain("The application renders learner position and lesson identity");
   expect(handler).toContain("Keep the complete response under 1,500 words");
   expect(handler).toContain("/\\bclass pack\\b/i");
@@ -179,3 +188,4 @@ test("contract generation and audit preserve the complete lesson title", async (
   expect(generator).toContain("Never promote an activity, subsection, listening, reading, or writing heading");
   expect(audit).toContain("does not match full lesson title");
 });
+

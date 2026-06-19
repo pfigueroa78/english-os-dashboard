@@ -406,7 +406,15 @@ export default function CoachPage() {
         { role: "coach", content: data.reply || "No response returned.", usage: data.usage },
       ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(errorMessage);
+      setMessages((current) => [
+        ...current,
+        {
+          role: "coach",
+          content: `No pude completar la respuesta esta vez. Puedes volver a enviarla.\n\nDetalle: ${errorMessage}`,
+        },
+      ]);
     } finally {
       setLoading(false);
     }

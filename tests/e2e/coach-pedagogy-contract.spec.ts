@@ -67,7 +67,10 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("renderReviewReply");
   expect(handler).toContain("stripModelOwnedIdentity");
   expect(handler).toContain("assertCompleteModelResponse");
-  expect(handler).toContain("OPENAI_COACH_MAX_OUTPUT_TOKENS || 3600");
+  expect(handler).toContain("OPENAI_COACH_MAX_OUTPUT_TOKENS || 8000");
+  expect(handler).toContain("OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS || 12000");
+  expect(handler).toContain("callCompleteCoachModel");
+  expect(handler).toContain("incomplete model response; retrying");
 
   const forbiddenLegacyClassDelivery = [
     "formatCurrentClassContentReply",
@@ -81,6 +84,7 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   const source = readFile("src/app/coach/page.tsx");
   expect(source).toContain("data.activeUnit ? `Unit ${data.activeUnit}`");
   expect(source).toContain("setStudyUnit(unit)");
+  expect(source).toContain("No pude completar la respuesta esta vez");
 });
 
 test("all 84 class packs expose usable learner-safe teaching contracts", async () => {

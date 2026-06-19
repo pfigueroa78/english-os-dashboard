@@ -1,1 +1,4 @@
-export { coachPost as POST } from "@/lib/coachRouteHandler";
+
+export const maxDuration = 120;
+export { coachPostSafe as POST } from "@/lib/coachRouteHandler";
+

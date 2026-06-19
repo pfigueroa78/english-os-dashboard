@@ -9,7 +9,8 @@ const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_COACH_MODEL = process.env.OPENAI_COACH_MODEL || "gpt-5.4-mini";
-const OPENAI_COACH_MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_COACH_MAX_OUTPUT_TOKENS || 3600);
+const OPENAI_COACH_MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_COACH_MAX_OUTPUT_TOKENS || 8000);
+const OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS || 12000);
 
 const FORBIDDEN_METADATA_MARKERS = [
   "Clase actual / contenido de clase",
@@ -44,7 +45,7 @@ function normalize(value: string) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[¿?¡!.,;:]/g, " ")
+    .replace(/[Â¿?Â¡!.,;:]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -147,7 +148,7 @@ function learnerPositionLine(params: {
   const currentUnit = user["Current Unit"] || params.context?.currentUnit || "";
   const currentLesson = user["Current Lesson"] || params.context?.currentLesson || "";
   const greeting = params.name ? `${params.name}, ` : "";
-  const savedPosition = [currentUnit, currentLesson].filter(Boolean).join(" — ");
+  const savedPosition = [currentUnit, currentLesson].filter(Boolean).join(" â€” ");
   const target = params.review
     ? `Unit ${params.requestedUnit} review`
     : `Unit ${params.requestedUnit}, Class ${params.requestedClass}`;
@@ -163,7 +164,7 @@ function stripModelOwnedIdentity(reply: string) {
     .split("\n")
     .filter((line) => {
       const clean = line.replace(/[*#]/g, "").trim();
-      return !/^(Unit \d+\s*[—-]\s*Class \d+|Global Class|Lesson:|Book pages:|PDF pages:|Class sections:|Main focus:|Grammar focus:|Language support:|Vocabulary focus:)/i.test(clean);
+      return !/^(Unit \d+\s*[â€”-]\s*Class \d+|Global Class|Lesson:|Book pages:|PDF pages:|Class sections:|Main focus:|Grammar focus:|Language support:|Vocabulary focus:)/i.test(clean);
     })
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
@@ -179,12 +180,12 @@ function renderClassReply(params: {
 }) {
   const identity = params.identity;
   const header = [
-    `# Unit ${params.unit} — Class ${params.localClass}`,
+    `# Unit ${params.unit} â€” Class ${params.localClass}`,
     identity.lessonTitle ? `**Lesson:** ${identity.lessonTitle}` : "",
     identity.sections ? `**Learning path:** ${identity.sections}` : "",
     identity.skillFocus ? `**Skill focus:** ${identity.skillFocus}` : "",
     identity.bookPages || identity.pdfPages
-      ? `**Course reference:** Book ${identity.bookPages || "—"} · PDF ${identity.pdfPages || "—"}`
+      ? `**Course reference:** Book ${identity.bookPages || "â€”"} Â· PDF ${identity.pdfPages || "â€”"}`
       : "",
   ].filter(Boolean);
 
@@ -194,7 +195,7 @@ function renderClassReply(params: {
 }
 
 function renderReviewReply(params: { body: string; position: string; unit: number }) {
-  return [params.position, "", `# Unit ${params.unit} — Strategic review`, "", stripModelOwnedIdentity(params.body)]
+  return [params.position, "", `# Unit ${params.unit} â€” Strategic review`, "", stripModelOwnedIdentity(params.body)]
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -246,6 +247,11 @@ function assertCompleteModelResponse(data: any, reply: string) {
     throw new Error("The coach response reached its output limit before the class was complete. Please retry the class request.");
   }
   if (!reply.trim()) throw new Error("The coach returned an empty response.");
+}
+
+function modelResponseNeedsRetry(data: any, reply: string) {
+  const reason = data?.incomplete_details?.reason || data?.incompleteDetails?.reason || "";
+  return data?.status === "incomplete" || reason === "max_output_tokens" || !reply.trim();
 }
 
 async function callEnglishOSAction(action: string, params: Record<string, string>) {
@@ -401,16 +407,35 @@ ${JSON.stringify(params.conversationHistory).slice(0, 2500)}
   ];
 }
 
-async function callCoachModel(input: any[]) {
+async function callCoachModel(input: any[], maxOutputTokens = OPENAI_COACH_MAX_OUTPUT_TOKENS) {
   if (!OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY.");
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: OPENAI_COACH_MODEL, input, max_output_tokens: OPENAI_COACH_MAX_OUTPUT_TOKENS }),
+    body: JSON.stringify({ model: OPENAI_COACH_MODEL, input, max_output_tokens: maxOutputTokens }),
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data?.error?.message || "OpenAI request failed.");
   return data;
+}
+
+async function callCompleteCoachModel(input: any[]) {
+  let data = await callCoachModel(input);
+  let reply = getOutputText(data);
+
+  if (modelResponseNeedsRetry(data, reply)) {
+    console.warn("[coach] incomplete model response; retrying", {
+      status: data?.status || "unknown",
+      reason: data?.incomplete_details?.reason || data?.incompleteDetails?.reason || "empty_output",
+      outputTokens: usage(data).outputTokens,
+      retryMaxOutputTokens: OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS,
+    });
+    data = await callCoachModel(input, OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS);
+    reply = getOutputText(data);
+  }
+
+  assertCompleteModelResponse(data, reply);
+  return { data, reply };
 }
 
 export async function coachPost(request: Request) {
@@ -449,11 +474,9 @@ export async function coachPost(request: Request) {
       return NextResponse.json({ ok: false, error: `Missing local class pack: ${filename}` }, { status: 500 });
     }
 
-    const openaiData = await callCoachModel(
+    const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
       buildClassInput({ message, learnerContext: context, classContent, classPack: content, filename, conversationHistory })
     );
-    const modelBody = getOutputText(openaiData);
-    assertCompleteModelResponse(openaiData, modelBody);
     assertNoMetadataFallback(modelBody);
     const identity = classIdentity(content);
     const position = learnerPositionLine({
@@ -490,11 +513,9 @@ export async function coachPost(request: Request) {
       );
     }
 
-    const openaiData = await callCoachModel(
+    const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
       buildReviewInput({ message, learnerContext: context, unit, contracts, conversationHistory })
     );
-    const modelBody = getOutputText(openaiData);
-    assertCompleteModelResponse(openaiData, modelBody);
     assertNoMetadataFallback(modelBody);
     const position = learnerPositionLine({
       context,
@@ -525,3 +546,20 @@ export async function coachPost(request: Request) {
     usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
   });
 }
+
+export async function coachPostSafe(request: Request) {
+  try {
+    return await coachPost(request);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown coach error";
+    console.error("[coach] request failed", {
+      message,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    return NextResponse.json(
+      { ok: false, error: message },
+      { status: 500 },
+    );
+  }
+}
+

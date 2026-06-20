@@ -7,6 +7,7 @@ import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
 import {
   extractRequestedClassNumber,
   extractRequestedUnitNumber,
+  hasExplicitClassCoordinates,
   isGiveClassQuestion,
   normalizeCoachMessage as normalize,
 } from "@/lib/coachIntent";
@@ -271,6 +272,7 @@ function learnerPositionLine(params: {
   requestedClass?: number;
   review?: boolean;
   guideKind?: "grammar" | "vocabulary";
+  explicitClassRequest?: boolean;
 }) {
   const user = params.context?.user || {};
   const currentUnit = user["Current Unit"] || params.context?.currentUnit || "";
@@ -284,9 +286,13 @@ function learnerPositionLine(params: {
       : `Unit ${params.requestedUnit}, Class ${params.requestedClass}`;
 
   if (savedPosition) {
-    return `${greeting}I found your saved position in English OS: **${savedPosition}**.\n\nYou asked for **${target}**, so we’ll work there now.`;
+    return params.explicitClassRequest
+      ? `${greeting}encontré tu posición actual en English OS: **${savedPosition}**.\n\nTrabajaremos con **${target}**.`
+      : `${greeting}encontré tu clase activa en English OS: **${target}**.\n\nPosición guardada: **${savedPosition}**.`;
   }
-  return `${greeting}we’ll work on **${target}** now.`;
+  return params.explicitClassRequest
+    ? `${greeting}trabajaremos con **${target}**.`
+    : `${greeting}abriremos tu clase activa: **${target}**.`;
 }
 
 function stripModelOwnedIdentity(reply: string) {
@@ -382,6 +388,31 @@ function learnerFriendlyFocus(value: string) {
     .trim();
 }
 
+function ensureMinimumOpeningTask(reply: string, identity: ClassIdentity) {
+  const text = String(reply || "").trim();
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  if (wordCount >= 30 && /\b(your turn|try|answer|write|tell me|prediction|predict|responde|escribe)\b/i.test(text)) return text;
+
+  const firstSection = identity.sections.split("+")[0]?.trim() || identity.lessonTitle || "Starting point";
+  if (/video|before watching/i.test(firstSection)) {
+    return [
+      text,
+      "",
+      "Let’s start with a short prediction before watching. Think about the lesson topic and answer in English:",
+      "",
+      "1. What do you think this video will show?",
+      "2. Which Unit language do you expect to use in your answer?",
+      "",
+      "Write two short sentences. I’ll use your answer to continue with the next step.",
+    ].filter(Boolean).join("\n");
+  }
+  return [
+    text,
+    "",
+    "Let’s start with one small step. Answer in English with two short sentences about the lesson topic. I’ll continue from your answer.",
+  ].filter(Boolean).join("\n");
+}
+
 function renderClassReply(params: {
   body: string;
   position: string;
@@ -393,7 +424,7 @@ function renderClassReply(params: {
   const title = unitTitle(params.unit);
   const displayLesson = identity.lessonTitle || identity.sections.split("+")[0]?.trim() || "Class session";
   const formattedSkillFocus = learnerFriendlyFocus(identity.skillFocus.split(",").map((item) => item.trim()).filter(Boolean).join(", "));
-  const teachingBody = limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections);
+  const teachingBody = ensureMinimumOpeningTask(limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections), identity);
   const reference = [
     `class ${params.localClass}`,
     displayLesson,
@@ -890,6 +921,7 @@ export async function coachPost(request: Request) {
       name: learnerName(context, clerkUser?.firstName || ""),
       requestedUnit: unit,
       requestedClass: localClass,
+      explicitClassRequest: hasExplicitClassCoordinates(message),
     });
     const reply = renderClassReply({ body: modelBody, position, identity, unit, localClass });
     const u = usage(openaiData);

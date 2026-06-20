@@ -258,7 +258,8 @@ test("application-owned identity precedes model-authored teaching", async () => 
   const rendererEnd = handler.indexOf("function renderReviewReply");
   const renderer = handler.slice(rendererStart, rendererEnd);
 
-  expect(renderer).toContain("const teachingBody = limitToOpeningClassTurn");
+  expect(renderer).toContain("const teachingBody = ensureMinimumOpeningTask");
+  expect(renderer).toContain("limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections)");
   expect(renderer).toContain('return readableMarkdownPunctuation(sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]');
   expect(renderer).toContain('`# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`');
   expect(handler).toContain("function readableMarkdownPunctuation");
@@ -269,6 +270,8 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(renderer).toContain('Focus: **${formattedSkillFocus}**');
   expect(renderer).toContain('First micro-step: **${identity.sections.split("+")[0]?.trim() || displayLesson}**.');
   expect(renderer).toContain("learnerFriendlyFocus");
+  expect(renderer).toContain("ensureMinimumOpeningTask");
+  expect(handler).toContain("Let’s start with a short prediction before watching");
   expect(renderer).not.toContain("const courseReference");
   expect(renderer).not.toContain("bookPages");
   expect(renderer).not.toContain("pdfPages");
@@ -277,8 +280,8 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(handler).toContain("not grammar-centered");
   expect(handler).toContain("Book pages:|PDF pages:");
   expect(handler).toContain("The application renders learner position and lesson identity");
-  expect(handler).toContain("I found your saved position in English OS");
-  expect(handler).toContain("You asked for **${target}**, so we’ll work there now.");
+  expect(handler).toContain("encontré tu clase activa en English OS");
+  expect(handler).toContain("Trabajaremos con **${target}**.");
   expect(handler).toContain(".replace(/\\bPassages\\s+Level\\s+\\d+\\s*[-—]\\s*/gi, \"\")");
   expect(handler).not.toContain("For this request, the active learning target is");
   expect(handler).toContain("/\\bclass pack\\b/i");

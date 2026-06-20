@@ -105,7 +105,7 @@ function extractUnitNumber(value: string) {
 
 function unitLabel(value: string) {
   const number = extractUnitNumber(value);
-  return number ? `Unit ${number}` : value || FALLBACK_UNIT;
+  return number ? `Unit ${number}` : value || "Current unit";
 }
 
 function normalizeUnitValue(value: string) {
@@ -350,9 +350,9 @@ export default function CoachPage() {
   const [error, setError] = useState("");
   const [agentError, setAgentError] = useState("");
   const [activeAgentId, setActiveAgentId] = useState<AgentId>("grammar_corrector");
-  const [currentUnit, setCurrentUnit] = useState(E2E_DEMO ? DEMO_UNIT : FALLBACK_UNIT);
+  const [currentUnit, setCurrentUnit] = useState(E2E_DEMO ? DEMO_UNIT : "");
   const [currentLesson, setCurrentLesson] = useState(E2E_DEMO ? DEMO_LESSON : "");
-  const [studyUnit, setStudyUnit] = useState(E2E_DEMO ? DEMO_UNIT : FALLBACK_UNIT);
+  const [studyUnit, setStudyUnit] = useState(E2E_DEMO ? DEMO_UNIT : "");
   const [studyMode, setStudyMode] = useState<StudyMode>("current");
   const [studyClassNumber, setStudyClassNumber] = useState<number | null>(null);
   const [theme, setTheme] = useState<CoachTheme>("paper");
@@ -510,22 +510,24 @@ export default function CoachPage() {
       if (!response.ok || !data.ok) throw new Error(data.error || "Failed to load English OS context.");
 
       const { unit, lesson } = getSavedPosition(data);
-      const resolvedUnit = normalizeUnitValue(unit || FALLBACK_UNIT);
+      const resolvedUnit = unit ? normalizeUnitValue(unit) : "";
       const progressSnapshot = buildProgressSnapshot(data);
 
-      setCurrentUnit(resolvedUnit);
-      setStudyUnit((current) => current || resolvedUnit);
+      if (resolvedUnit) {
+        setCurrentUnit(resolvedUnit);
+        setStudyUnit((current) => current || resolvedUnit);
+      }
       if (lesson) setCurrentLesson(lesson);
 
       setMessages((current) => {
         const shouldReplace = current.length === 1 && current[0]?.content.includes("Loading your English OS class plan");
-        return shouldReplace ? [{ role: "coach", content: buildInitialCoachMessage(resolvedUnit, lesson, progressSnapshot, learnerName) }] : current;
+        return shouldReplace ? [{ role: "coach", content: buildInitialCoachMessage(resolvedUnit || "tu posición actual", lesson, progressSnapshot, learnerName) }] : current;
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown context error";
       setContextError(message);
-      setCurrentUnit((current) => current || FALLBACK_UNIT);
-      setStudyUnit((current) => current || FALLBACK_UNIT);
+      setCurrentUnit((current) => current || "");
+      setStudyUnit((current) => current || "");
       setMessages((current) => {
         const shouldReplace = current.length === 1 && current[0]?.content.includes("Loading your English OS class plan");
         if (!shouldReplace) return current;

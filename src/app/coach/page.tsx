@@ -1035,12 +1035,10 @@ export default function CoachPage() {
                 <article key={index} className={`coach-message ${message.role === "user" ? "coach-message-user" : "coach-message-teacher"}`}>
                   {message.role === "user" ? (
                     <>
-                      <div className="coach-user-message-line">
+                      <p className="coach-user-message-line">
                         <span className="coach-user-message-label">Tú —</span>
-                        <div className="prose max-w-none whitespace-pre-wrap text-sm sm:text-base">
-                          <MarkdownMessage content={message.content} />
-                        </div>
-                      </div>
+                        <span className="coach-user-message-content">{message.content}</span>
+                      </p>
                       {message.image && (
                         <figure className="coach-message-image not-prose">
                           <img src={message.image.dataUrl} alt={message.image.name || "Imagen enviada por el estudiante"} />

@@ -7,9 +7,7 @@ export default demoMode
   ? function middleware() {
       return NextResponse.next();
     }
-  : clerkMiddleware({
-      frontendApiProxy: { enabled: true },
-    });
+  : clerkMiddleware();
 
 export const config = {
   matcher: [

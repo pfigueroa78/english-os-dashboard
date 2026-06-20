@@ -108,14 +108,19 @@ function normalizeUnitValue(value: string) {
 }
 
 function buildTodayClassMessage(unit: string, lesson: string) {
+  return buildInitialCoachMessage(unit, lesson);
+}
+
+function buildInitialCoachMessage(unit: string, lesson: string, progressSnapshot = "") {
   return [
     "Hola, Pedro. Soy tu profesor de English OS y hoy vamos a trabajar paso a paso.",
     "",
     `Unidad activa: ${unitLabel(unit)}`,
     `Clase / lección actual: ${lesson || "Clase guiada de English OS"}`,
+    progressSnapshot ? `Avance: ${progressSnapshot}` : "",
     "",
     "Puedes empezar la explicación, pedir una pista, practicar gramática o responder la evaluación pendiente. Yo mantengo el avance bloqueado hasta que la evaluación quede aprobada.",
-  ].join("\n");
+  ].filter((line, index, lines) => line || lines[index - 1]).join("\n");
 }
 
 function buildStartTodayClassPrompt(unit: string, lesson: string) {
@@ -194,7 +199,7 @@ function stripEphemeralImages(messages: Message[]) {
   return messages.map((message) => (message.image ? { ...message, image: undefined } : message));
 }
 
-function SvgIcon({ name }: { name: "panel" | "panelOpen" | "play" | "pause" | "stop" | "restart" | "copy" | "check" | "mic" | "send" | "thumbsUp" | "thumbsDown" }) {
+function SvgIcon({ name }: { name: "panel" | "panelOpen" | "play" | "pause" | "stop" | "restart" | "copy" | "check" | "mic" | "send" | "thumbsUp" | "thumbsDown" | "flag" }) {
   const common = { fill: "none", stroke: "currentColor", strokeLinecap: "round" as const, strokeLinejoin: "round" as const, strokeWidth: 2 };
   const paths: Record<typeof name, ReactNode> = {
     panel: <><rect x="3" y="4" width="18" height="16" rx="2" {...common} /><path d="M9 4v16M5.5 9h1M5.5 12h1M5.5 15h1" {...common} /></>,
@@ -209,6 +214,7 @@ function SvgIcon({ name }: { name: "panel" | "panelOpen" | "play" | "pause" | "s
     send: <><path d="M12 19V5" {...common} /><path d="m5 12 7-7 7 7" {...common} /></>,
     thumbsUp: <><path d="M7 10v10" {...common} /><path d="M11 10V5a3 3 0 0 1 3 3v2h4.2a2 2 0 0 1 1.95 2.45l-1.15 5A2 2 0 0 1 17.05 19H7" {...common} /><path d="M3 10h4v10H3z" {...common} /></>,
     thumbsDown: <><path d="M7 14V4" {...common} /><path d="M11 14v5a3 3 0 0 0 3-3v-2h4.2a2 2 0 0 0 1.95-2.45l-1.15-5A2 2 0 0 0 17.05 5H7" {...common} /><path d="M3 4h4v10H3z" {...common} /></>,
+    flag: <><path d="M6 21V5" {...common} /><path d="M6 5h10l-1.2 4L16 13H6" {...common} /></>,
   };
   return <svg viewBox="0 0 24 24" aria-hidden="true" className="coach-svg-icon">{paths[name]}</svg>;
 }
@@ -268,6 +274,32 @@ function getSavedPosition(data: any) {
       missionControl.lesson ||
       "",
   };
+}
+
+function firstProgressValue(...values: unknown[]) {
+  return values.map((value) => String(value || "").trim()).find(Boolean) || "";
+}
+
+function buildProgressSnapshot(data: any) {
+  const context = data?.context || data || {};
+  const missionControl = context?.missionControl?.missionControl || context?.missionControl || data?.missionControl || {};
+  const user = context?.user || data?.user || {};
+  const recentLogs = Array.isArray(context?.recentDailyLogs) ? context.recentDailyLogs : Array.isArray(data?.recentDailyLogs) ? data.recentDailyLogs : [];
+  const recentMistakes = Array.isArray(context?.recentMistakes) ? context.recentMistakes : Array.isArray(data?.recentMistakes) ? data.recentMistakes : [];
+  const recentProgress = Array.isArray(context?.recentProgress) ? context.recentProgress : Array.isArray(data?.recentProgress) ? data.recentProgress : [];
+
+  const cefr = firstProgressValue(user["Current CEFR"], context.currentCEFR, missionControl.currentCEFR, missionControl.cefr);
+  const lastEvaluation = firstProgressValue(missionControl.lastEvaluation, missionControl.lastEvaluationScore, context.lastEvaluation, recentProgress[0]?.cefrEstimate);
+  const topMistake = firstProgressValue(missionControl.topMistake, context.topMistake, recentMistakes[0]?.mistake);
+
+  const parts = [
+    cefr ? `nivel actual ${cefr}` : "",
+    lastEvaluation ? `última evidencia: ${lastEvaluation}` : "",
+    recentLogs.length ? `${recentLogs.length} prácticas recientes` : "",
+    topMistake ? `foco: ${topMistake}` : "",
+  ].filter(Boolean);
+
+  return parts.length ? parts.slice(0, 3).join(" · ") : "sin evaluaciones recientes disponibles";
 }
 
 async function readJsonResponse(response: Response) {
@@ -450,6 +482,7 @@ export default function CoachPage() {
 
       const { unit, lesson } = getSavedPosition(data);
       const resolvedUnit = normalizeUnitValue(unit || FALLBACK_UNIT);
+      const progressSnapshot = buildProgressSnapshot(data);
 
       setCurrentUnit(resolvedUnit);
       setStudyUnit((current) => current || resolvedUnit);
@@ -457,7 +490,7 @@ export default function CoachPage() {
 
       setMessages((current) => {
         const shouldReplace = current.length === 1 && current[0]?.content.includes("Loading your English OS class plan");
-        return shouldReplace ? [{ role: "coach", content: buildTodayClassMessage(resolvedUnit, lesson) }] : current;
+        return shouldReplace ? [{ role: "coach", content: buildInitialCoachMessage(resolvedUnit, lesson, progressSnapshot) }] : current;
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown context error";
@@ -745,6 +778,29 @@ export default function CoachPage() {
     window.setTimeout(() => setCopiedMessageIndex(null), 1200);
   }
 
+  function reportMessage(content: string, index: number) {
+    const messageText = String(content || "").trim();
+    const subject = `English OS error report · ${activeLocationLabel || "Coach"}`;
+    const body = [
+      "Hola, quiero reportar un posible error en esta respuesta de English OS.",
+      "",
+      `Fecha: ${new Date().toISOString()}`,
+      `Learner: ${email}`,
+      `Modo: ${studyModeLabel(studyMode)}`,
+      `Objetivo activo: ${activeLocationLabel || "No definido"}`,
+      typeof window !== "undefined" ? `URL: ${window.location.href}` : "",
+      `Mensaje #: ${index + 1}`,
+      "",
+      "Texto reportado:",
+      "----------------",
+      messageText,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const mailto = `mailto:info@citizen-life.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.slice(0, 6000))}`;
+    window.location.href = mailto;
+  }
+
   function toggleMessageFeedback(index: number, value: "like" | "dislike") {
     setMessageFeedback((current) => {
       const next = { ...current };
@@ -1020,6 +1076,9 @@ export default function CoachPage() {
                         </button>
                         <button type="button" onClick={() => toggleMessageFeedback(index, "dislike")} className={`coach-round-button ${messageFeedback[index] === "dislike" ? "coach-feedback-active" : ""}`} aria-label={messageFeedback[index] === "dislike" ? "Quitar no me gusta" : "Marcar respuesta como no útil"} aria-pressed={messageFeedback[index] === "dislike"} title={messageFeedback[index] === "dislike" ? "Quitar no me gusta" : "No me gusta"}>
                           <SvgIcon name="thumbsDown" />
+                        </button>
+                        <button type="button" onClick={() => reportMessage(message.content, index)} className="coach-round-button" aria-label="Reportar error en esta respuesta" title="Reportar error">
+                          <SvgIcon name="flag" />
                         </button>
                         <button type="button" onClick={() => copyMessage(message.content, index)} className="coach-round-button" aria-label="Copiar mensaje" title={copiedMessageIndex === index ? "Copiado" : "Copiar"}>
                           <SvgIcon name={copiedMessageIndex === index ? "check" : "copy"} />

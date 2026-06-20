@@ -155,7 +155,8 @@ test("resource players are width-contained and load on demand", async () => {
   expect(styles).toContain(".coach-message-teacher { padding-right: 0; }");
   expect(styles).toContain(".coach-message-teacher .prose::before");
   expect(styles).toContain("float: right;");
-  expect(styles).toContain("width: 10.9rem;");
+  expect(styles).toContain("width: 13.25rem;");
+  expect(styles).toContain("padding-right: 13.5rem;");
   expect(styles).toContain(".coach-user-message-line");
   expect(styles).toContain(".coach-user-message-label");
   expect(source).toContain("coach-user-message-line");
@@ -192,6 +193,12 @@ test("resource players are width-contained and load on demand", async () => {
   expect(source).toContain("coach-layout grid min-h-0");
   expect(source).toContain('SvgIcon name="thumbsUp"');
   expect(source).toContain('SvgIcon name="thumbsDown"');
+  expect(source).toContain('SvgIcon name="flag"');
+  expect(source).toContain("reportMessage");
+  expect(source).toContain("Reportar error en esta respuesta");
+  expect(source).toContain("mailto:info@citizen-life.com");
+  expect(source).toContain("buildProgressSnapshot");
+  expect(source).toContain("Avance:");
   expect(source).toContain("toggleMessageFeedback");
   expect(source).toContain("bestEnglishSpeechVoice");
   expect(source).toContain("utterance.voice = bestEnglishSpeechVoice()");

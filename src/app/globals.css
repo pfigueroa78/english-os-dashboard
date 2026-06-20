@@ -213,9 +213,9 @@ body {
   content: "";
   float: right;
   height: 2.35rem;
-  width: 10.9rem;
+  width: 13.25rem;
 }
-.coach-message-teacher .coach-message-label { padding-right: 11.25rem; }
+.coach-message-teacher .coach-message-label { padding-right: 13.5rem; }
 .coach-message-user .coach-message-actions { display: none; }
 .coach-message-user .coach-message-label,
 .coach-message-user .prose,

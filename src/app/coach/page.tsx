@@ -304,8 +304,45 @@ function getSavedPosition(data: any) {
   };
 }
 
+function readableProgressValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value).trim();
+  }
+  if (Array.isArray(value)) {
+    return value.map(readableProgressValue).find(Boolean) || "";
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const preferredKeys = [
+      "summary",
+      "text",
+      "label",
+      "value",
+      "name",
+      "title",
+      "focus",
+      "weakness",
+      "mistake",
+      "correction",
+      "nextAction",
+      "recommendedAction",
+      "action",
+      "description",
+      "cefrEstimate",
+      "score",
+      "status",
+    ];
+    for (const key of preferredKeys) {
+      const readable = readableProgressValue(record[key]);
+      if (readable) return readable;
+    }
+  }
+  return "";
+}
+
 function firstProgressValue(...values: unknown[]) {
-  return values.map((value) => String(value || "").trim()).find(Boolean) || "";
+  return values.map(readableProgressValue).find(Boolean) || "";
 }
 
 function buildProgressSnapshot(data: any) {

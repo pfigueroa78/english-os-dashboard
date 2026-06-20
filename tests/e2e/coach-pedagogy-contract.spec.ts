@@ -136,6 +136,10 @@ test("coach shows an evidence-based learning pulse without inventing progress", 
 
   expect(source).toContain("type LearningPulse");
   expect(source).toContain("function buildLearningPulse");
+  expect(source).toContain("function readableProgressValue");
+  expect(source).toContain("typeof value === \"object\"");
+  expect(source).toContain("\"nextAction\"");
+  expect(source).toContain("\"mistake\"");
   expect(source).toContain("function learningPulseDetail");
   expect(source).toContain("Sin nivel confirmado");
   expect(source).toContain("sin evidencias");

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
-import { isGiveClassQuestion } from "../../src/lib/coachIntent";
+import { classifyCoachIntent, isGiveClassQuestion } from "../../src/lib/coachIntent";
 
 // Validation scope: UI shell + source contracts + pedagogy-first coach routing.
 const root = process.cwd();
@@ -157,6 +157,38 @@ test("explicit unit and class switches always use class delivery", async () => {
 
   expect(isGiveClassQuestion("Hazme un repaso de la unidad 4 clase 1")).toBe(false);
   expect(isGiveClassQuestion("¿Qué gramática tiene la unidad 4?")).toBe(false);
+});
+
+test("coach intent resolver classifies natural request families instead of exact phrases", async () => {
+  const activeClassRequests = [
+    "Ahora vamos a modo clase",
+    "Arranquemos",
+    "Dale, empecemos",
+    "Quiero estudiar",
+    "Que toca hoy?",
+    "Abre mi sesion de hoy",
+    "Continua donde quedamos",
+    "Let's study",
+    "Open today's lesson",
+  ];
+  for (const request of activeClassRequests) {
+    expect(classifyCoachIntent(request), request).toMatchObject({ kind: "active_class" });
+    expect(isGiveClassQuestion(request), request).toBe(true);
+  }
+
+  const specificClassRequests = [
+    "Dame la clase 1 de la unidad 5",
+    "Start Unit 5, Lesson 1",
+    "Cambiemos a Unit 2 Class 3",
+  ];
+  for (const request of specificClassRequests) {
+    expect(classifyCoachIntent(request), request).toMatchObject({ kind: "specific_class" });
+    expect(isGiveClassQuestion(request), request).toBe(true);
+  }
+
+  expect(classifyCoachIntent("Hazme un repaso de la unidad 4 clase 1")).toMatchObject({ kind: "review" });
+  expect(classifyCoachIntent("Dame una guia de gramatica de la unidad 4")).toMatchObject({ kind: "grammar_guide" });
+  expect(classifyCoachIntent("Dame una guia de vocabulario de Unit 4")).toMatchObject({ kind: "vocabulary_guide" });
 });
 
 test("ambiguous active class requests consult English OS current class before clarification", async () => {

@@ -9,7 +9,9 @@ import {
   extractRequestedUnitNumber,
   hasExplicitClassCoordinates,
   isGiveClassQuestion,
+  isReviewIntent,
   normalizeCoachMessage as normalize,
+  unitGuideIntentKind,
 } from "@/lib/coachIntent";
 import passagesUnitTitles from "../../knowledge/passages-unit-titles.json";
 
@@ -54,18 +56,11 @@ function pad2(value: number | string) {
 }
 
 function isReviewQuestion(message: string) {
-  const n = normalize(message);
-  return (n.includes("repaso") || n.includes("repasar") || n.includes("review")) && (n.includes("unidad") || n.includes("unit"));
+  return isReviewIntent(message);
 }
 
 function unitGuideKind(message: string): "grammar" | "vocabulary" | null {
-  const n = normalize(message);
-  const asksGuide = n.includes("guia") || n.includes("guide");
-  const asksUnit = n.includes("unidad") || n.includes("unit");
-  if (!asksGuide || !asksUnit) return null;
-  if (n.includes("gramatica") || n.includes("grammar")) return "grammar";
-  if (n.includes("vocabulario") || n.includes("vocabulary")) return "vocabulary";
-  return null;
+  return unitGuideIntentKind(message);
 }
 
 function firstNumericValue(...values: unknown[]) {

@@ -2,3 +2,53 @@
   display: inline-block;
   margin-left: 0.22rem;
 }
+
+@media (max-width: 640px) {
+  .coach-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .coach-chat,
+  .coach-sidebar {
+    width: 100%;
+  }
+
+  .coach-message {
+    overflow-wrap: anywhere;
+  }
+
+  .coach-message-teacher {
+    padding-right: 0;
+  }
+
+  .coach-message-user {
+    padding-right: 0;
+  }
+
+  .coach-message-teacher .coach-message-label {
+    padding-right: 0;
+  }
+
+  .coach-message-teacher .prose::before {
+    content: none;
+    float: none;
+    height: 0;
+    width: 0;
+  }
+
+  .coach-message-actions {
+    align-items: center;
+    display: flex;
+    flex-direction: row;
+    gap: 0.25rem;
+    justify-content: flex-end;
+    margin: 0 0 0.3rem auto;
+    max-width: 100%;
+    position: static;
+  }
+
+  .coach-round-button {
+    height: 1.75rem;
+    width: 1.75rem;
+  }
+}

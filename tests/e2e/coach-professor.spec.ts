@@ -181,6 +181,14 @@ test("keeps coach lesson readable on mobile", async ({ page }, testInfo) => {
   expect(Math.abs(firstButtonBox!.y - secondButtonBox!.y)).toBeLessThan(4);
 
   const micButton = page.locator(".coach-mic-button");
+  const input = page.getByPlaceholder(/Escribe tu respuesta en ingl/i);
+  await input.focus();
+  await expect.poll(async () => page.evaluate(() => document.activeElement?.tagName)).toBe("TEXTAREA");
+  const textareaFontSize = await input.evaluate((node) => window.getComputedStyle(node as HTMLElement).fontSize);
+  expect(parseFloat(textareaFontSize)).toBeGreaterThanOrEqual(16);
+  const documentWidthAfterInputFocus = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(documentWidthAfterInputFocus).toBeLessThanOrEqual(viewportWidth);
+
   await expect(micButton).toBeVisible();
   await micButton.click();
   const composerBox = await page.locator(".coach-composer").boundingBox();
@@ -256,6 +264,8 @@ test("resource players are width-contained and load on demand", async () => {
   expect(styles).toContain('.coach-message-user .prose p { display: inline; margin: 0; }');
   expect(styles).toContain("background: #fff;");
   expect(styles).toContain(".coach-textarea::placeholder");
+  expect(styles).toContain("iOS Safari auto-zooms");
+  expect(styles).toContain("font-size: 16px;");
   expect(styles).toContain("min-height: 2.18rem;");
   expect(styles).toContain("height: 2.25rem;");
   expect(styles).toContain("--coach-message-font-size");

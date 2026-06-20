@@ -241,6 +241,7 @@ test("resource players are width-contained and load on demand", async () => {
   const fs = await import("node:fs/promises");
   const source = await fs.readFile("src/app/coach/page.tsx", "utf8");
   const styles = await fs.readFile("src/app/globals.css", "utf8");
+  const qaOverrides = await fs.readFile("src/app/coach-qa-overrides.css", "utf8");
 
   expect(source).toContain('data-testid="resource-card"');
   expect(source).toContain("resourcesNotice");
@@ -266,6 +267,8 @@ test("resource players are width-contained and load on demand", async () => {
   expect(styles).toContain(".coach-textarea::placeholder");
   expect(styles).toContain("iOS Safari auto-zooms");
   expect(styles).toContain("font-size: 16px;");
+  expect(qaOverrides).toContain("iOS Safari auto-zooms");
+  expect(qaOverrides).toContain("font-size: 16px;");
   expect(styles).toContain("min-height: 2.18rem;");
   expect(styles).toContain("height: 2.25rem;");
   expect(styles).toContain("--coach-message-font-size");

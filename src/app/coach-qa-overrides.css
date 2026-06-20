@@ -121,7 +121,12 @@
   }
 
   .coach-textarea {
-    font-size: 0.86rem;
+    /*
+      Keep mobile text inputs at 16px or above. iOS Safari auto-zooms the
+      entire page when a focused textarea uses a smaller font, which makes
+      the professor text look oversized and causes horizontal overflow.
+    */
+    font-size: 16px;
     min-height: 2rem;
     padding-bottom: 0.42rem;
     padding-top: 0.42rem;

@@ -466,6 +466,8 @@ function splitCompressedHeaderLabels(reply: string) {
     .replace(/\s+(?:\*\*)?Main focus:(?:\*\*)?/gi, "\nMain focus:")
     .replace(/\s+(?:\*\*)?Grammar focus:(?:\*\*)?/gi, "\nGrammar focus:")
     .replace(/\s+(?:\*\*)?Vocabulary focus:(?:\*\*)?/gi, "\nVocabulary focus:")
+    .replace(/\s+(?:\*\*)?Book pages:(?:\*\*)?\s*[^\n]+/gi, "")
+    .replace(/\s+(?:\*\*)?PDF pages:(?:\*\*)?\s*[^\n]+/gi, "")
     .replace(/\s+(?:🎯\s*)?(?:\*\*)?Learning objective:(?:\*\*)?/gi, "\n\n🎯 Learning objective:");
 }
 
@@ -478,7 +480,7 @@ function replaceOrInsertHeaderLine(reply: string, labelPattern: RegExp, line: st
     return lines.join("\n");
   }
 
-  const anchors = [/^Vocabulary focus:/i, /^Grammar focus:/i, /^Main focus:/i, /^Class sections:/i, /^Book pages:/i, /^Lesson:/i, /^\*\*Lesson:\*\*/i];
+  const anchors = [/^Vocabulary focus:/i, /^Grammar focus:/i, /^Main focus:/i, /^Class sections:/i, /^Lesson:/i, /^\*\*Lesson:\*\*/i];
   for (const anchor of anchors) {
     const index = lines.findIndex((current) => anchor.test(current));
     if (index >= 0) {
@@ -494,7 +496,7 @@ function applyHeaderHardBreaks(reply: string) {
   return reply
     .split("\n")
     .map((line) => {
-      if (/^(Unit \d+ — Class \d+|Global Class \d+|Lesson:|Book pages:|Class sections:|Main focus:|Grammar focus:|Vocabulary focus:)/i.test(line.trim())) {
+      if (/^(Unit \d+ — Class \d+|Global Class \d+|Lesson:|Class sections:|Main focus:|Grammar focus:|Vocabulary focus:)/i.test(line.trim())) {
         return markdownHardBreak(line.trim().replace(/\*\*/g, ""));
       }
       return line;
@@ -533,9 +535,6 @@ function ensurePassagesLessonContract(data: any, input: any[]) {
   if (metadata.lessonTitle) {
     reply = replaceOrInsertHeaderLine(reply, /^(\*\*)?Lesson:/im, `Lesson: ${metadata.lessonTitle}`);
   }
-  if (metadata.bookPages || metadata.pdfPages) {
-    reply = replaceOrInsertHeaderLine(reply, /^(\*\*)?Book pages:/im, `Book pages: ${metadata.bookPages || "—"} | PDF pages: ${metadata.pdfPages || "—"}`);
-  }
   if (metadata.classSections) {
     reply = replaceOrInsertHeaderLine(reply, /^(\*\*)?Class sections:/im, `Class sections: ${metadata.classSections}`);
   }
@@ -558,6 +557,8 @@ function ensurePassagesLessonContract(data: any, input: any[]) {
     .replace(/\bThe book asks\b:?/gi, "Focus questions:")
     .replace(/\bThe book shows\b/gi, "We use these examples to practice")
     .replace(/\bThe text presents\b/gi, "This class works with")
+    .replace(/^.*\bBook pages:\s*.*(?:PDF pages:\s*.*)?$/gim, "")
+    .replace(/^.*\bPDF pages:\s*.*$/gim, "")
     .replace(/\n\s*⚠️\s*\n(?=\s*(⚠️\s*)?(\*\*)?Common mistake)/gi, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();

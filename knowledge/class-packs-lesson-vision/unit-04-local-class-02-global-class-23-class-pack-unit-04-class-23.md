@@ -13,20 +13,20 @@ Teacher instruction: Use this file as the primary source for this exact class. D
 <!-- PASSAGES_ACTIVE_CONTRACT_START -->
 ### Active class teaching contract
 - Active class: Unit 4, local class 2, global class 23
-- Lesson title: Unit 4 Lesson A extension
+- Lesson title: Chilling out
 - Active class book pages: 30-31
 - Active class PDF pages: 39-40
-- Active class section names: Lesson A extension + Listening/Reading/Writing + Speaking
-- Active class skill focus: Listening, speaking, reading/writing
-- Active class grammar focus: Extract exact grammar focus from Unit 4 Lesson A extension indexed pages; do not infer unindexed wording.
-- Active class vocabulary focus: Extract vocabulary from Unit 4 Lesson A extension indexed pages; recycle only confirmed unit vocabulary.
-- Active class functions: Teach from the indexed page range, then ask controlled practice before advancing.
-- Active class target structures: Use the target language from the indexed page range. Do not invent structures outside the class pack.
-- Expected learner production: Controlled and personalized answers based on the indexed Student Book prompts.
-- Source status: Source extraction blocker: expected page marker(s) not found in existing extracted content: BOOK_PAGE 31; PDF_PAGE 40. Do not invent missing page text.
+- Active class section names: Listening & Speaking + Role Play + Writing
+- Active class skill focus: listening,speaking,role play,writing
+- Active class grammar focus: This class is not grammar-centered; the main skill focus is listening, speaking, role play, and writing.
+- Active class vocabulary focus: stress; fatigue; lack of energy; call a friend; get a massage; vent your feelings; do yoga; listen to music; exercise vigorously; take a hot bath; sleep and energy problems; effective topic sentences
+- Active class functions: identifying causes of stress; describing solutions to stress; giving advice; writing a topic sentence; reading paragraphs aloud and guessing topic sentences
+- Active class target structures: too little time; too much traffic; too many responsibilities; Have you ever thought of (going) ...?; You might want to ...; It might not be a bad idea to ...; The way I see it, you ought to ...
+- Expected learner production: select personal stress-coping strategies and add suggestions,listen for each speaker's main cause of stress,identify each person's solution from the listening,role-play a problem about sleep or energy and ask for advice,give advice using the useful expressions,choose or complete topic sentences,write a paragraph with a topic sentence,read paragraphs aloud without the topic sentence and guess the topic sentence
+- Source status: Verified against visible Student Book pages 30-31 / PDF pages 39-40.
 
 ### Safety rule
-Preserve the existing extracted Student Book content exactly as indexed. Do not fabricate missing page text, transcript text, answer keys, audio scripts, or exercises.
+Preserve the verified sections, sequence, focus, and target language. Do not fabricate answer keys, audio transcripts, exercises, or source wording.
 <!-- PASSAGES_ACTIVE_CONTRACT_END -->
 
 ---
@@ -53,61 +53,121 @@ Use this class pack as the primary source when the learner asks for Unit 4, Clas
 PDF_PAGE: 39
 BOOK_PAGE: 30
 
-~ LISTENING & SPEAKING
-        Chilling out
-        A Stress can cause fatigue and a lack of energy. Select the things you do to
-          cope with stress. Can you add other suggestions to the list?
-           0 call a friend                   0 get a massage            D vent your feelings
-           0 do yoga                         D listen to music          D _ _ _ __
-           0 exercise vigorously             D take a hot bath          D ~~~~~~~
-     af .,> B Listen to Sean (S}, Lisa (L}, and Victor (V) talk about stress. What is the main
+~    LISTENING & SPEAKING
+          Chilling out
+
+          A Stress can cause fatigue and a lack of energy. Select the things you do to
+           cope with stress. Can you add other suggestions to the list?
+           0 call a friend    0 get a massage D vent your feelings
+                                              D _____
+           0 do yoga          D listen to music
+           0 exercise vigorously D take a hot bath D ~~~~~~~
+       af .,> B Listen to Sean (S}, Lisa (L}, and Victor (V) talk about stress. What is the main
+
            cause of stress for each person? Write the correct letter.
-                 too litt le time            too much traffic        __ too many responsibilities
+               too little time too much traffic __ too many responsibilities
 
-     a4.,> C Listen again. What solution has each person found? Complete the chart.
-
-
-              1. Sean
-              2. Lisa
-              3. Victor
+        a4.,> C Listen again. What solution has each person found? Complete the chart.
 
 
-      ROLE PLAY
-     .-       - --
-      1 need some advice.
-                                                              -             -                         -
-        A Look at the problems below. Have you ever had problems like these?
-          What other problems do people have with sleep and energy levels?
+             1. Sean
+             2. Lisa
 
-                                                                                                               I alw ays put off studying unt il
-                                                                                                               the night before a t est. I stay
-                                                                                                               up all night st udying, but after
-              I've been working day and night                                                                  that, I still don't do ver y well.
-              on an important project. It's going
-              we ll, but I'm feeling so wo rn out.
-              I'm worried about my health .
+             3. Victor
 
 
-                                                                                                  Whenever my friend s call or
-                                                                                                  text me late at night, we chat
-                                                                                                  for ho urs and hours. The next
-          I get so nervous before I have
-                                                                                                  day, I can't keep m y eyes open!
-          t o g ive a presentation that I
-          can't sleep the night b efore,
-                                            r-=~~;;.----'-''"--~~...-.-...-- ...................................I
-          and then I'm not at my best.
+       . -ROLE PLA-Y     --             -       -      -
+          1 need some advice.
 
+          A Look at the problems below. Have you ever had problems like these?
+            What other problems do people have with sleep and energy levels?
 
-         B Pair work Imagine you have one of the problems in part A.
-           Take turns asking for and giving advice.
-                                                                                                            Giving advice
-           "I have a real problem. I've been working a lot on this project, and                             Have you ever thought of (going) ... ?
+                                                          I always put off studying until
+                                                          the night before a test. I stay
+                                                          up all night studying, but after
+             I've been working day and night              that, I still don't do very well.
+             on an important project. It's going
+             well, but I'm feeling so worn out.
+             I'm worried about my health.
+
+                                                      Whenever my friends call or
+                                                      text me late at night, we chat
+                                                      for hours and hours. The next
+           I get so nervous before I have
+                                                      day, I can't keep my eyes open!
+           to give a presentation that I
+           can't sleep the night before,                  I
+                                                ................................ ...
+           and then I'm not at my best. r-=~~;;.----'-''"--~~...-.-...--
+          B Pair work Imagine you have one of the problems in part A.
+            Take turns asking for and giving advice.
+                                                         Giving advice
+            "I have a real problem. I've been working a lot on this project, and
+                                                         Have you ever thought of (going) ... ?
             I'm so wom out. I'm worried about my health."
-                                                                                                            You might want to ...
-           "So, how late do you usually work during the week?"                                              It might not be a bad idea to .. .
-           "I usually stay until 9:00 P.M. or so."                                                          The way I see it, you ought to .. .
-           "Have you ever thought of telling someone that you need a little help?"
+                                                         You might want to ...
+            "So, how late do you usually work during the week?"
+                                                         It might not be a bad idea to .. .
+            "I usually stay until 9:00 P.M. or so."      The way I see it, you ought to .. .
+            "Have you ever thought of telling someone that you need a little help?"
+        Amlltr
+     30       Early birds and night owls
+
+## PDF_PAGE 40 | BOOK_PAGE 31
+PDF_PAGE: 40
+BOOK_PAGE: 31
+
+t7l]~W~R_IT_IN_G~~~~~~~~~~~~~~~~~­
+        WJ
+             Effective topic sentences
+              Effective topic sentences are neither too general nor too specific. A topic sentence
+
+              is supp_orted by the other sentences in the paragraph.
+
+             A Read the paragraph. Then choose the best topic sentence from the list.
 
 
-30   Amlltr     Early birds and night owls
+                File Edit View Insert Format Tools Table Window Help
+
+
+
+                 ---------------------               - ----   -Morning people
+                 jump out of bed in the morning, cheerful and full of energy. They seem to get most of their work
+
+                 done before lunch. On the other hand, night people have trouble getting up in the morning. They
+                 often drag themselves through the day and reach their peak in the evening. Night people, who often
+                 stay up until 2:00 or 3:00 A.M., are just getting started when morning people are going to bed.
+
+
+              a. Early morning is a bad time of day for most people.
+
+              b. Morning people and night people live very different lives.
+              c. Working at night is hard for morning people.
+              d. Night people get enough sleep even though they go to bed late.
+
+             B Read the paragraph and complete the topic sentence. Then compare
+              answers with a partner.
+
+               File Edit View Insert Format Tools Table Window Help
+               ~ e lil ~ mirnrID 1:::·=·= :::· lt;;l r:;. ~ .,.,.
+
+                 Playing sports- -------- - - ----
+                 Usually, I play soccer or basketball. Kicking a soccer ball around
+                 clears my head. When I'm playing, I don't think about anything
+
+                 but the ball. Later, I feel relaxed, I'm focused, and I'm ready to
+                 concentrate on my homework.
+
+
+             C Choose one of these topics or your own idea. Then write a paragraph with a
+               topic sentence.
+               • the best way to stay healthy
+
+               • an effective study plan
+               • earning extra money
+
+             D Pair work Take turns reading your paragraphs out loud, but don't read the
+               topic sentence. Can you guess what your partner's topic sentence is?
+
+
+                                                           48~~-i•la·f It's about time! 31

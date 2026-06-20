@@ -13,20 +13,20 @@ Teacher instruction: Use this file as the primary source for this exact class. D
 <!-- PASSAGES_ACTIVE_CONTRACT_START -->
 ### Active class teaching contract
 - Active class: Unit 8, local class 1, global class 50
-- Lesson title: Unit 8 Lesson A
+- Lesson title: Exploring creativity
 - Active class book pages: 62-63
 - Active class PDF pages: 71-72
-- Active class section names: Lesson A + Vocabulary + Grammar + Speaking
-- Active class skill focus: Vocabulary, grammar, speaking
-- Active class grammar focus: Extract exact grammar focus from Unit 8 Lesson A indexed pages; do not infer unindexed wording.
-- Active class vocabulary focus: Extract vocabulary from Unit 8 Lesson A indexed pages; recycle only confirmed unit vocabulary.
-- Active class functions: Teach from the indexed page range, then ask controlled practice before advancing.
-- Active class target structures: Use the target language from the indexed page range. Do not invent structures outside the class pack.
-- Expected learner production: Controlled and personalized answers based on the indexed Student Book prompts.
-- Source status: Source extraction blocker: expected page marker(s) not found in existing extracted content: BOOK_PAGE 63; PDF_PAGE 72. Do not invent missing page text.
+- Active class section names: Starting point + Vocabulary + Grammar
+- Active class skill focus: pair work,group work
+- Active class grammar focus: Reduced relative clauses
+- Active class vocabulary focus: creative professions; creative qualities; curiosity / curious; innovation; decisiveness; knowledge; patience; passionate; determined; motivated; perceptive; disciplined; original; resourceful
+- Active class functions: compare jobs by creativity; discuss suitable jobs for different people; describe creative qualities; discuss which qualities matter for work or studies; rewrite and complete sentences with reduced relative clauses
+- Active class target structures: who / that is able to think quickly; who / that is looking for adventure; who / that is trained in music; who / that needs job security; who / that has a good voice; reduced relative clauses with -ing forms; with + noun phrase
+- Expected learner production: rank chef, surgeon, photographer, and jazz musician by creativity and explain choices,match job types to people with traits such as quick thinking, adventure, good hands, job security, music, and voice,complete the creative qualities chart with noun-adjective pairs,discuss which creative qualities are most important for a job or studies,rewrite full relative clauses as reduced relative clauses and complete personalized sentence stems
+- Source status: Verified against visible Student Book pages 62-63 / PDF pages 71-72.
 
 ### Safety rule
-Preserve the existing extracted Student Book content exactly as indexed. Do not fabricate missing page text, transcript text, answer keys, audio scripts, or exercises.
+Preserve the verified sections, sequence, focus, and target language. Do not fabricate answer keys, audio transcripts, exercises, or source wording.
 <!-- PASSAGES_ACTIVE_CONTRACT_END -->
 
 
@@ -50,43 +50,110 @@ Use this class pack as the primary source when the learner asks for Unit 8, Clas
 PDF_PAGE: 71
 BOOK_PAGE: 62
 
-fC---r:J~S_T._A_R_
-                  T_IN_G~PO
-                          ~ IN_T~~~~~~~~~~~~~~~
-W.J       Creative professions
-       A Pair work How much creativity do you think these jobs require? Number
-         them from 1 (most creative) to 4 (least creative). Explain your choices.
+fC---r:J~S_T_.A_R_T_IN_G~PO~IN_T~~~~~~~~~~~~~~~
+      W.J
+          Creative professions
+          A Pair work How much creativity do you think these jobs require? Number
+            them from 1 (most creative) to 4 (least creative). Explain your choices.
 
 
-                 chef                   __ surgeon                     __ photographer                __ jazz musician
-
-          "I think a chef has to be the most creative. Inventing new dishes requires a lot of creativity."
-
-        B Group work Which jobs might be right for these kinds of people?
-          Discuss your answers.
-          1. someone able to think quickly              4. someone needing job security
-          2. a person looking for adventure             5. a person trained in music
-          3. people good with their hands               6. a person with a good voice
-          "Someone able to think quickly might be a good surgeon. You never know what might go
-           wrong once the operation starts."
 
 
- (OlJ~V_O_C_A_B_U_L_A_R_Y~~~~~~~~~~~~~~~~~
- ~ Creative qualities
-        A What qualities do creative people usually have? Complete the chart with the
-          correct nouns or adjectives.
 
 
-               curiosity         curious             innovation                                                passionate
-               decisiveness                           knowledge                               patience
-                                 determined                               motivated                            perceptive
-                                 disciplined                              original                             resourceful
-
-        B Pair work Which of the qualities in the chart are most important to your job
-          or studies? Discuss with a partner.
-          "Well, I'm studying engineering, and we get a lot of assignments, so I have to be very
-           disciplined. It's a very competitive field."
-                                                                                                1VOCABULARY·PLUS   see page 137
 
 
-62   lmlil:r    Putt ing the mind to work
+               chef         __  surgeon      __ photographer  __ jazz musician
+
+            "I think a chef has to be the most creative. Inventing new dishes requires a lot of creativity."
+
+          B Group work Which jobs might be right for these kinds of people?
+            Discuss your answers.
+            1. someone able to think quickly 4. someone needing job security
+            2. a person looking for adventure 5. a person trained in music
+
+            3. people good with their hands 6. a person with a good voice
+            "Someone able to think quickly might be a good surgeon. You never know what might go
+            wrong once the operation starts."
+
+
+      (OlJ~V_O_C_A_B_U_L_A_R_Y~~~~~~~~~~~~~~~~~
+      ~   Creative qualities
+
+          A What qualities do creative people usually have? Complete the chart with the
+            correct nouns or adjectives.
+
+
+              curiosity  curious    innovation                       passionate
+
+              decisiveness          knowledge             patience
+                         determined            motivated             perceptive
+                         disciplined           original              resourceful
+
+
+          B Pair work Which of the qualities in the chart are most important to your job
+            or studies? Discuss with a partner.
+            "Well, I'm studying engineering, and we get a lot of assignments, so I have to be very
+            disciplined. It's a very competitive field."
+                                                           VOCABULARY·P LUS see page 137
+                                                           1
+     62 lmlil:r Putting the mind to work
+
+## PDF_PAGE 72 | BOOK_PAGE 63
+PDF_PAGE: 72
+BOOK_PAGE: 63
+
+GRAMMAR
+             Reduced relative clauses
+
+             You can shorten a relative clause by dropping the relative pronoun and the verb be.
+             Someone (who I that is) able to think quickly might be a good surgeon.
+             A person (who I that is) looking for adventure could be a private detective.
+             A person (who /that is) trained in music might be a good DJ.
+             You can also drop who I that and change the verb to the gerund.
+             Someone who I that needs job security might not want to be a jazz musician.
+             Someone needing job security might not want to be a jazz musician.
+             In many relative clauses, who I that+ the verb have can be replaced by with.
+             A person who I that has a good voice could be a good TV journalist.
+             A person with a good voice could be a good TV journalist.
+
+                                           uLanguage.com
+                                         l\\'.\\
+             A Look at the Starting Point on page 62 again. Can you make the reduced
+              relative clauses in part B into full clauses? What verb forms do the full
+              clauses use?
+             B Rewrite these sentences with reduced relative clauses. Then compare
+              with a partner.
+
+              1. Someone who hopes to be a chef should get the proper training.
+                Someone hoping to be a chef should get the proper training.
+              2. Anyone who wants to be an actor needs both talent and luck.
+              3. A person who works as a comedian is always looking for new ways to
+                make people laugh.
+
+              4. People who are clever enough to get inside the mind of a criminal would
+                make good detectives.
+              5. Anyone who dreams of becoming a champion athlete has to be prepared
+                to do a lot of hard work.
+              6. Someone who is interested in the latest music trends might be a good DJ.
+              7. A person who is responsible for a large staff has to be able to be creative
+                with scheduling.
+
+             C Complete these sentences using reduced relative clauses and your own ideas.
+
+               1. . .. needs to take voice lessons.
+                 Someone dreaming of becoming a professional
+                singer needs to take voice lessons.
+               2. . .. should speak English as much as possible.
+               3. . .. should keep up with current events.
+               4. . .. doesn't need to have a good speaking voice.
+
+               5. . . . should follow the latest trends in clothing.
+               6. . .. has to study the behavior of animals.
+               7. . .. usually have a great love of food and eating.
+               8. . .. will find the job market extremely competitive.
+
+                                                                           irLanguage
+
+
+                                                        41a-~-{•la·f Exploring creativity 63

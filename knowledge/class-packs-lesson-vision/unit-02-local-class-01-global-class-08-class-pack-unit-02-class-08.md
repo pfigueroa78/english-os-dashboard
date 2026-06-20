@@ -10,6 +10,25 @@ PDF pages retrieval key: PDF_PAGES_19_20
 
 Teacher instruction: Use this file as the primary source for this exact class. Do not substitute content from another class.
 
+<!-- PASSAGES_ACTIVE_CONTRACT_START -->
+### Active class teaching contract
+- Active class: Unit 2, local class 1, global class 8
+- Lesson title: Life lessons
+- Active class book pages: 10-11
+- Active class PDF pages: 19-20
+- Active class section names: Starting point + Listening + Grammar + Discussion
+- Active class skill focus: The class is grammar-centered, with supporting listening, speaking, and discussion work.
+- Active class grammar focus: Past modals and phrasal modals of obligation
+- Active class vocabulary focus: should have; was supposed to; had to; needed to; not supposed to; was expected; was forced to; no obligation
+- Active class functions: describing past obligations; making recommendations about future behavior; comparing what people should do differently in the future; discussing past experiences
+- Active class target structures: should have + past participle; was supposed to + base verb/continuous; had to + base verb; needed to + base verb; didn't have to + base verb; shouldn't have + past participle
+- Expected learner production: identify mistakes in short reading texts,explain what each person should have done differently,answer listening comprehension questions about a bad decision,select true/false statements from a listening,complete sentence prompts about personal experience using past modals,discuss survey items about past experiences with a partner
+- Source status: Verified against visible Student Book pages 10-11 / PDF pages 19-20.
+
+### Safety rule
+Preserve the verified sections, sequence, focus, and target language. Do not fabricate answer keys, audio transcripts, exercises, or source wording.
+<!-- PASSAGES_ACTIVE_CONTRACT_END -->
+
 Lesson title: Life lessons
 
 ### Active class teaching contract
@@ -49,73 +68,112 @@ Use this class pack as the primary source when the learner asks for Unit 2, Clas
 PDF_PAGE: 19
 BOOK_PAGE: 10
 
-UNIT 2 Mistakes and mysteries
-Lesson A: Life lessons
+llf
+                             ·...,.
+                ~N,;A           Life lessons
 
-STARTING POINT
-Learning the hard way
-A Read about these people's problems. What mistake did each person make?
+        (C"D~S~T_.A_R_T_IN_G~P_O_IN_T~~~~~~~~~~~~~~~~~
+        ._. Learning the hard way
 
-What Did I Get Myself Into?
-Three mistakes that led to big messes
+            A Read about these people's problems. What mistake did each person make?
+                       '
+                  What      Did     I Get     Myself       Into?
+                          ----
+                           Three mistakes that led to big m-es-s-es- --------
+            -------.-.  -.
+            I was supposed to be studying for a In high school, I had to wear a uniform, We weren't supposed to cook in our
+            math test this weekend, but my friends so I didn't have a lot of fashionable dorm rooms, but I had a microwave
+            made me go to the beach with them clothes. When I started college, I anyway. The cafeteria was right next
+            instead. I mean, I didn't have to go with thought I needed to have more, so I door, so I re-ally didn't need to have it.
+           them, but I did. Now the test is in two wasted a lot of money on trendy outfits. Anyway, I got caught making popcorn
+            hours, and I'm totally unprepared. I But I really shouldn't have done it. last week, and the school took the
+            should have stayed home and studied! Now I'm broke! microwave away.
+           - Alicia, Tepic, Mexico - Kenichi, Osaka, Japan - Melanie, Toronto, Canada
 
-Alicia was supposed to be studying for a math test this weekend, but her friends made her go to the beach with them instead. She didn't have to go with them, but she did. Now the test is in two hours, and she is totally unprepared. She should have stayed home and studied.
 
-Kenichi had to wear a uniform in high school, so he didn't have a lot of fashionable clothes. When he started college, he thought he needed to have more, so he wasted a lot of money on trendy outfits. He really shouldn't have done it. Now he is broke.
 
-Melanie and the other students weren't supposed to cook in their dorm rooms, but she had a microwave anyway. The cafeteria was right next door, so she really didn't need to have it. She got caught making popcorn, and the school took the microwave away.
 
-B Pair work: What should each person do differently in the future? Compare ideas.
-Model: I don't think Alicia should listen to her friends in the future. / Yeah, I agree. She shouldn't let them influence her like that.
 
-LISTENING
-I'll never do that again!
-A Listen to Frank talk about a bad decision he made. What was his decision? Why was it a bad one?
-B Listen again. Are these statements true or false?
-1. Frank and his neighbor were good friends.
-2. Frank knew he was allergic to cats.
-3. Frank marked his calendar to remember to feed the cat.
-4. Frank forgot what time his train was going to leave.
-5. Frank remembered to feed the cat on Saturday.
+
+
+            B Pair work What should each person do differently in the future? Compare ideas.
+
+             "I don't think Alicia should listen to her friends in the future."
+             "Yeah, I agree. She shouldn't let them influence her like that."
+        PJ
+            LISTENING
+            I'll never do that again!
+
+          a4»l A Listen to Frank talk about a bad decision he made. What was his decision?
+              Why was it a bad one?
+
+          a4»l B Listen again. Are these statements true or false? Choose the correct answer.
+                                                     True False
+              1. Frank and his neighbor were good friends. D 0
+              2. Frank knew he was allergic to cats.  D    0
+
+              3. Frank marked his calendar to remember to feed the cat. D D
+              4. Frank forgot what time his train was going to leave. D D
+              5. Frank remembered to feed the cat on Saturday. D 0
+
+       1 O AIWifJ Mistakes and mysteries
 
 ## PDF_PAGE 20 | BOOK_PAGE 11
 PDF_PAGE: 20
 BOOK_PAGE: 11
 
 GRAMMAR
-Past modals and phrasal modals of obligation
+             Past modals and phrasal modals of obligation
 
-Should have, was supposed to, had to, and needed to describe obligation in the past, although they have slightly different meanings.
-Examples:
-- I should have stayed home and studied.
-- I really shouldn't have done it.
-- I was supposed to be studying this weekend.
-- I had to wear a uniform.
-- I didn't have to go with them.
-- I really didn't need to have it.
+             Should have, was supposed to, had to, and needed to all describe obligations in the past,
+             although they have slightly different uses.
+             I should have stayed home and studied! (It was a good idea, but I didn't do it.)
+             I was supposed to be studying this weekend. (It was expected, but I didn't do it.)
+             I had to wear a uniform. (We were forced to do this.)
+             I didn't have to go with my friends, but I did. (There was no obligation.)
+             I thought I needed to have more clothes. (I thought this was necessary.)
+                                                       LG'l~.~M~R_.,LUS see page 108
 
-A Look at the Starting Point on page 10 again. Can you find other examples of past modals and phrasal modals of obligation? What does each one mean?
+             A Look at the Starting Point on page 10 again. Can you find other examples of
+               past modals and phrasal modals of obligation? What does each one mean?
 
-B Choose the answer that is true for each sentence. The comparison answers help clarify meaning.
-1. I couldn't have invited them. / I didn't have to invite them.
-2. That was a secret! You weren't supposed to tell anyone!
-3. It was easier not to invite some neighbors.
-4. It was great practice for the test.
+             B Choose the answer that is true for each sentence. Then compare answers with a partner.
+               1. I shouldn't have invited them. 3. We didn't have to study for the test.
 
-C Complete the sentences with information about yourself. Then compare answers with a partner.
-1. After I started high school, I had to...
-2. I was supposed to...
-3. I wasted a lot of money once because I thought I needed to...
-4. When I had the opportunity, I should have...
+                 0 a. I didn't invite them.      0 a. We forgot to study.
+                 0 b. I invited them.            D b. We were prepared for the test.
+               2. That was a secret! You weren't supposed 4. I know Jane didn't like my cooking, but
+                 to tell anyone!                 she didn't need to be so rude about it.
+                 0 a. You didn't tell anyone.    0 a. Jane was rude to me.
 
-DISCUSSION
-Past experiences
-A Look at the survey and choose the items that are true for you.
-Have you ever...
-- moved into somebody else's room or apartment?
-- spent something you should have saved?
-- had to follow a rule you didn't like?
-- been supposed to do something but forgotten?
-- spent a lot of money on something you regret?
-B Pair work: Discuss your answers. Ask follow-up questions.
-Model: Have you ever wasted money on something you weren't supposed to? / Sure. After all, I wasn't supposed to take a long lunch, but I did.
+                 D b. You told someone.          0 b. Jane wasn't rude to me.
+
+             C Complete the sentences with information about yourself. Then compare
+               answers with a partner.
+               1. After I started high school, I had to ...
+                 study a lot harder.
+               2. I made someone angry once because I wasn't supposed to .. .
+
+               3. I wasted a lot of money once because I thought I needed to .. .
+               4. When I had the opportunity, I should have ...
+
+
+         ~J~D_l_S_C_U_S_S_IO_N~~~~~~~~~~~~~~~­
+         "9.J
+             Past experiences
+             A Look at the survey and choose the items that are true for you.
+                "'lave you ever  ...
+
+               O enjoyed doing something you weren't supposed to do?
+               O not done something you should have done?
+               O done something foolish that you didn't need to do?
+               0 had to follow a rule you didn't like?
+               O had to enforce a rule you didn't like?
+
+             B Pair work Discuss your answers. Ask follow-up questions.
+
+               "Have you ever enjoyed doing something you weren't supposed to do?"
+               "Sure. At my old job, I wasn't supposed to take a long lunch, but I took long lunches
+                at the park, anyway. How about you?"
+
+                                                              41§-~i•]a.y Life lessons 11

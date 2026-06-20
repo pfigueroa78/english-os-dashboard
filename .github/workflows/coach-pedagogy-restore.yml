@@ -1,0 +1,97 @@
+name: English OS Quality Gate
+
+on:
+  push:
+    branches-ignore:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: english-os-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Build, pedagogy, and UI
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      CI: "1"
+      E2E_BASE_URL: http://127.0.0.1:3000
+      E2E_PREBUILT: "1"
+      E2E_USE_WEB_SERVER: "1"
+      NEXT_PUBLIC_E2E_DEMO: "1"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show validation target
+        run: git log -1 --format='%H %s'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Audit Passages teaching contracts
+        run: npm run passages:audit-contracts
+
+      - name: Build application once
+        run: npm run build
+
+      - name: Run pedagogy and UI tests
+        run: npm run test:e2e
+
+      - name: Publish validation summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## English OS quality gate"
+            echo ""
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Result: **${{ job.status }}**"
+            echo "- Checks: Passages contracts, production build, Chromium desktop, Mobile Safari"
+            echo "- UI evidence: download the \`coach-ui-snapshots\` artifact"
+            echo "- Preview: Vercel publishes feature branches through the repository integration"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload coach UI snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coach-ui-snapshots
+          path: artifacts/ui/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload failed-test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore

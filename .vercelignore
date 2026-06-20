@@ -1,0 +1,13 @@
+tmp/
+.next/
+out/
+build/
+coverage/
+artifacts/
+playwright-report/
+test-results/
+.clerk/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*

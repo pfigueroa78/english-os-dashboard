@@ -207,6 +207,15 @@ function studyModeLabel(mode: StudyMode) {
   return "Actual";
 }
 
+function inferCoordinatesFromReply(reply: string) {
+  const text = String(reply || "");
+  const unit = Number(text.match(/\bUnit\s+(\d{1,2})\b/i)?.[1] || 0) || null;
+  const classNumber = Number(
+    text.match(/\bClass\s*(?::|#|-|\s)\s*(\d{1,2})\b/i)?.[1] || 0,
+  ) || null;
+  return { unit, classNumber };
+}
+
 function nextCoachTextSize(current: CoachTextSize, direction: -1 | 1) {
   const currentIndex = COACH_TEXT_SIZE_ORDER.indexOf(current);
   const nextIndex = Math.min(Math.max(currentIndex + direction, 0), COACH_TEXT_SIZE_ORDER.length - 1);
@@ -801,20 +810,24 @@ export default function CoachPage() {
       if (!response.ok || !data.ok) throw new Error(data.error || "Coach request failed.");
 
       const savedPosition = getSavedPosition(data);
-      const unit = data.activeUnit ? `Unit ${data.activeUnit}` : "";
+      const reply = data.reply || "No response returned.";
+      const inferredCoordinates = inferCoordinatesFromReply(reply);
+      const activeUnit = data.activeUnit || inferredCoordinates.unit;
+      const activeClass = data.activeClass || inferredCoordinates.classNumber;
+      const unit = activeUnit ? `Unit ${activeUnit}` : "";
       const lesson = savedPosition.lesson;
       const nextMode: StudyMode = isReviewRequest(message) ? "review" : isGuideRequest(message) ? "guide" : "class";
 
+      setStudyMode(nextMode);
       if (unit) {
         setStudyUnit(normalizeUnitValue(unit));
-        setStudyMode(nextMode);
       }
-      setStudyClassNumber(data.activeClass && nextMode === "class" ? Number(data.activeClass) : null);
+      setStudyClassNumber(activeClass && nextMode === "class" ? Number(activeClass) : null);
       if (lesson) setCurrentLesson(lesson);
 
       setMessages((current) => [
         ...current,
-        { role: "coach", content: data.reply || "No response returned.", usage: data.usage },
+        { role: "coach", content: reply, usage: data.usage },
       ]);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;

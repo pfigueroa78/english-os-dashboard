@@ -152,6 +152,19 @@ test("coach shows an evidence-based learning pulse without inventing progress", 
   expect(globals).toContain(".coach-status-pulse");
 });
 
+test("mobile sidebar keeps class resources visible after the learning pulse", async () => {
+  const source = readFile("src/app/coach/page.tsx");
+  const globals = readFile("src/app/globals.css");
+  const overrides = readFile("src/app/coach-qa-overrides.css");
+
+  expect(source).toContain("Tu avance");
+  expect(source).toContain("Materiales de clase");
+  expect(globals).toContain("#coach-sidebar > section:nth-of-type(4)");
+  expect(overrides).toContain("#coach-sidebar > section:nth-of-type(4)");
+  expect(globals).not.toContain("#coach-sidebar > section:nth-of-type(n + 3)");
+  expect(overrides).not.toContain("#coach-sidebar > section:nth-of-type(n + 3)");
+});
+
 test("unit grammar and vocabulary guides use verified unit contracts", async () => {
   const handler = readFile("src/lib/coachRouteHandler.ts");
   const source = readFile("src/app/coach/page.tsx");

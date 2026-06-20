@@ -135,10 +135,10 @@ function buildStartTodayClassPrompt(unit: string, lesson: string) {
   const unitNumber = extractUnitNumber(unit);
   return [
     unitNumber
-      ? `Dame la clase actual de la unidad ${unitNumber} usando el contenido real del libro, pero como profesor.`
-      : "Dame mi clase actual usando el contenido real del libro, pero como profesor.",
-    lesson ? `Current lesson/class context: ${lesson}` : "",
-    "Teach it step by step, use the real section names, and finish with an evaluation gate before progress can advance.",
+      ? `Empecemos la clase actual de la unidad ${unitNumber}. Usa el contrato real de English OS; si no hay número de clase activo confiable, no inventes Class 1 y pide confirmación breve.`
+      : "Empecemos mi clase actual. Usa el contrato real de English OS; si no hay número de clase activo confiable, no inventes Class 1 y pide confirmación breve.",
+    lesson ? `Contexto guardado de lección o foco: ${lesson}` : "",
+    "Haz solo una apertura estratégica por etapas: objetivo, por qué importa, primer micro-paso y una sola tarea. No hagas cierre, evaluación, logros ni Session logged todavía.",
   ]
     .filter(Boolean)
     .join("\n");

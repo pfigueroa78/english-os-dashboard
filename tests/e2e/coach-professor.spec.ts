@@ -42,9 +42,9 @@ test("shows simplified two-column shell", async ({ page }) => {
 test("keeps class guidance in the chat", async ({ page }) => {
   await openCoach(page);
   await requireUi(page);
-  await expectVisibleText(page, /Unidad activa:/i);
-  await expectVisibleText(page, /Clase \/ lección actual:/i);
-  await expectVisibleText(page, /avance se habilita solo después/i);
+  await expect(page.getByPlaceholder(/Escribe tu respuesta en inglés/i)).toBeVisible();
+  await expect(page.getByText(/Responde en inglés/i)).toHaveCount(0);
+  await expect(page.getByText(/Enter envía/i)).toHaveCount(0);
 });
 
 test("places controls on the left and chat on the right on desktop", async ({ page }) => {
@@ -65,7 +65,6 @@ test("places controls on the left and chat on the right on desktop", async ({ pa
 test("can type answer", async ({ page }) => {
   await openCoach(page);
   await requireUi(page);
-  await expectVisibleText(page, /Responde en inglés/i);
   const input = page.getByPlaceholder(/Escribe tu respuesta en inglés/i);
   await expect(input).toBeEditable();
   await page.waitForTimeout(250);

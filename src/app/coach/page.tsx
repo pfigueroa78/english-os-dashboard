@@ -1044,8 +1044,7 @@ export default function CoachPage() {
               <div ref={bottomRef} />
             </div>
 
-            <footer className="coach-composer sticky bottom-0 z-10 border-t px-3 py-1 backdrop-blur">
-              <p className="mb-0.5 text-xs font-medium">Responde en inglés. Yo corregiré gramática, vocabulario y naturalidad.</p>
+            <footer className="coach-composer sticky bottom-0 z-10 border-t px-3 py-1.5 backdrop-blur">
               {selectedImage && (
                 <div className="coach-image-preview">
                   <img src={selectedImage.dataUrl} alt={selectedImage.name || "Imagen seleccionada"} />
@@ -1088,7 +1087,6 @@ export default function CoachPage() {
                   <SvgIcon name={loading ? "stop" : "send"} />
                 </button>
               </div>
-              <p className="mt-0.5 text-[11px] opacity-60">Enter envía. Shift + Enter agrega línea. El avance se habilita solo después de aprobar la evaluación.</p>
             </footer>
           </section>
 

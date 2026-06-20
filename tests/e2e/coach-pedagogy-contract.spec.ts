@@ -140,11 +140,30 @@ test("explicit unit and class switches always use class delivery", async () => {
     "posiciona mi clase a partir de hoy en la unidad 2, clase 1",
     "actualiza mi clase a Unit 2 Class 1",
     "Empecemos clase",
+    "Dame la clase",
+    "Abramos mi clase de hoy",
+    "Continuemos donde voy",
+    "Sigamos con mi clase actual",
+    "Quiero empezar mi lesson guardada",
+    "Open my current class",
+    "Resume today's lesson",
   ];
   for (const request of classRequests) expect(isGiveClassQuestion(request), request).toBe(true);
 
   expect(isGiveClassQuestion("Hazme un repaso de la unidad 4 clase 1")).toBe(false);
   expect(isGiveClassQuestion("¿Qué gramática tiene la unidad 4?")).toBe(false);
+});
+
+test("ambiguous active class requests consult English OS current class before clarification", async () => {
+  const handler = readFile("src/lib/coachRouteHandler.ts");
+  const classBranchStart = handler.indexOf("if (isGiveClassQuestion(message))");
+  const reviewBranchStart = handler.indexOf("if (isReviewQuestion(message))", classBranchStart);
+  const classBranch = handler.slice(classBranchStart, reviewBranchStart);
+
+  expect(handler).toContain("function coordinatesFromPayload");
+  expect(classBranch).toContain('callEnglishOSAction("getCurrentClassContent"');
+  expect(classBranch).toContain("coordinatesFromPayload(activeClassContent");
+  expect(classBranch.indexOf('callEnglishOSAction("getCurrentClassContent"')).toBeLessThan(classBranch.indexOf("Current Class Clarification"));
 });
 
 test("saved position uses unit and lesson from the same context source", async () => {

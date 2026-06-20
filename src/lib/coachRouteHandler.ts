@@ -118,6 +118,63 @@ function resolveCurrentLocalClass(context: any, unit: number | null) {
   return localClassFromAnyClassNumber(rawClass, unit);
 }
 
+function firstNumberByKey(value: unknown, keyPattern: RegExp): number | null {
+  const seen = new Set<unknown>();
+  const visit = (node: unknown): number | null => {
+    if (!node || typeof node !== "object") return null;
+    if (seen.has(node)) return null;
+    seen.add(node);
+    for (const [key, child] of Object.entries(node as Record<string, unknown>)) {
+      if (keyPattern.test(key)) {
+        const found = firstNumericValue(child);
+        if (found) return found;
+      }
+      const nested = visit(child);
+      if (nested) return nested;
+    }
+    return null;
+  };
+  return visit(value);
+}
+
+function collectStrings(value: unknown, limit = 80) {
+  const strings: string[] = [];
+  const seen = new Set<unknown>();
+  const visit = (node: unknown) => {
+    if (strings.length >= limit || node == null) return;
+    if (typeof node === "string") {
+      const text = node.trim();
+      if (text) strings.push(text);
+      return;
+    }
+    if (typeof node !== "object" || seen.has(node)) return;
+    seen.add(node);
+    for (const child of Object.values(node as Record<string, unknown>)) visit(child);
+  };
+  visit(value);
+  return strings;
+}
+
+function coordinatesFromPayload(value: unknown, fallbackUnit: number | null = null) {
+  const unit =
+    firstNumberByKey(value, /^(currentUnit|unit|unitNumber|activeUnit)$/i) ||
+    fallbackUnit ||
+    null;
+  const localByKey = firstNumberByKey(value, /^(localClass|currentLocalClass|activeLocalClass)$/i);
+  const globalByKey = firstNumberByKey(value, /^(globalClass|currentGlobalClass|activeGlobalClass|classNumber)$/i);
+  const strings = collectStrings(value);
+  const textUnit = unit || firstNumericValue(strings.find((text) => /\bunit\s+\d{1,2}\b/i.test(text)));
+  const classText = strings.find((text) => /\bclass\s+\d{1,2}\b/i.test(text));
+  const classFromText = classText?.match(/\bclass\s+(\d{1,2})\b/i)?.[1] ? Number(classText.match(/\bclass\s+(\d{1,2})\b/i)?.[1]) : null;
+  const resolvedUnit = textUnit || null;
+  const localClass =
+    localClassFromAnyClassNumber(localByKey, resolvedUnit) ||
+    localClassFromAnyClassNumber(globalByKey, resolvedUnit) ||
+    localClassFromAnyClassNumber(classFromText, resolvedUnit);
+  const globalClass = resolvedUnit && localClass ? (resolvedUnit - 1) * 7 + localClass : null;
+  return { unit: resolvedUnit, localClass, globalClass };
+}
+
 function classCoordinates(message: string, fallbackUnit?: string, context?: any) {
   const unit = extractRequestedUnitNumber(message) || Number(String(fallbackUnit || "").match(/\d{1,2}/)?.[0] || 0) || null;
   const explicitClass = extractRequestedClassNumber(message);
@@ -780,7 +837,19 @@ export async function coachPost(request: Request) {
   }
 
   if (isGiveClassQuestion(message)) {
-    const { unit, localClass, globalClass } = classCoordinates(message, currentUnit, context);
+    let { unit, localClass, globalClass } = classCoordinates(message, currentUnit, context);
+    let activeClassContent: any = null;
+    if (!unit || !localClass) {
+      try {
+        activeClassContent = await callEnglishOSAction("getCurrentClassContent", { userEmail: email, learnerId });
+        const activeCoordinates = coordinatesFromPayload(activeClassContent, unit);
+        unit = activeCoordinates.unit || unit;
+        localClass = activeCoordinates.localClass || localClass;
+        globalClass = activeCoordinates.globalClass || (unit && localClass ? (unit - 1) * 7 + localClass : null);
+      } catch {
+        activeClassContent = null;
+      }
+    }
     if (!unit || !localClass) {
       const savedUnit = unit ? `Unit ${unit}` : "tu unidad actual";
       return NextResponse.json({
@@ -804,7 +873,7 @@ export async function coachPost(request: Request) {
       classNumber: String(globalClass),
       userEmail: email,
       learnerId,
-    });
+    }).catch(() => activeClassContent);
 
     const { filename, content } = loadClassPack(unit, localClass);
     if (!content) {

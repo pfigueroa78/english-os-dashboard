@@ -86,6 +86,8 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("This response is the opening turn of a teacher-led class");
   expect(handler).toContain("Keep this opening turn under 280 words");
   expect(handler).toContain("strategic opening architecture");
+  expect(handler).toContain('replace(/\\bviewing_current_class\\b/gi, "clase activa")');
+  expect(handler).toContain('Never write "en modo ..." or any app-mode wording');
   expect(handler).toContain("no inventar **Class 1**");
   expect(handler).toContain("openingSectionInstruction");
   expect(handler).toContain("Activate the topic only");
@@ -101,13 +103,15 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
 
 test("coach UI follows the explicitly requested unit for materials", async () => {
   const source = readFile("src/app/coach/page.tsx");
-  expect(source).toContain("data.activeUnit ? `Unit ${data.activeUnit}`");
+  expect(source).toContain("function inferCoordinatesFromReply");
+  expect(source).toContain("const inferredCoordinates = inferCoordinatesFromReply(reply)");
+  expect(source).toContain("const activeUnit = data.activeUnit || inferredCoordinates.unit");
   expect(source).toContain("normalizeUnitValue");
   expect(source).toContain("setStudyUnit(normalizeUnitValue(unit))");
   expect(source).not.toContain("setCurrentUnit(unit);\n        setStudyUnit(unit)");
   expect(source).toContain("const nextMode: StudyMode = isReviewRequest(message) ? \"review\" : isGuideRequest(message) ? \"guide\" : \"class\"");
   expect(source).toContain("setStudyMode(nextMode)");
-  expect(source).toContain("setStudyClassNumber(data.activeClass && nextMode === \"class\" ? Number(data.activeClass) : null)");
+  expect(source).toContain("setStudyClassNumber(activeClass && nextMode === \"class\" ? Number(activeClass) : null)");
   expect(source).toContain("Posición guardada:");
   expect(source).toContain("No pude completar la respuesta esta vez");
   expect(source).toContain("no inventes Class 1");

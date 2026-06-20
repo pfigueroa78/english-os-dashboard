@@ -299,7 +299,7 @@ function stripModelOwnedIdentity(reply: string) {
     })
     .filter((line) => {
       const clean = line.replace(/[*#]/g, "").trim();
-      return !/(?:found your (?:saved|current) (?:position|english os position)|you asked for\s+unit\s+\d+|active learning target for this request|for this request,? the active)/i.test(clean);
+      return !/(?:found your (?:saved|current) (?:position|english os position)|you asked for\s+unit\s+\d+|active learning target for this request|for this request,? the active|en modo\s+viewing_current_class|mode\s+viewing_current_class)/i.test(clean);
     })
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
@@ -308,6 +308,8 @@ function stripModelOwnedIdentity(reply: string) {
 
 function sanitizeLearnerFacingReply(reply: string) {
   return String(reply || "")
+    .replace(/\bviewing_current_class\b/gi, "clase activa")
+    .replace(/\bviewing current class\b/gi, "clase activa")
     .replace(/\bPassages\s+Level\s+\d+\s*[-—]\s*/gi, "")
     .replace(/\bPassages\s+Level\s+\d+\s*/gi, "")
     .replace(/\n{3,}/g, "\n\n")
@@ -578,6 +580,7 @@ ${PASSAGES_TEACHER_STYLE_GUIDANCE}
 Hard rule for class delivery:
 - Never answer a class request with a metadata table.
 - Never expose internal modes such as viewing_current_class.
+- Never write "en modo ..." or any app-mode wording. If needed, say only "clase activa".
 - Never expose placeholders such as Extract exact or Extract vocabulary.
 - Use the class pack and lesson context as teacher planning input.
 - This response is the opening turn of a teacher-led class, not the entire class transcript.

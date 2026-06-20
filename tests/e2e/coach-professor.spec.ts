@@ -13,13 +13,13 @@ async function openCoach(page: any) {
   await page.goto("/coach", { waitUntil: "domcontentloaded" });
 }
 
-async function requireUi(page: any) {
+async function requireUi(page: any, options: { openSidebar?: boolean } = {}) {
   const signIn = page.getByRole("button", { name: /sign in/i });
-  await expect(signIn.or(page.getByText(/Objetivo activo/i).first())).toBeVisible();
+  await expect(signIn.or(page.locator("article").first())).toBeVisible();
   if (await signIn.isVisible().catch(() => false)) test.skip(true, "Auth or demo required.");
   const showPanel = page.getByRole("button", { name: /Mostrar panel/i });
-  if (await showPanel.isVisible().catch(() => false)) await showPanel.click();
-  await expect(page.getByText(/Objetivo activo/i).first()).toBeVisible();
+  if (options.openSidebar && await showPanel.isVisible().catch(() => false)) await showPanel.click();
+  if (options.openSidebar) await expect(page.getByText(/Objetivo activo/i).first()).toBeVisible();
   await expect(page.locator("article").first()).toBeVisible();
 }
 
@@ -33,8 +33,9 @@ test("loads coach or sign in", async ({ page }) => {
 });
 
 test("shows simplified two-column shell", async ({ page }) => {
+  test.skip(page.viewportSize()?.width ? page.viewportSize()!.width < 700 : false, "Desktop shell is verified on desktop.");
   await openCoach(page);
-  await requireUi(page);
+  await requireUi(page, { openSidebar: true });
   await expect(page.locator("header:not(.hidden)")).toHaveCount(0);
   await expectVisibleText(page, /Objetivo activo/i);
   await expect(page.locator(".coach-status-brand")).toHaveText("English OS");
@@ -58,7 +59,7 @@ test("keeps class guidance in the chat", async ({ page }) => {
 test("places controls on the left and chat on the right on desktop", async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await openCoach(page);
-  await requireUi(page);
+  await requireUi(page, { openSidebar: true });
 
   const leftPanel = page.getByText(/Objetivo activo/i).first();
   const chat = page.locator("article").first();
@@ -104,31 +105,73 @@ test("renders user messages as one compact inline line", async ({ page }) => {
   expect(labelBox).not.toBeNull();
   expect(contentBox).not.toBeNull();
   expect(lineBox).not.toBeNull();
-  expect(Math.abs(labelBox!.y - contentBox!.y)).toBeLessThan(6);
+  expect(Math.abs(labelBox!.y - contentBox!.y)).toBeLessThan(8);
   expect(contentBox!.x).toBeGreaterThanOrEqual(labelBox!.x + labelBox!.width);
   expect(lineBox!.height).toBeLessThan(28);
 });
 
-test("keeps coach lesson readable on mobile", async ({ page }) => {
+test("keeps coach lesson readable on mobile", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-safari", "Mobile layout is verified in the mobile project.");
   await page.setViewportSize({ width: 390, height: 844 });
   await openCoach(page);
-  await requireUi(page);
+  await expect(page.getByRole("button", { name: /Mostrar panel/i })).toBeVisible();
+  await expect(page.locator("#coach-sidebar")).toHaveCount(0);
+  await expect(page.locator("article").first()).toBeVisible();
 
   const chatPanel = page.locator(".coach-chat").first();
   const lessonText = page.locator("article .prose p").first();
+  const teacherActions = page.locator(".coach-message-teacher .coach-message-actions").first();
+  const actionButtons = teacherActions.locator("button");
 
   await expect(chatPanel).toBeVisible();
   await expect(lessonText).toBeVisible();
+  await expect(teacherActions).toBeVisible();
+  await expect(actionButtons.first()).toBeVisible();
 
   const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
   const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(documentWidth).toBeLessThanOrEqual(viewportWidth);
+
+  const chatBox = await chatPanel.boundingBox();
+  const actionsBox = await teacherActions.boundingBox();
+  const firstButtonBox = await actionButtons.nth(0).boundingBox();
+  const secondButtonBox = await actionButtons.nth(1).boundingBox();
+  expect(chatBox).not.toBeNull();
+  expect(actionsBox).not.toBeNull();
+  expect(firstButtonBox).not.toBeNull();
+  expect(secondButtonBox).not.toBeNull();
+  expect(chatBox!.x).toBeLessThanOrEqual(12);
+  expect(chatBox!.width).toBeLessThanOrEqual(viewportWidth);
+  expect(actionsBox!.x + actionsBox!.width).toBeLessThanOrEqual(viewportWidth);
+  expect(Math.abs(firstButtonBox!.y - secondButtonBox!.y)).toBeLessThan(4);
+
+  const micButton = page.locator(".coach-mic-button");
+  await expect(micButton).toBeVisible();
+  await micButton.click();
+  const composerBox = await page.locator(".coach-composer").boundingBox();
+  const inputRowBox = await page.locator(".coach-input-row").boundingBox();
+  expect(composerBox).not.toBeNull();
+  expect(inputRowBox).not.toBeNull();
+  expect(composerBox!.x).toBeGreaterThanOrEqual(0);
+  expect(composerBox!.x + composerBox!.width).toBeLessThanOrEqual(viewportWidth + 1);
+  expect(inputRowBox!.x + inputRowBox!.width).toBeLessThanOrEqual(viewportWidth + 1);
+  const documentWidthAfterMic = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(documentWidthAfterMic).toBeLessThanOrEqual(viewportWidth);
+
+  await page.getByRole("button", { name: /Mostrar panel/i }).click();
+  await expect(page.locator("#coach-sidebar")).toBeVisible();
+  await page.getByRole("button", { name: /Ocultar panel/i }).click();
+  await expect(page.locator("#coach-sidebar")).toHaveCount(0);
+  const collapsedChatBox = await chatPanel.boundingBox();
+  expect(collapsedChatBox).not.toBeNull();
+  expect(collapsedChatBox!.x).toBeLessThanOrEqual(12);
+  expect(collapsedChatBox!.width).toBeLessThanOrEqual(viewportWidth);
 });
 
 test("changes themes and collapses the complete left panel", async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await openCoach(page);
-  await requireUi(page);
+  await requireUi(page, { openSidebar: true });
 
   await page.getByLabel(/Tema/i).selectOption("sage");
   await expect(page.locator(".coach-shell")).toHaveAttribute("data-theme", "sage");

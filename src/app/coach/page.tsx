@@ -376,7 +376,13 @@ export default function CoachPage() {
     const storedSidebar = window.localStorage.getItem("english-os-coach-sidebar");
     if (storedTheme && ["slate", "paper", "sage", "sand", "blue"].includes(storedTheme)) setTheme(storedTheme);
     if (storedTextSize && COACH_TEXT_SIZE_ORDER.includes(storedTextSize)) setTextSize(storedTextSize);
-    if (storedSidebar === "closed") setSidebarOpen(false);
+    if (storedSidebar === "closed") {
+      setSidebarOpen(false);
+    } else if (storedSidebar === "open") {
+      setSidebarOpen(true);
+    } else if (window.matchMedia("(max-width: 640px)").matches) {
+      setSidebarOpen(false);
+    }
   }, []);
 
   useEffect(() => {

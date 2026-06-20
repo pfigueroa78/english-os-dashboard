@@ -370,8 +370,101 @@ body {
 
 @media (max-width: 640px) {
   html, body { max-width: 100%; overflow: hidden; }
-  .coach-toolbar { position: sticky; top: 0; z-index: 20; }
-  .coach-message-teacher { padding-right: 2.35rem; }
+  .coach-shell { overflow-x: hidden; }
+  .coach-toolbar {
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .coach-toolbar > * {
+    flex: 0 0 auto;
+  }
+  .coach-theme-select {
+    max-width: 6rem;
+  }
+  .coach-status {
+    flex: 1 1 auto;
+    gap: 0.25rem;
+    justify-content: flex-end;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .coach-status-brand {
+    min-width: 0;
+  }
+  .coach-status-separator,
+  .coach-status span:not(.coach-status-brand) {
+    display: none;
+  }
+  .coach-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .coach-chat,
+  .coach-sidebar {
+    width: 100%;
+  }
+  .coach-message {
+    overflow-wrap: anywhere;
+  }
+  .coach-message-teacher { padding-right: 0; }
   .coach-message-user { padding-right: 0; }
-  .coach-message-actions { flex-direction: column; gap: 0.25rem; }
+  .coach-message-teacher .coach-message-label { padding-right: 0; }
+  .coach-message-teacher .prose::before {
+    content: none;
+    float: none;
+    height: 0;
+    width: 0;
+  }
+  .coach-message-actions {
+    align-items: center;
+    display: flex;
+    flex-direction: row;
+    gap: 0.25rem;
+    justify-content: flex-end;
+    margin: 0 0 0.3rem auto;
+    max-width: 100%;
+    position: static;
+  }
+  .coach-round-button {
+    height: 1.75rem;
+    width: 1.75rem;
+  }
+  .coach-composer {
+    max-width: 100%;
+    overflow: hidden;
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+  }
+  .coach-input-row {
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .coach-text-input-shell {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .coach-textarea {
+    font-size: 0.86rem;
+    min-height: 2rem;
+    padding-bottom: 0.42rem;
+    padding-top: 0.42rem;
+  }
+  .coach-textarea::placeholder {
+    font-size: 0.8rem;
+  }
+  .coach-inline-plus-button {
+    bottom: 0.38rem;
+  }
+  .coach-mic-button,
+  .coach-send-button {
+    flex: 0 0 2rem;
+    height: 2rem;
+    width: 2rem;
+  }
 }

@@ -27,7 +27,7 @@ export function isGiveClassQuestion(message: string) {
     extractRequestedUnitNumber(message) && extractRequestedClassNumber(message),
   );
   const conciseCoordinateRequest = explicitCoordinates && normalized.split(" ").length <= 10;
-  const actionRequest = explicitCoordinates && /\b(dame|dar|ensename|continua|continuar|empezar|empecemos|ahora|cambia|cambiemos|vamos|quiero|quisiera|sigamos|pasemos|switch|move|start|continue|teach|give)\b/.test(normalized);
+  const actionRequest = explicitCoordinates && /\b(dame|dar|ensename|continua|continuar|empezar|empecemos|ahora|cambia|cambiemos|posiciona|posicionar|ubica|ubicar|actualiza|actualizar|fija|fijar|coloca|colocar|abre|abrir|vamos|quiero|quisiera|sigamos|pasemos|switch|move|start|continue|teach|give|open|set|update)\b/.test(normalized);
 
   return conciseCoordinateRequest || actionRequest || [
     "dame la clase",

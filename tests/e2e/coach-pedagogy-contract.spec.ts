@@ -130,6 +130,24 @@ test("mobile coach header keeps mode and unit/class visible", async () => {
   expect(overrides).not.toContain("span:not(.coach-status-brand)");
 });
 
+test("coach shows an evidence-based learning pulse without inventing progress", async () => {
+  const source = readFile("src/app/coach/page.tsx");
+  const globals = readFile("src/app/globals.css");
+
+  expect(source).toContain("type LearningPulse");
+  expect(source).toContain("function buildLearningPulse");
+  expect(source).toContain("function learningPulseDetail");
+  expect(source).toContain("Sin nivel confirmado");
+  expect(source).toContain("sin evidencias");
+  expect(source).toContain("coach-status-pulse");
+  expect(source).toContain("coach-learning-pulse");
+  expect(source).toContain("Tu avance");
+  expect(source).toContain("learningPulse.practiceCount");
+  expect(source).not.toContain("2/4");
+  expect(globals).toContain(".coach-learning-pulse-grid");
+  expect(globals).toContain(".coach-status-pulse");
+});
+
 test("unit grammar and vocabulary guides use verified unit contracts", async () => {
   const handler = readFile("src/lib/coachRouteHandler.ts");
   const source = readFile("src/app/coach/page.tsx");

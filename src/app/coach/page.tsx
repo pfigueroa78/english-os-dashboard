@@ -51,6 +51,15 @@ type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue";
 type CoachTextSize = "compact" | "normal" | "large";
 type StudyMode = "current" | "class" | "review" | "guide";
 
+type LearningPulse = {
+  level: string;
+  practiceCount: number;
+  evidenceCount: number | null;
+  evidenceTotal: number;
+  focus: string;
+  nextStep: string;
+};
+
 type SpecialistAgent = {
   id: AgentId;
   name: string;
@@ -321,6 +330,42 @@ function buildProgressSnapshot(data: any) {
   return parts.length ? parts.slice(0, 3).join(" · ") : "sin evaluaciones recientes disponibles";
 }
 
+function buildLearningPulse(data: any): LearningPulse {
+  const context = data?.context || data || {};
+  const missionControl = context?.missionControl?.missionControl || context?.missionControl || data?.missionControl || {};
+  const user = context?.user || data?.user || {};
+  const recentLogs = Array.isArray(context?.recentDailyLogs) ? context.recentDailyLogs : Array.isArray(data?.recentDailyLogs) ? data.recentDailyLogs : [];
+  const recentMistakes = Array.isArray(context?.recentMistakes) ? context.recentMistakes : Array.isArray(data?.recentMistakes) ? data.recentMistakes : [];
+  const recentProgress = Array.isArray(context?.recentProgress) ? context.recentProgress : Array.isArray(data?.recentProgress) ? data.recentProgress : [];
+  const activeVocabulary = Array.isArray(context?.activeVocabulary) ? context.activeVocabulary : Array.isArray(data?.activeVocabulary) ? data.activeVocabulary : [];
+
+  const level = firstProgressValue(user["Current CEFR"], context.currentCEFR, missionControl.currentCEFR, missionControl.cefr, recentProgress[0]?.cefrEstimate);
+  const lastEvaluation = firstProgressValue(missionControl.lastEvaluation, missionControl.lastEvaluationScore, context.lastEvaluation, recentProgress[0]?.cefrEstimate);
+  const topMistake = firstProgressValue(missionControl.topMistake, context.topMistake, recentMistakes[0]?.mistake);
+  const nextAction = firstProgressValue(missionControl.nextAction, context.nextRecommendedAction, context.nextAction, recentLogs[0]?.nextAction);
+
+  const evidenceFlags = [
+    Boolean(lastEvaluation),
+    recentLogs.length > 0,
+    recentProgress.length > 0,
+    activeVocabulary.length > 0 || recentMistakes.length > 0,
+  ];
+  const evidenceCount = evidenceFlags.some(Boolean) ? evidenceFlags.filter(Boolean).length : null;
+
+  return {
+    level: level || "Sin nivel confirmado",
+    practiceCount: recentLogs.length,
+    evidenceCount,
+    evidenceTotal: 4,
+    focus: topMistake || nextAction || "responder con más evidencia",
+    nextStep: nextAction || "producir una respuesta breve y corregible",
+  };
+}
+
+function learningPulseDetail(pulse: LearningPulse) {
+  return pulse.evidenceCount === null ? "sin evidencias" : `${pulse.evidenceCount}/${pulse.evidenceTotal}`;
+}
+
 async function readJsonResponse(response: Response) {
   const text = await response.text();
   if (!text.trim()) {
@@ -355,6 +400,7 @@ export default function CoachPage() {
   const [studyUnit, setStudyUnit] = useState(E2E_DEMO ? DEMO_UNIT : "");
   const [studyMode, setStudyMode] = useState<StudyMode>("current");
   const [studyClassNumber, setStudyClassNumber] = useState<number | null>(null);
+  const [learningPulse, setLearningPulse] = useState<LearningPulse>(() => buildLearningPulse({}));
   const [theme, setTheme] = useState<CoachTheme>("paper");
   const [textSize, setTextSize] = useState<CoachTextSize>("compact");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -390,6 +436,7 @@ export default function CoachPage() {
   const activeStudyUnit = studyUnit || currentUnit;
   const activeStudyUnitLabel = unitLabel(activeStudyUnit);
   const activeLocationLabel = [activeStudyUnitLabel, studyClassNumber ? `Class ${studyClassNumber}` : ""].filter(Boolean).join(" · ");
+  const learningPulseLabel = learningPulseDetail(learningPulse);
   const conversationStorageKey = email ? `english-os-coach:${email}` : "";
 
   useEffect(() => {
@@ -518,6 +565,7 @@ export default function CoachPage() {
         setStudyUnit((current) => current || resolvedUnit);
       }
       if (lesson) setCurrentLesson(lesson);
+      setLearningPulse(buildLearningPulse(data));
 
       setMessages((current) => {
         const shouldReplace = current.length === 1 && current[0]?.content.includes("Loading your English OS class plan");
@@ -1172,6 +1220,8 @@ export default function CoachPage() {
             <span className="coach-status-mode">{studyModeLabel(studyMode)}</span>
             <span className="coach-status-separator">—</span>
             <span className="coach-status-location">{activeLocationLabel}</span>
+            <span className="coach-status-separator">—</span>
+            <span className="coach-status-pulse">{learningPulseLabel}</span>
             <span className="coach-status-detail">{studyModeLabel(studyMode)} · {activeLocationLabel}</span>
           </span>
           {!E2E_DEMO && isLoaded && isSignedIn && <UserButton />}
@@ -1317,6 +1367,23 @@ export default function CoachPage() {
                   Clase
                 </button>
               </div>
+            </section>
+
+            <section className="coach-panel coach-learning-pulse min-w-0 max-w-full overflow-hidden rounded-xl border p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide opacity-60">Tu avance</p>
+              <div className="coach-learning-pulse-grid mt-2">
+                <div className="coach-learning-pulse-metric">
+                  <span>Nivel</span>
+                  <strong>{learningPulse.level}</strong>
+                </div>
+                <div className="coach-learning-pulse-metric">
+                  <span>Evidencia</span>
+                  <strong>{learningPulseLabel}</strong>
+                </div>
+              </div>
+              <p className="mt-2 text-xs opacity-75">Prácticas recientes: {learningPulse.practiceCount}</p>
+              <p className="mt-1 text-xs opacity-75">Foco: {learningPulse.focus}</p>
+              <p className="mt-1 text-xs opacity-75">Siguiente: {learningPulse.nextStep}</p>
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">

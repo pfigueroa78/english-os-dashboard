@@ -1,427 +1,80 @@
-"use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
+import { EnglishOsLogo } from "@/components/EnglishOsLogo";
 
-type EnglishOSContext = {
-  ok: boolean;
-  user?: Record<string, unknown>;
-  currentPosition?: {
-    unit?: string;
-    lesson?: string;
-    source?: string;
-  };
-  recommendedCurrentPosition?: {
-    unit?: string;
-    lesson?: string;
-    source?: string;
-  };
-  missionControl?: {
-    found?: boolean;
-    missionControl?: {
-      name?: string;
-      currentUnit?: string;
-      currentLesson?: string;
-      currentCEFR?: string;
-      lastActivity?: string;
-      lastGPTUsed?: string;
-      lastSessionSummary?: string;
-      topRecurringMistake?: string;
-      currentFocus?: string;
-      nextRecommendedAction?: string;
-      status?: string;
-    };
-  };
-  nextRecommendedAction?: {
-    recommendation?: {
-      priority?: string;
-      recommendedSkill?: string;
-      recommendedActivity?: string;
-      recommendedPrompt?: string;
-    };
-    vocabularyToRecycle?: string[];
-  };
-  recentMistakes?: Record<string, unknown>[];
-  activeVocabulary?: Record<string, unknown>[];
-  recentProgress?: Record<string, unknown>[];
-  error?: string;
-};
+const learningSteps = [
+  {
+    number: "01",
+    title: "Aprende con contexto",
+    description: "El coach conecta tu clase con tu posición, tus objetivos y tus errores recientes.",
+  },
+  {
+    number: "02",
+    title: "Practica por etapas",
+    description: "Cada sesión avanza con explicación, ejemplos, producción guiada y retroalimentación útil.",
+  },
+  {
+    number: "03",
+    title: "Consolida el progreso",
+    description: "Repasa una unidad sin perder tu posición guardada y usa los materiales del objetivo activo.",
+  },
+];
 
 export default function Home() {
-  const { isLoaded, isSignedIn } = useUser();
-
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [documentLoading, setDocumentLoading] = useState(false);
-  const [data, setData] = useState<EnglishOSContext | null>(null);
-  const [message, setMessage] = useState("");
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
-
-  async function loadCurrentUser() {
-    setAuthLoading(true);
-    setMessage("");
-
-    try {
-      const response = await fetch("/api/english-os/current-user", {
-        cache: "no-store",
-      });
-
-      const result = await response.json();
-
-      if (result.ok && result.authorized && result.email) {
-        setAuthorized(true);
-        setEmail(result.email);
-        setData(result.englishOS);
-      } else {
-        setAuthorized(false);
-        setMessage(result.error || "Access not authorized for this email.");
-      }
-    } catch (error) {
-      setAuthorized(false);
-      setMessage(error instanceof Error ? error.message : "Unknown error");
-    } finally {
-      setAuthLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      loadCurrentUser();
-    }
-
-    if (isLoaded && !isSignedIn) {
-      setAuthLoading(false);
-    }
-  }, [isLoaded, isSignedIn]);
-
-  async function loadContext() {
-    setLoading(true);
-    setMessage("");
-
-    try {
-      const response = await fetch(
-        `/api/english-os/context?userEmail=${encodeURIComponent(email)}`
-      );
-
-      const result = await response.json();
-      setData(result);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function createDocument(documentType: string, targetFolderKey: string) {
-    setDocumentLoading(true);
-    setMessage("");
-
-    try {
-      const response = await fetch("/api/english-os/document", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userEmail: email,
-          learnerId: email,
-          documentType,
-          targetFolderKey,
-          sourceAgent: "English OS Dashboard",
-          unit:
-            data?.recommendedCurrentPosition?.unit ||
-            data?.missionControl?.missionControl?.currentUnit ||
-            "",
-          lesson:
-            data?.recommendedCurrentPosition?.lesson ||
-            data?.missionControl?.missionControl?.currentLesson ||
-            "",
-          notes: `Generated from English OS Dashboard: ${documentType}`,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.ok && result.document?.url) {
-        setMessage(`Document created: ${result.document.url}`);
-      } else {
-        setMessage(result.error || "Document request completed.");
-      }
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unknown error");
-    } finally {
-      setDocumentLoading(false);
-    }
-  }
-
-  const mission = data?.missionControl?.missionControl;
-  const recommendation = data?.nextRecommendedAction?.recommendation;
-
-  if (!isLoaded || authLoading) {
-    return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
-        <div className="rounded-2xl bg-slate-900 border border-slate-800 p-6">
-          Loading English OS...
-        </div>
-      </main>
-    );
-  }
-
-  if (!isSignedIn) {
-    return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
-        <div className="rounded-2xl bg-slate-900 border border-slate-800 p-8 max-w-md w-full text-center space-y-4">
-          <h1 className="text-2xl font-bold">English OS Dashboard</h1>
-          <p className="text-slate-400">
-            Sign in with Google to access your learning dashboard.
-          </p>
-
-          <SignInButton mode="redirect">
-            <button className="rounded-xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500">
-              Sign in
-            </button>
-          </SignInButton>
-        </div>
-      </main>
-    );
-  }
-
-  if (!authorized) {
-    return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 p-6">
-        <div className="mx-auto max-w-3xl rounded-2xl bg-red-950 border border-red-800 p-6 text-red-100 space-y-3">
-          <div className="flex justify-end">
-            <UserButton />
-          </div>
-
-          <h2 className="text-xl font-bold">Access not authorized</h2>
-
-          <p>
-            Your Google account is authenticated, but this email is not active in
-            English OS Users.
-          </p>
-
-          {message && <p className="text-sm">{message}</p>}
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-6">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold">English OS Dashboard</h1>
-            <p className="text-slate-400">
-              Operational dashboard for learner context, Mission Control, and
-              next actions.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/coach"
-              className="rounded-xl bg-blue-600 px-4 py-2 font-semibold hover:bg-blue-500"
-            >
-              Open Coach
-            </Link>
-
-            <Link
-              href="/users"
-              className="rounded-xl border border-slate-700 px-4 py-2 font-semibold hover:bg-slate-900"
-            >
-              Users
-            </Link>
-
-            <UserButton />
-          </div>
+    <main className="min-h-[100dvh] bg-[#f2f3f1] text-[#202723]">
+      <div className="mx-auto flex min-h-[100dvh] max-w-6xl flex-col px-5 py-5 sm:px-8 lg:px-10">
+        <header className="flex items-center justify-between border-b border-[#d8ddd8] pb-4">
+          <Link href="/" className="rounded-full outline-none transition focus-visible:ring-2 focus-visible:ring-[#6f8f76]/40">
+            <EnglishOsLogo size="md" textClassName="text-[#202723]" />
+          </Link>
+          <Link href="/coach" className="rounded-full border border-[#aeb7b0] px-4 py-2 text-sm font-medium transition hover:bg-[#e4e8e4]">
+            Abrir coach
+          </Link>
         </header>
 
-        <section className="rounded-2xl bg-slate-900 p-5 border border-slate-800">
-          <label className="block text-sm text-slate-300 mb-2">
-            Learner email
-          </label>
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <input
-              className="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 outline-none"
-              value={email}
-              readOnly
-              placeholder="learner@example.com"
-            />
-
-            <button
-              onClick={loadContext}
-              disabled={loading}
-              className="rounded-xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500 disabled:opacity-50"
-            >
-              {loading ? "Loading..." : "Reload context"}
-            </button>
+        <section className="grid flex-1 items-center gap-10 py-14 lg:grid-cols-[1.15fr_0.85fr] lg:py-20">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#667169]">De B1 a B2 profesional</p>
+            <h1 className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.08] tracking-[-0.035em] sm:text-6xl">
+              Una clase de inglés que recuerda dónde estás y qué necesitas practicar.
+            </h1>
+            <p className="mt-6 max-w-2xl text-base leading-7 text-[#5d675f] sm:text-lg">
+              English OS transforma tu ruta de aprendizaje en sesiones interactivas: enseña, escucha tu respuesta, corrige y decide contigo el siguiente paso.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/coach" className="rounded-full bg-[#5f7165] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#4f6056]">
+                Continuar mi clase
+              </Link>
+              <a href="#metodo" className="rounded-full border border-[#aeb7b0] px-6 py-3 text-sm font-semibold transition hover:bg-[#e4e8e4]">
+                Ver cómo funciona
+              </a>
+            </div>
           </div>
+
+          <aside className="rounded-[2rem] border border-[#d4dad5] bg-[#fafbf9] p-6 shadow-[0_24px_70px_rgba(44,55,48,0.08)] sm:p-8">
+            <EnglishOsLogo size="lg" textClassName="text-[#202723]" />
+            <p className="mt-7 text-xs font-semibold uppercase tracking-[0.16em] text-[#6c776f]">Tu sesión</p>
+            <h2 className="mt-4 text-2xl font-semibold">Un objetivo claro, una actividad a la vez.</h2>
+            <div className="mt-7 space-y-4 text-sm leading-6 text-[#59645c]">
+              <p>Elige una clase concreta, continúa tu posición actual o entra en modo repaso.</p>
+              <p>Los materiales, la conversación y la práctica siguen siempre el objetivo activo.</p>
+              <p>Tu progreso solo cambia cuando existe evidencia real de aprendizaje.</p>
+            </div>
+          </aside>
         </section>
 
-        {message && (
-          <div className="rounded-xl bg-slate-900 border border-slate-700 p-4 text-sm text-slate-200">
-            {message.startsWith("Document created:") ? (
-              <a
-                href={message.replace("Document created: ", "")}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue-400 underline"
-              >
-                {message}
-              </a>
-            ) : (
-              message
-            )}
+        <section id="metodo" className="border-t border-[#d8ddd8] py-10">
+          <div className="grid gap-5 md:grid-cols-3">
+            {learningSteps.map((step) => (
+              <article key={step.number} className="rounded-2xl border border-[#d8ddd8] bg-[#f8f9f7] p-5">
+                <p className="text-xs font-semibold text-[#7b867e]">{step.number}</p>
+                <h2 className="mt-5 text-lg font-semibold">{step.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-[#626d65]">{step.description}</p>
+              </article>
+            ))}
           </div>
-        )}
-
-        {data?.error && (
-          <div className="rounded-xl bg-red-950 border border-red-800 p-4 text-red-200">
-            {data.error}
-          </div>
-        )}
-
-        {data?.ok && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <section className="rounded-2xl bg-slate-900 p-5 border border-slate-800 space-y-3">
-              <h2 className="text-xl font-bold">Mission Control</h2>
-
-              <Info label="Name" value={mission?.name} />
-              <Info label="Current CEFR" value={mission?.currentCEFR} />
-              <Info label="Status" value={mission?.status} />
-              <Info label="Last GPT Used" value={mission?.lastGPTUsed} />
-              <Info
-                label="Last Activity"
-                value={formatDate(String(mission?.lastActivity || ""))}
-              />
-            </section>
-
-            <section className="rounded-2xl bg-slate-900 p-5 border border-slate-800 space-y-3">
-              <h2 className="text-xl font-bold">Current Position</h2>
-
-              <Info
-                label="Unit"
-                value={
-                  data.recommendedCurrentPosition?.unit ||
-                  mission?.currentUnit
-                }
-              />
-
-              <Info
-                label="Lesson"
-                value={
-                  data.recommendedCurrentPosition?.lesson ||
-                  mission?.currentLesson
-                }
-              />
-
-              <Info
-                label="Context Source"
-                value={data.recommendedCurrentPosition?.source}
-              />
-            </section>
-
-            <section className="rounded-2xl bg-slate-900 p-5 border border-slate-800 space-y-3 lg:col-span-2">
-              <h2 className="text-xl font-bold">Next Recommended Action</h2>
-
-              <Info label="Priority" value={recommendation?.priority} />
-              <Info label="Skill" value={recommendation?.recommendedSkill} />
-              <Info
-                label="Activity"
-                value={recommendation?.recommendedActivity}
-              />
-
-              <div className="rounded-xl bg-slate-800 p-4 text-slate-200">
-                {recommendation?.recommendedPrompt ||
-                  "No recommendation available."}
-              </div>
-            </section>
-
-            <section className="rounded-2xl bg-slate-900 p-5 border border-slate-800">
-              <h2 className="text-xl font-bold mb-3">Recent Mistakes</h2>
-
-              <div className="space-y-3">
-                {(data.recentMistakes || []).slice(0, 5).map((item, index) => (
-                  <div key={index} className="rounded-xl bg-slate-800 p-4">
-                    <p className="font-semibold">
-                      {String(item["Mistake"] || "No mistake")}
-                    </p>
-                    <p className="text-sm text-slate-400">
-                      {String(item["Correction"] || "")}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-2xl bg-slate-900 p-5 border border-slate-800">
-              <h2 className="text-xl font-bold mb-3">Active Vocabulary</h2>
-
-              <div className="space-y-3">
-                {(data.activeVocabulary || [])
-                  .slice(0, 8)
-                  .map((item, index) => (
-                    <div key={index} className="rounded-xl bg-slate-800 p-4">
-                      <p className="font-semibold">
-                        {String(item["Word/Chunk"] || "")}
-                      </p>
-                      <p className="text-sm text-slate-400">
-                        {String(item["Meaning"] || "")}
-                      </p>
-                    </div>
-                  ))}
-              </div>
-            </section>
-
-            <section className="rounded-2xl bg-slate-900 p-5 border border-slate-800 lg:col-span-2 space-y-4">
-              <h2 className="text-xl font-bold">Documents</h2>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <button
-                  disabled={documentLoading}
-                  onClick={() =>
-                    createDocument("Daily Session Summary", "dailySessions")
-                  }
-                  className="rounded-xl bg-emerald-600 px-5 py-3 font-semibold hover:bg-emerald-500 disabled:opacity-50"
-                >
-                  Generate Daily Summary
-                </button>
-
-                <button
-                  disabled={documentLoading}
-                  onClick={() =>
-                    createDocument(
-                      "Mission Control Snapshot",
-                      "b2MissionControl"
-                    )
-                  }
-                  className="rounded-xl bg-purple-600 px-5 py-3 font-semibold hover:bg-purple-500 disabled:opacity-50"
-                >
-                  Generate Mission Snapshot
-                </button>
-              </div>
-            </section>
-          </div>
-        )}
+        </section>
       </div>
     </main>
   );
-}
-
-function Info({ label, value }: { label: string; value?: string }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="text-slate-100">{value || "—"}</p>
-    </div>
-  );
-}
-
-function formatDate(value: string) {
-  if (!value) return "—";
-  return value.includes("T") ? value.split("T")[0] : value;
 }

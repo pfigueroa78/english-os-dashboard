@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
+import { EnglishOsLogo } from "@/components/EnglishOsLogo";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
 
 type Message = {
   role: "user" | "coach";
   content: string;
+  image?: {
+    dataUrl: string;
+    name?: string;
+  };
   usage?: {
     model: string;
     inputTokens: number;
@@ -42,6 +47,9 @@ type Workbook = {
 };
 
 type AgentId = "grammar_corrector" | "speaking_partner" | "english_evaluator";
+type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue";
+type CoachTextSize = "compact" | "normal" | "large";
+type StudyMode = "current" | "class" | "review" | "guide";
 
 type SpecialistAgent = {
   id: AgentId;
@@ -54,7 +62,9 @@ type SpecialistAgent = {
 const E2E_DEMO = process.env.NEXT_PUBLIC_E2E_DEMO === "1";
 const DEMO_UNIT = "Unit 1";
 const DEMO_LESSON = "Business advice speaking practice";
+const FALLBACK_UNIT = "Unit 1";
 const PROGRESS_STATUS = "Evaluación pendiente";
+const COACH_TEXT_SIZE_ORDER: CoachTextSize[] = ["compact", "normal", "large"];
 
 const SPECIALIST_AGENTS: SpecialistAgent[] = [
   {
@@ -90,7 +100,11 @@ function extractUnitNumber(value: string) {
 
 function unitLabel(value: string) {
   const number = extractUnitNumber(value);
-  return number ? `Unit ${number}` : value || "Current unit";
+  return number ? `Unit ${number}` : value || FALLBACK_UNIT;
+}
+
+function normalizeUnitValue(value: string) {
+  return unitLabel(value);
 }
 
 function buildTodayClassMessage(unit: string, lesson: string) {
@@ -132,8 +146,8 @@ function buildUnitGrammarPrompt(unit: string) {
   const number = extractUnitNumber(unit);
   return [
     number ? `Dame una guía de gramática de la unidad ${number}.` : "Dame una guía de gramática de mi unidad actual.",
-    "Usa mi contexto de English OS y el contenido real del curso cuando esté disponible.",
-    "Organiza la respuesta por clases/secciones reales de la unidad. Incluye estructuras, reglas en español, ejemplos en inglés, errores frecuentes, tips B1/B2 y una evaluación corta al final.",
+    "Usa los contratos reales de la unidad en English OS.",
+    "Hazla como una guía compacta por prioridades, no como una clase completa. No menciones Passages ni pidas el índice.",
   ].join(" ");
 }
 
@@ -141,8 +155,8 @@ function buildUnitVocabularyPrompt(unit: string) {
   const number = extractUnitNumber(unit);
   return [
     number ? `Dame una guía de vocabulario de la unidad ${number}.` : "Dame una guía de vocabulario de mi unidad actual.",
-    "Usa mi contexto de English OS y el contenido real del curso cuando esté disponible.",
-    "Organiza el vocabulario por clases/secciones reales de la unidad. Incluye chunks, collocations, significado en español, ejemplos en inglés, tips de pronunciación y práctica corta al final.",
+    "Usa los contratos reales de la unidad en English OS.",
+    "Hazla como una guía compacta por prioridades, no como una clase completa. No menciones Passages ni pidas el índice.",
   ].join(" ");
 }
 
@@ -153,6 +167,107 @@ function initialCoachMessages(): Message[] {
       content: E2E_DEMO ? buildTodayClassMessage(DEMO_UNIT, DEMO_LESSON) : "Loading your English OS class plan...",
     },
   ];
+}
+
+function isReviewRequest(value: string) {
+  return /\b(repas(?:o|ar|emos)|review|reinforcement|checkpoint)\b/i.test(value);
+}
+
+function isGuideRequest(value: string) {
+  return /\b(gu[ií]a|guide)\b/i.test(value) && /\b(gram[aá]tica|grammar|vocabulario|vocabulary)\b/i.test(value);
+}
+
+function studyModeLabel(mode: StudyMode) {
+  if (mode === "review") return "Repaso";
+  if (mode === "guide") return "Guía";
+  if (mode === "class") return "Clase";
+  return "Actual";
+}
+
+function nextCoachTextSize(current: CoachTextSize, direction: -1 | 1) {
+  const currentIndex = COACH_TEXT_SIZE_ORDER.indexOf(current);
+  const nextIndex = Math.min(Math.max(currentIndex + direction, 0), COACH_TEXT_SIZE_ORDER.length - 1);
+  return COACH_TEXT_SIZE_ORDER[nextIndex] || "normal";
+}
+
+function stripEphemeralImages(messages: Message[]) {
+  return messages.map((message) => (message.image ? { ...message, image: undefined } : message));
+}
+
+function SvgIcon({ name }: { name: "panel" | "panelOpen" | "play" | "pause" | "stop" | "restart" | "copy" | "check" | "mic" | "send" | "thumbsUp" | "thumbsDown" }) {
+  const common = { fill: "none", stroke: "currentColor", strokeLinecap: "round" as const, strokeLinejoin: "round" as const, strokeWidth: 2 };
+  const paths: Record<typeof name, ReactNode> = {
+    panel: <><rect x="3" y="4" width="18" height="16" rx="2" {...common} /><path d="M9 4v16M5.5 9h1M5.5 12h1M5.5 15h1" {...common} /></>,
+    panelOpen: <><rect x="3" y="4" width="18" height="16" rx="2" {...common} /><path d="M15 4v16M8 9l-3 3 3 3" {...common} /></>,
+    play: <path d="M8 5v14l11-7z" fill="currentColor" />,
+    pause: <><path d="M8 5v14" {...common} /><path d="M16 5v14" {...common} /></>,
+    stop: <rect x="7" y="7" width="10" height="10" rx="1" fill="currentColor" />,
+    restart: <><path d="M4 12a8 8 0 1 0 2.34-5.66" {...common} /><path d="M4 4v6h6" {...common} /></>,
+    copy: <><rect x="8" y="8" width="11" height="11" rx="2" {...common} /><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" {...common} /></>,
+    check: <path d="M20 6 9 17l-5-5" {...common} />,
+    mic: <><rect x="9" y="3" width="6" height="11" rx="3" {...common} /><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8" {...common} /></>,
+    send: <><path d="M12 19V5" {...common} /><path d="m5 12 7-7 7 7" {...common} /></>,
+    thumbsUp: <><path d="M7 10v10" {...common} /><path d="M11 10V5a3 3 0 0 1 3 3v2h4.2a2 2 0 0 1 1.95 2.45l-1.15 5A2 2 0 0 1 17.05 19H7" {...common} /><path d="M3 10h4v10H3z" {...common} /></>,
+    thumbsDown: <><path d="M7 14V4" {...common} /><path d="M11 14v5a3 3 0 0 0 3-3v-2h4.2a2 2 0 0 0 1.95-2.45l-1.15-5A2 2 0 0 0 17.05 5H7" {...common} /><path d="M3 4h4v10H3z" {...common} /></>,
+  };
+  return <svg viewBox="0 0 24 24" aria-hidden="true" className="coach-svg-icon">{paths[name]}</svg>;
+}
+
+function plainTextFromMarkdown(content: string) {
+  return String(content || "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[[^\]]*]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]+)]\([^)]*\)/g, "$1")
+    .replace(/[#>*_~\-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function bestEnglishSpeechVoice() {
+  if (!("speechSynthesis" in window)) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+
+  const preferredName = /(natural|neural|online|premium|jenny|aria|guy|samantha|google|microsoft|apple)/i;
+  const englishVoices = voices.filter((voice) => /^en([-_]|$)/i.test(voice.lang || ""));
+  const candidates = englishVoices.length ? englishVoices : voices;
+  return candidates
+    .map((voice) => {
+      const langScore = /^en-US/i.test(voice.lang) ? 4 : /^en-GB/i.test(voice.lang) ? 3 : /^en/i.test(voice.lang) ? 2 : 0;
+      const nameScore = preferredName.test(voice.name) ? 4 : 0;
+      const localScore = voice.localService ? 1 : 0;
+      return { voice, score: langScore + nameScore + localScore };
+    })
+    .sort((a, b) => b.score - a.score)[0]?.voice || null;
+}
+
+function getSavedPosition(data: any) {
+  const context = data?.context || {};
+  const recommended = context?.recommendedCurrentPosition || data?.recommendedCurrentPosition || {};
+  const current = context?.currentPosition || data?.currentPosition || {};
+  const missionControl = context?.missionControl || data?.missionControl || context || {};
+
+  return {
+    unit:
+      recommended.unit ||
+      recommended.currentUnit ||
+      current.unit ||
+      current.currentUnit ||
+      missionControl.currentUnit ||
+      missionControl.CurrentUnit ||
+      missionControl.unit ||
+      "",
+    lesson:
+      recommended.lesson ||
+      recommended.currentLesson ||
+      current.lesson ||
+      current.currentLesson ||
+      missionControl.currentLesson ||
+      missionControl.CurrentLesson ||
+      missionControl.lesson ||
+      "",
+  };
 }
 
 async function readJsonResponse(response: Response) {
@@ -169,25 +284,39 @@ async function readJsonResponse(response: Response) {
 
 export default function CoachPage() {
   const { isLoaded, isSignedIn, user } = useUser();
-  const signedIn = isSignedIn || E2E_DEMO;
+  const [authTimedOut, setAuthTimedOut] = useState(false);
+  const authReady = isLoaded || authTimedOut || E2E_DEMO;
+  const signedIn = isSignedIn || E2E_DEMO || authTimedOut;
   const email = user?.primaryEmailAddress?.emailAddress || "pfigueroamiranda@gmail.com";
 
   const [messages, setMessages] = useState<Message[]>(initialCoachMessages);
   const [input, setInput] = useState("");
+  const [selectedImage, setSelectedImage] = useState<{ dataUrl: string; name?: string; mimeType?: string } | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [agentLoading, setAgentLoading] = useState(false);
   const [error, setError] = useState("");
   const [agentError, setAgentError] = useState("");
   const [activeAgentId, setActiveAgentId] = useState<AgentId>("grammar_corrector");
-  const [currentUnit, setCurrentUnit] = useState(E2E_DEMO ? DEMO_UNIT : "");
+  const [currentUnit, setCurrentUnit] = useState(E2E_DEMO ? DEMO_UNIT : FALLBACK_UNIT);
   const [currentLesson, setCurrentLesson] = useState(E2E_DEMO ? DEMO_LESSON : "");
-  const [studyUnit, setStudyUnit] = useState(E2E_DEMO ? DEMO_UNIT : "");
+  const [studyUnit, setStudyUnit] = useState(E2E_DEMO ? DEMO_UNIT : FALLBACK_UNIT);
+  const [studyMode, setStudyMode] = useState<StudyMode>("current");
+  const [studyClassNumber, setStudyClassNumber] = useState<number | null>(null);
+  const [theme, setTheme] = useState<CoachTheme>("paper");
+  const [textSize, setTextSize] = useState<CoachTextSize>("compact");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+  const [messageFeedback, setMessageFeedback] = useState<Record<number, "like" | "dislike">>({});
+  const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
+  const [speechPaused, setSpeechPaused] = useState(false);
+  const [listening, setListening] = useState(false);
   const [contextLoading, setContextLoading] = useState(false);
   const [contextError, setContextError] = useState("");
   const [resources, setResources] = useState<DriveUnitResource[]>([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
   const [resourcesError, setResourcesError] = useState("");
+  const [resourcesNotice, setResourcesNotice] = useState("");
   const [expandedResourceId, setExpandedResourceId] = useState<string | null>(null);
   const [grammarWorkbook, setGrammarWorkbook] = useState<Workbook | null>(null);
   const [grammarWorkbookLoading, setGrammarWorkbookLoading] = useState(false);
@@ -196,26 +325,51 @@ export default function CoachPage() {
   const [vocabularyWorkbookLoading, setVocabularyWorkbookLoading] = useState(false);
   const [vocabularyWorkbookError, setVocabularyWorkbookError] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const coachAbortRef = useRef<AbortController | null>(null);
+  const agentAbortRef = useRef<AbortController | null>(null);
 
   const activeAgent = SPECIALIST_AGENTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENTS[0];
   const activeStudyUnit = studyUnit || currentUnit;
   const activeStudyUnitLabel = unitLabel(activeStudyUnit);
+  const activeLocationLabel = [activeStudyUnitLabel, studyClassNumber ? `Class ${studyClassNumber}` : ""].filter(Boolean).join(" · ");
   const conversationStorageKey = email ? `english-os-coach:${email}` : "";
 
   useEffect(() => {
     setHydrated(true);
+    const storedTheme = window.localStorage.getItem("english-os-coach-theme") as CoachTheme | null;
+    const storedTextSize = window.localStorage.getItem("english-os-coach-text-size") as CoachTextSize | null;
+    const storedSidebar = window.localStorage.getItem("english-os-coach-sidebar");
+    if (storedTheme && ["slate", "paper", "sage", "sand", "blue"].includes(storedTheme)) setTheme(storedTheme);
+    if (storedTextSize && COACH_TEXT_SIZE_ORDER.includes(storedTextSize)) setTextSize(storedTextSize);
+    if (storedSidebar === "closed") setSidebarOpen(false);
   }, []);
+
+  useEffect(() => {
+    if (isLoaded || E2E_DEMO) return;
+    const timer = window.setTimeout(() => setAuthTimedOut(true), 3500);
+    return () => window.clearTimeout(timer);
+  }, [isLoaded]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem("english-os-coach-theme", theme);
+    window.localStorage.setItem("english-os-coach-text-size", textSize);
+    window.localStorage.setItem("english-os-coach-sidebar", sidebarOpen ? "open" : "closed");
+  }, [hydrated, theme, textSize, sidebarOpen]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     if (conversationStorageKey && messages.length > 0 && !E2E_DEMO) {
-      window.localStorage.setItem(conversationStorageKey, JSON.stringify(messages.slice(-40)));
+      window.localStorage.setItem(conversationStorageKey, JSON.stringify(stripEphemeralImages(messages.slice(-40))));
     }
   }, [messages, loading, agentLoading, conversationStorageKey]);
 
   useEffect(() => {
     if (E2E_DEMO) return;
-    if (!isLoaded || !signedIn) return;
+    if (!authReady || !signedIn) return;
 
     if (conversationStorageKey) {
       const saved = window.localStorage.getItem(conversationStorageKey);
@@ -230,37 +384,97 @@ export default function CoachPage() {
     }
 
     loadUserContext();
-  }, [isLoaded, signedIn, conversationStorageKey]);
+  }, [authReady, signedIn, conversationStorageKey]);
 
   useEffect(() => {
     if (!activeStudyUnit || E2E_DEMO) return;
     loadDriveUnitResources(activeStudyUnit);
   }, [activeStudyUnit]);
 
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`;
+  }, [input]);
+
+  async function prepareImageForVocabulary(file: File) {
+    if (!file.type.startsWith("image/")) throw new Error("Selecciona una imagen válida.");
+    const sourceDataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("No pude leer la imagen."));
+      reader.readAsDataURL(file);
+    });
+
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("No pude preparar la imagen."));
+      img.src = sourceDataUrl;
+    });
+
+    const maxSide = 1280;
+    const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("No pude procesar la imagen.");
+    context.drawImage(image, 0, 0, width, height);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+    return { dataUrl, name: file.name, mimeType: "image/jpeg" };
+  }
+
+  async function handleImageSelected(file?: File) {
+    if (!file) return;
+    setError("");
+    try {
+      setSelectedImage(await prepareImageForVocabulary(file));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No pude cargar la imagen.");
+    } finally {
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  }
+
   async function loadUserContext() {
     setContextLoading(true);
     setContextError("");
     try {
       const response = await fetch("/api/english-os/context", { method: "GET", cache: "no-store" });
-      const data = await response.json();
+      const data = await readJsonResponse(response);
       if (!response.ok || !data.ok) throw new Error(data.error || "Failed to load English OS context.");
 
-      const missionControl = data.context?.missionControl || data.missionControl || data.context || {};
-      const unit = missionControl.currentUnit || missionControl.CurrentUnit || missionControl.unit || "";
-      const lesson = missionControl.currentLesson || missionControl.CurrentLesson || missionControl.lesson || "";
+      const { unit, lesson } = getSavedPosition(data);
+      const resolvedUnit = normalizeUnitValue(unit || FALLBACK_UNIT);
 
-      if (unit) {
-        setCurrentUnit(unit);
-        setStudyUnit((current) => current || unit);
-      }
+      setCurrentUnit(resolvedUnit);
+      setStudyUnit((current) => current || resolvedUnit);
       if (lesson) setCurrentLesson(lesson);
 
       setMessages((current) => {
         const shouldReplace = current.length === 1 && current[0]?.content.includes("Loading your English OS class plan");
-        return shouldReplace ? [{ role: "coach", content: buildTodayClassMessage(unit, lesson) }] : current;
+        return shouldReplace ? [{ role: "coach", content: buildTodayClassMessage(resolvedUnit, lesson) }] : current;
       });
     } catch (err) {
-      setContextError(err instanceof Error ? err.message : "Unknown context error");
+      const message = err instanceof Error ? err.message : "Unknown context error";
+      setContextError(message);
+      setCurrentUnit((current) => current || FALLBACK_UNIT);
+      setStudyUnit((current) => current || FALLBACK_UNIT);
+      setMessages((current) => {
+        const shouldReplace = current.length === 1 && current[0]?.content.includes("Loading your English OS class plan");
+        if (!shouldReplace) return current;
+        return [
+          {
+            role: "coach",
+            content:
+              "No pude cargar tu English plan todavía, pero no voy a dejar la clase bloqueada.\n\nPuedes pedir una clase, un repaso o practicar una unidad. Cuando la conexión con English OS vuelva a responder, recuperaré tu posición guardada automáticamente.",
+          },
+        ];
+      });
     } finally {
       setContextLoading(false);
     }
@@ -269,14 +483,23 @@ export default function CoachPage() {
   async function loadDriveUnitResources(unit: string) {
     setResourcesLoading(true);
     setResourcesError("");
+    setResourcesNotice("");
     try {
       const params = new URLSearchParams({ unit });
       const response = await fetch(`/api/english-os/drive-unit-resources?${params.toString()}`, { method: "GET", cache: "no-store" });
-      const data = await response.json();
+      const data = await readJsonResponse(response);
       if (!response.ok || !data.ok) throw new Error(data.error || "Failed to load unit resources.");
       setResources(data.resources || []);
     } catch (err) {
-      setResourcesError(err instanceof Error ? err.message : "Unknown resources error");
+      const message = err instanceof Error ? err.message : "Unknown resources error";
+      if (/Missing English OS environment variables/i.test(message)) {
+        setResourcesNotice(
+          "Los materiales conectados no están configurados en este entorno local. Para cargarlos aquí hacen falta ENGLISH_OS_BASE_URL y ENGLISH_OS_TOKEN en .env.local."
+        );
+        setResources([]);
+      } else {
+        setResourcesError(message);
+      }
     } finally {
       setResourcesLoading(false);
     }
@@ -299,10 +522,10 @@ export default function CoachPage() {
 
     setError("");
     try {
-      const params = new URLSearchParams({ unit, lesson: currentLesson });
+      const params = new URLSearchParams({ unit, lesson: studyMode === "current" ? currentLesson : "" });
       const endpoint = isGrammar ? "/api/english-os/grammar-workbook" : "/api/english-os/vocabulary-workbook";
       const response = await fetch(`${endpoint}?${params.toString()}`, { method: "GET", cache: "no-store" });
-      const data = await response.json();
+      const data = await readJsonResponse(response);
       if (!response.ok || !data.ok) throw new Error(data.error || `Failed to create ${kind} workbook.`);
 
       const workbook: Workbook = {
@@ -318,7 +541,17 @@ export default function CoachPage() {
       window.open(data.exportUrl || data.fileUrl, "_blank", "noopener,noreferrer");
       setMessages((current) => [
         ...current,
-        { role: "coach", content: `Listo. Generé la guía de ${isGrammar ? "gramática" : "vocabulario"} para ${unitLabel(unit)}.` },
+        {
+          role: "coach",
+          content: [
+            `Listo. Generé la guía de ${isGrammar ? "gramática" : "vocabulario"} para ${unitLabel(unit)}.`,
+            "",
+            data.exportUrl ? `- [Descargar XLSX](${data.exportUrl})` : "",
+            data.fileUrl ? `- [Abrir en Sheets](${data.fileUrl})` : "",
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        },
       ]);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown workbook error";
@@ -349,14 +582,17 @@ export default function CoachPage() {
     setInput("");
     setAgentLoading(true);
     setMessages((current) => [...current, { role: "user", content: `[${activeAgent.name}] ${message}` }]);
+    const controller = new AbortController();
+    agentAbortRef.current = controller;
 
     try {
       const response = await fetch("/api/english-os/agents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({ agentId: activeAgent.id, message }),
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response);
       if (!response.ok || !data.ok) throw new Error(data.error || "Specialist agent request failed.");
       setMessages((current) => [
         ...current,
@@ -367,23 +603,27 @@ export default function CoachPage() {
         },
       ]);
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       const message = err instanceof Error ? err.message : "Unknown agent error";
       setAgentError(message);
       setError(message);
     } finally {
+      if (agentAbortRef.current === controller) agentAbortRef.current = null;
       setAgentLoading(false);
     }
   }
 
   async function sendMessage(customMessage?: string) {
-    const message = (customMessage || input).trim();
-    if (!message || loading) return;
+    const imageToAnalyze = customMessage ? null : selectedImage;
+    const message = (customMessage || input || (imageToAnalyze ? "Analiza esta foto y ayúdame a aprender vocabulario en inglés." : "")).trim();
+    if ((!message && !imageToAnalyze) || loading) return;
 
     if (E2E_DEMO) {
       setInput("");
+      setSelectedImage(null);
       setMessages((current) => [
         ...current,
-        { role: "user", content: message },
+        { role: "user", content: message, image: imageToAnalyze ? { dataUrl: imageToAnalyze.dataUrl, name: imageToAnalyze.name } : undefined },
         { role: "coach", content: "Modo demo: el profesor respondería aquí usando el contexto real de la clase." },
       ]);
       return;
@@ -391,26 +631,36 @@ export default function CoachPage() {
 
     setError("");
     setInput("");
+    setSelectedImage(null);
     setLoading(true);
-    setMessages((current) => [...current, { role: "user", content: message }]);
+    setMessages((current) => [...current, { role: "user", content: message, image: imageToAnalyze ? { dataUrl: imageToAnalyze.dataUrl, name: imageToAnalyze.name } : undefined }]);
+    const controller = new AbortController();
+    coachAbortRef.current = controller;
 
     try {
       const response = await fetch("/api/english-os/coach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, conversationHistory: messages.slice(-12) }),
+        signal: controller.signal,
+        body: JSON.stringify({
+          message,
+          conversationHistory: stripEphemeralImages(messages.slice(-12)),
+          image: imageToAnalyze ? { dataUrl: imageToAnalyze.dataUrl, mimeType: imageToAnalyze.mimeType, name: imageToAnalyze.name } : undefined,
+        }),
       });
       const data = await readJsonResponse(response);
       if (!response.ok || !data.ok) throw new Error(data.error || "Coach request failed.");
 
-      const missionControl = data.context?.missionControl || data.missionControl || data.context || {};
-      const unit = data.activeUnit ? `Unit ${data.activeUnit}` : missionControl.currentUnit || missionControl.CurrentUnit || missionControl.unit || "";
-      const lesson = missionControl.currentLesson || missionControl.CurrentLesson || missionControl.lesson || "";
+      const savedPosition = getSavedPosition(data);
+      const unit = data.activeUnit ? `Unit ${data.activeUnit}` : "";
+      const lesson = savedPosition.lesson;
+      const nextMode: StudyMode = isReviewRequest(message) ? "review" : isGuideRequest(message) ? "guide" : "class";
 
       if (unit) {
-        setCurrentUnit(unit);
-        setStudyUnit(unit);
+        setStudyUnit(normalizeUnitValue(unit));
+        setStudyMode(nextMode);
       }
+      setStudyClassNumber(data.activeClass && nextMode === "class" ? Number(data.activeClass) : null);
       if (lesson) setCurrentLesson(lesson);
 
       setMessages((current) => [
@@ -418,6 +668,7 @@ export default function CoachPage() {
         { role: "coach", content: data.reply || "No response returned.", usage: data.usage },
       ]);
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
       setError(errorMessage);
       setMessages((current) => [
@@ -428,12 +679,22 @@ export default function CoachPage() {
         },
       ]);
     } finally {
+      if (coachAbortRef.current === controller) coachAbortRef.current = null;
       setLoading(false);
     }
   }
 
+  function stopThinking() {
+    coachAbortRef.current?.abort();
+    agentAbortRef.current?.abort();
+    coachAbortRef.current = null;
+    agentAbortRef.current = null;
+    setLoading(false);
+    setAgentLoading(false);
+  }
+
   function startTodayClass() {
-    sendMessage(buildStartTodayClassPrompt(activeStudyUnit, currentLesson));
+    sendMessage(buildStartTodayClassPrompt(activeStudyUnit, studyMode === "current" ? currentLesson : ""));
   }
 
   function requestUnitGrammar() {
@@ -445,7 +706,7 @@ export default function CoachPage() {
   }
 
   function requestHint() {
-    sendMessage(buildHintPrompt(activeStudyUnit, currentLesson));
+    sendMessage(buildHintPrompt(activeStudyUnit, studyMode === "current" ? currentLesson : ""));
   }
 
   function requestResourcePractice(resource: DriveUnitResource) {
@@ -462,18 +723,142 @@ export default function CoachPage() {
     sendMessage(`Vamos a trabajar con este recurso de ${activeStudyUnitLabel}.\n\n${details}\n\nCrea una actividad completa para estudiar este recurso.`);
   }
 
+  async function copyMessage(content: string, index: number) {
+    const text = String(content || "").trim();
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "true");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+
+    setCopiedMessageIndex(index);
+    window.setTimeout(() => setCopiedMessageIndex(null), 1200);
+  }
+
+  function toggleMessageFeedback(index: number, value: "like" | "dislike") {
+    setMessageFeedback((current) => {
+      const next = { ...current };
+      if (next[index] === value) delete next[index];
+      else next[index] = value;
+      return next;
+    });
+  }
+
+  function speakMessage(content: string, index: number) {
+    if (!("speechSynthesis" in window)) {
+      setError("Tu navegador no soporta lectura en voz alta.");
+      return;
+    }
+
+    const text = plainTextFromMarkdown(content);
+    if (!text) return;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    utterance.voice = bestEnglishSpeechVoice();
+    utterance.rate = 0.94;
+    utterance.pitch = 1.02;
+    utterance.onend = () => {
+      setSpeakingMessageIndex(null);
+      setSpeechPaused(false);
+    };
+    utterance.onerror = () => {
+      setSpeakingMessageIndex(null);
+      setSpeechPaused(false);
+    };
+    setSpeakingMessageIndex(index);
+    setSpeechPaused(false);
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function toggleSpeech(content: string, index: number) {
+    if (!("speechSynthesis" in window)) {
+      setError("Tu navegador no soporta lectura en voz alta.");
+      return;
+    }
+
+    if (speakingMessageIndex === index && window.speechSynthesis.speaking && !speechPaused) {
+      window.speechSynthesis.pause();
+      setSpeechPaused(true);
+      return;
+    }
+
+    if (speakingMessageIndex === index && speechPaused) {
+      window.speechSynthesis.resume();
+      setSpeechPaused(false);
+      return;
+    }
+
+    speakMessage(content, index);
+  }
+
+  function stopSpeech() {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    setSpeakingMessageIndex(null);
+    setSpeechPaused(false);
+  }
+
+  function startDictation() {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setError("Tu navegador no soporta dictado por micrófono. Puedes escribir tu respuesta normalmente.");
+      return;
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+      setListening(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result?.[0]?.transcript || "")
+        .join(" ")
+        .trim();
+      if (transcript) setInput((current) => [current, transcript].filter(Boolean).join(current ? " " : ""));
+    };
+    recognition.onerror = () => {
+      setError("No pude escuchar el micrófono. Revisa permisos del navegador e intenta otra vez.");
+    };
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      setListening(false);
+    };
+    recognitionRef.current = recognition;
+    setListening(true);
+    recognition.start();
+  }
+
   function renderWorkbookCard(kind: "grammar" | "vocabulary", workbook: Workbook | null) {
     if (!workbook) return null;
     const label = kind === "grammar" ? "gramática" : "vocabulario";
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-100">
+      <div className="coach-workbook-card rounded-2xl border p-3 text-sm">
         <p className="font-semibold">Guía de {label} generada</p>
-        <p className="mt-1 break-words text-xs text-slate-300">{workbook.title}</p>
+        <p className="mt-1 break-words text-xs">{workbook.title}</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <a href={workbook.exportUrl} target="_blank" rel="noreferrer" className="rounded-xl bg-white/10 px-3 py-2 text-center text-xs font-semibold hover:bg-white/20">
+          <a href={workbook.exportUrl} target="_blank" rel="noreferrer" className="coach-workbook-link rounded-xl px-3 py-2 text-center text-xs font-semibold">
             XLSX
           </a>
-          <a href={workbook.fileUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-white/20 px-3 py-2 text-center text-xs font-semibold hover:bg-white/10">
+          <a href={workbook.fileUrl} target="_blank" rel="noreferrer" className="coach-workbook-link rounded-xl px-3 py-2 text-center text-xs font-semibold">
             Sheets
           </a>
         </div>
@@ -481,7 +866,7 @@ export default function CoachPage() {
     );
   }
 
-  if (!isLoaded && !E2E_DEMO) {
+  if (!authReady && !E2E_DEMO) {
     return (
       <main className="flex min-h-[100dvh] items-center justify-center bg-slate-950 p-6 text-white">
         <p>Loading English OS...</p>
@@ -504,8 +889,8 @@ export default function CoachPage() {
   }
 
   return (
-    <main className="min-h-[100dvh] max-w-full overflow-x-clip bg-[radial-gradient(circle_at_top_left,#1e3a8a_0,#020617_34%,#020617_100%)] text-white">
-      <div className="mx-auto flex min-h-[100dvh] min-w-0 max-w-7xl flex-col px-3 py-3 sm:px-4 lg:px-6 lg:py-5">
+    <main className="coach-shell h-[100dvh] max-w-full overflow-hidden" data-theme={theme} data-text-size={textSize}>
+      <div className="mx-auto flex h-[100dvh] min-w-0 flex-col overflow-hidden p-2">
         <header className="hidden">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -516,7 +901,7 @@ export default function CoachPage() {
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className="hidden rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200 sm:inline-flex">Clase guiada</span>
-              {!E2E_DEMO && <UserButton />}
+              {!E2E_DEMO && isLoaded && isSignedIn && <UserButton />}
             </div>
           </div>
 
@@ -552,29 +937,138 @@ export default function CoachPage() {
           {contextError && <div className="mt-3 rounded-2xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">{contextError}</div>}
         </header>
 
+        <div className="coach-toolbar mb-2 flex min-h-10 items-center gap-2 rounded-xl border px-2 py-1.5">
+          <button type="button" className="coach-icon-button coach-panel-toggle" onClick={() => setSidebarOpen((open) => !open)} aria-expanded={sidebarOpen} aria-controls="coach-sidebar" aria-label={sidebarOpen ? "Ocultar panel" : "Mostrar panel"} title={sidebarOpen ? "Ocultar panel" : "Mostrar panel"}>
+            <SvgIcon name={sidebarOpen ? "panelOpen" : "panel"} />
+          </button>
+          <div className="coach-font-controls" aria-label="Tamaño de texto">
+            <button type="button" className="coach-font-button" onClick={() => setTextSize((size) => nextCoachTextSize(size, -1))} disabled={textSize === "compact"} aria-label="Disminuir tamaño de texto" title="Texto más pequeño">
+              A−
+            </button>
+            <button type="button" className="coach-font-button" onClick={() => setTextSize((size) => nextCoachTextSize(size, 1))} disabled={textSize === "large"} aria-label="Aumentar tamaño de texto" title="Texto más grande">
+              A+
+            </button>
+          </div>
+          <label className="flex items-center gap-2 text-xs font-medium">
+            <span className="hidden sm:inline">Tema</span>
+            <select value={theme} onChange={(event) => setTheme(event.target.value as CoachTheme)} className="coach-theme-select rounded-lg border px-2 py-1.5">
+              <option value="paper">Papel</option>
+              <option value="sage">Salvia</option>
+              <option value="sand">Arena</option>
+              <option value="blue">Azul</option>
+              <option value="slate">Pizarra</option>
+            </select>
+          </label>
+          <span className="coach-status ml-auto truncate">
+            <EnglishOsLogo size="sm" showText={false} markClassName="coach-status-logo" />
+            <span className="coach-status-brand">English OS</span>
+            <span className="coach-status-separator">—</span>
+            <span>{studyModeLabel(studyMode)}</span>
+            <span className="coach-status-separator">—</span>
+            <span>{activeLocationLabel}</span>
+          </span>
+          {!E2E_DEMO && isLoaded && isSignedIn && <UserButton />}
+        </div>
+
         {error && <div className="mb-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">{error}</div>}
 
-        <div className="grid min-w-0 max-w-full flex-1 gap-3 lg:grid-cols-[340px_minmax(0,1fr)]">
-          <section className="order-2 flex min-h-[70dvh] min-w-0 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/70 shadow-2xl lg:h-[calc(100dvh-40px)]">
-            <div className="flex-1 space-y-4 overflow-y-auto p-3 sm:p-5 lg:p-6">
+        <div className={`coach-layout grid min-h-0 min-w-0 max-w-full flex-1 gap-2 ${sidebarOpen ? "coach-layout-open" : "coach-layout-closed"}`}>
+          <section className="coach-chat order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border">
+            <div className="coach-messages min-h-0 flex-1 overflow-y-auto px-4 py-2 sm:px-5">
               {messages.map((message, index) => (
-                <article key={index} className={message.role === "user" ? "ml-auto max-w-[92%] rounded-3xl bg-blue-600 p-4 shadow-lg sm:max-w-2xl" : "mr-auto max-w-[96%] rounded-3xl border border-slate-200 bg-white p-4 text-slate-950 shadow-lg sm:max-w-4xl lg:p-5"}>
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className={message.role === "user" ? "text-[11px] font-semibold uppercase tracking-wide text-blue-100" : "text-[11px] font-semibold uppercase tracking-wide text-slate-500"}>{message.role === "user" ? "Tú" : "Profesor"}</p>
-                  </div>
-                  <div className={message.role === "user" ? "prose max-w-none whitespace-pre-wrap text-sm leading-7 text-slate-950 sm:text-base sm:leading-8" : "prose max-w-none whitespace-pre-wrap text-sm leading-7 text-slate-950 sm:text-base sm:leading-8"}>
-                    <MarkdownMessage content={message.content} />
-                  </div>
+                <article key={index} className={`coach-message ${message.role === "user" ? "coach-message-user" : "coach-message-teacher"}`}>
+                  {message.role === "user" ? (
+                    <>
+                      <div className="coach-user-message-line">
+                        <span className="coach-user-message-label">Tú —</span>
+                        <div className="prose max-w-none whitespace-pre-wrap text-sm sm:text-base">
+                          <MarkdownMessage content={message.content} />
+                        </div>
+                      </div>
+                      {message.image && (
+                        <figure className="coach-message-image not-prose">
+                          <img src={message.image.dataUrl} alt={message.image.name || "Imagen enviada por el estudiante"} />
+                        </figure>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="coach-message-label">
+                        <p>Profesor dijo:</p>
+                      </div>
+                      <div className="coach-message-actions not-prose">
+                        <button
+                          type="button"
+                          onClick={() => toggleSpeech(message.content, index)}
+                          className={`coach-round-button ${speakingMessageIndex === index ? "coach-speaking-button" : ""}`}
+                          aria-label={speakingMessageIndex === index && !speechPaused ? "Pausar lectura" : speechPaused && speakingMessageIndex === index ? "Continuar lectura" : "Escuchar respuesta del profesor"}
+                          title={speakingMessageIndex === index && !speechPaused ? "Pausar" : speechPaused && speakingMessageIndex === index ? "Continuar" : "Escuchar"}
+                        >
+                          <SvgIcon name={speakingMessageIndex === index && !speechPaused ? "pause" : "play"} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => (speakingMessageIndex === index ? stopSpeech() : speakMessage(message.content, index))}
+                          className="coach-round-button"
+                          aria-label={speakingMessageIndex === index ? "Detener lectura" : "Reiniciar lectura"}
+                          title={speakingMessageIndex === index ? "Detener" : "Reiniciar"}
+                        >
+                          <SvgIcon name={speakingMessageIndex === index ? "stop" : "restart"} />
+                        </button>
+                        <button type="button" onClick={() => toggleMessageFeedback(index, "like")} className={`coach-round-button ${messageFeedback[index] === "like" ? "coach-feedback-active" : ""}`} aria-label={messageFeedback[index] === "like" ? "Quitar me gusta" : "Marcar respuesta como útil"} aria-pressed={messageFeedback[index] === "like"} title={messageFeedback[index] === "like" ? "Quitar me gusta" : "Me gusta"}>
+                          <SvgIcon name="thumbsUp" />
+                        </button>
+                        <button type="button" onClick={() => toggleMessageFeedback(index, "dislike")} className={`coach-round-button ${messageFeedback[index] === "dislike" ? "coach-feedback-active" : ""}`} aria-label={messageFeedback[index] === "dislike" ? "Quitar no me gusta" : "Marcar respuesta como no útil"} aria-pressed={messageFeedback[index] === "dislike"} title={messageFeedback[index] === "dislike" ? "Quitar no me gusta" : "No me gusta"}>
+                          <SvgIcon name="thumbsDown" />
+                        </button>
+                        <button type="button" onClick={() => copyMessage(message.content, index)} className="coach-round-button" aria-label="Copiar mensaje" title={copiedMessageIndex === index ? "Copiado" : "Copiar"}>
+                          <SvgIcon name={copiedMessageIndex === index ? "check" : "copy"} />
+                        </button>
+                      </div>
+                      <div className="prose max-w-none whitespace-pre-wrap text-sm sm:text-base">
+                        <MarkdownMessage content={message.content} />
+                      </div>
+                    </>
+                  )}
                 </article>
               ))}
-              {(loading || agentLoading) && <div className="mr-auto max-w-[92%] rounded-3xl bg-white p-4 text-sm text-slate-700">{agentLoading ? `${activeAgent.name} está pensando...` : "El profesor está pensando..."}</div>}
+              {(loading || agentLoading) && (
+                <div className="coach-thinking text-sm" aria-live="polite">
+                  <span>{agentLoading ? `${activeAgent.name} está pensando` : "El profesor está pensando"}</span>
+                  <span className="coach-thinking-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>
+                  <button type="button" onClick={stopThinking} className="coach-thinking-stop" aria-label="Parar respuesta del profesor" title="Parar">
+                    <SvgIcon name="stop" />
+                  </button>
+                </div>
+              )}
               <div ref={bottomRef} />
             </div>
 
-            <footer className="sticky bottom-0 z-10 border-t border-white/10 bg-slate-950/95 p-3 backdrop-blur sm:p-4">
-              <p className="mb-2 text-xs font-medium text-slate-300">Responde en inglés. Yo corregiré gramática, vocabulario y naturalidad.</p>
-              <div className="flex flex-col gap-2 sm:flex-row">
+            <footer className="coach-composer sticky bottom-0 z-10 border-t px-3 py-1 backdrop-blur">
+              <p className="mb-0.5 text-xs font-medium">Responde en inglés. Yo corregiré gramática, vocabulario y naturalidad.</p>
+              {selectedImage && (
+                <div className="coach-image-preview">
+                  <img src={selectedImage.dataUrl} alt={selectedImage.name || "Imagen seleccionada"} />
+                  <span className="truncate">{selectedImage.name || "Imagen para vocabulario"}</span>
+                  <button type="button" onClick={() => setSelectedImage(null)} aria-label="Quitar imagen" title="Quitar imagen">
+                    ×
+                  </button>
+                </div>
+              )}
+              <div className="coach-input-row flex items-end gap-2">
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => handleImageSelected(event.target.files?.[0])}
+                />
+                <button type="button" onClick={() => imageInputRef.current?.click()} disabled={!hydrated || loading} className="coach-round-button coach-plus-button" aria-label="Agregar foto para vocabulario" title="Agregar foto">
+                  +
+                </button>
                 <textarea
+                  ref={textareaRef}
+                  rows={1}
                   value={input}
                   disabled={!hydrated}
                   onChange={(event) => setInput(event.target.value)}
@@ -585,28 +1079,33 @@ export default function CoachPage() {
                     }
                   }}
                   placeholder="Escribe tu respuesta en inglés o pide una explicación..."
-                  className="min-h-24 flex-1 resize-none rounded-2xl border border-slate-700 bg-slate-900 p-3 text-base text-white outline-none focus:border-blue-500"
+                  className="coach-textarea flex-1 resize-none rounded-xl border px-3 py-1.5 text-base outline-none"
                 />
-                <button onClick={() => sendMessage()} disabled={!hydrated || loading || !input.trim()} className="rounded-2xl bg-blue-600 px-6 py-3 font-semibold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-36">
-                  {loading ? "..." : "Enviar respuesta"}
+                <button type="button" onClick={startDictation} disabled={!hydrated || loading} className={`coach-round-button coach-mic-button ${listening ? "coach-mic-active" : ""}`} aria-label={listening ? "Detener micrófono" : "Dictar con micrófono"} title={listening ? "Detener micrófono" : "Micrófono"}>
+                  <SvgIcon name="mic" />
+                </button>
+                <button onClick={() => (loading ? stopThinking() : sendMessage())} disabled={!hydrated || (!loading && !input.trim() && !selectedImage)} className="coach-send-button disabled:cursor-not-allowed disabled:opacity-40" aria-label={loading ? "Parar respuesta del profesor" : "Enviar respuesta"} title={loading ? "Parar" : "Enviar"}>
+                  <SvgIcon name={loading ? "stop" : "send"} />
                 </button>
               </div>
-              <p className="mt-2 text-[11px] text-slate-500">Enter envía. Shift + Enter agrega línea. El avance se habilita solo después de aprobar la evaluación.</p>
+              <p className="mt-0.5 text-[11px] opacity-60">Enter envía. Shift + Enter agrega línea. El avance se habilita solo después de aprobar la evaluación.</p>
             </footer>
           </section>
 
-          <aside className="order-1 min-w-0 max-w-full space-y-3 overflow-x-hidden lg:h-[calc(100dvh-40px)] lg:overflow-y-auto">
-            <section className="min-w-0 max-w-full overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-blue-300">Tu clase</p>
-              <h2 className="mt-1 text-lg font-bold">{activeStudyUnitLabel}</h2>
-              <p className="mt-1 text-sm text-slate-400">Material y práctica conectados con tu unidad actual.</p>
+          {sidebarOpen && <aside id="coach-sidebar" className="coach-sidebar order-1 min-w-0 max-w-full space-y-2 overflow-x-hidden">
+            <section className="coach-panel min-w-0 max-w-full overflow-hidden rounded-xl border p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide opacity-60">Objetivo activo</p>
+              <h2 className="mt-1 text-lg font-bold">{activeLocationLabel}</h2>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wide opacity-60">Modo: {studyModeLabel(studyMode)}</p>
+              <p className="mt-1 text-xs opacity-70">Posición guardada: {contextLoading ? "Cargando…" : unitLabel(currentUnit)}</p>
+              <p className="mt-1 text-sm opacity-75">Los materiales siguen la unidad activa de estudio.</p>
               <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-500">Unidad de estudio</label>
-              <input value={studyUnit} onChange={(event) => setStudyUnit(event.target.value)} placeholder={currentUnit || "Unit 1"} className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-white outline-none focus:border-blue-500" />
+              <input value={studyUnit} onChange={(event) => { setStudyUnit(event.target.value); setStudyMode("class"); }} onBlur={(event) => setStudyUnit(normalizeUnitValue(event.target.value))} placeholder={unitLabel(currentUnit)} className="coach-input mt-2 w-full rounded-xl border px-3 py-2 text-sm outline-none" />
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setStudyUnit(currentUnit)} disabled={!currentUnit} className="rounded-2xl border border-slate-700 px-3 py-2 text-xs font-semibold hover:bg-slate-800 disabled:opacity-50">
-                  Usar actual
+                <button type="button" onClick={() => { setStudyUnit(normalizeUnitValue(currentUnit)); setStudyMode("current"); }} disabled={!currentUnit} className="coach-action rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-50">
+                  Usar posición
                 </button>
-                <button type="button" onClick={startTodayClass} disabled={loading || !activeStudyUnit} className="rounded-2xl bg-blue-600 px-3 py-2 text-xs font-semibold hover:bg-blue-500 disabled:opacity-50">
+                <button type="button" onClick={startTodayClass} disabled={loading || !activeStudyUnit} className="coach-action-primary rounded-xl px-3 py-2 text-xs font-semibold disabled:opacity-50">
                   Clase
                 </button>
               </div>
@@ -670,8 +1169,9 @@ export default function CoachPage() {
               <h3 className="text-sm font-bold text-slate-100">Materiales de clase</h3>
               <p className="mt-1 text-xs text-slate-400">Audios, videos y documentos para {activeStudyUnitLabel}.</p>
               {resourcesLoading && <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">Loading resources...</div>}
+              {resourcesNotice && <div className="mt-3 rounded-2xl border border-slate-300 bg-white/70 p-4 text-sm leading-6 text-slate-600">{resourcesNotice}</div>}
               {resourcesError && <div className="mt-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">{resourcesError}</div>}
-              {!resourcesLoading && !resourcesError && resources.length === 0 && <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">No hay materiales cargados para esta unidad.</div>}
+              {!resourcesLoading && !resourcesError && !resourcesNotice && resources.length === 0 && <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">No hay materiales cargados para esta unidad.</div>}
               <div className="mt-3 min-w-0 max-w-full space-y-3">
                 {resources.map((resource) => (
                   <div key={resource.resourceId} data-testid="resource-card" className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-4">
@@ -712,7 +1212,7 @@ export default function CoachPage() {
                 ))}
               </div>
             </section>
-          </aside>
+          </aside>}
         </div>
       </div>
     </main>

@@ -7,8 +7,11 @@ async function openCoach(page: any) {
 
 async function requireUi(page: any) {
   const signIn = page.getByRole("button", { name: /sign in/i });
+  await expect(signIn.or(page.getByText(/Objetivo activo/i).first())).toBeVisible();
   if (await signIn.isVisible().catch(() => false)) test.skip(true, "Auth or demo required.");
-  await expect(page.getByText(/Tu clase/i).first()).toBeVisible();
+  const showPanel = page.getByRole("button", { name: /Mostrar panel/i });
+  if (await showPanel.isVisible().catch(() => false)) await showPanel.click();
+  await expect(page.getByText(/Objetivo activo/i).first()).toBeVisible();
   await expect(page.locator("article").first()).toBeVisible();
 }
 
@@ -18,14 +21,17 @@ async function expectVisibleText(page: any, pattern: RegExp) {
 
 test("loads coach or sign in", async ({ page }) => {
   await openCoach(page);
-  await expect(page.getByRole("button", { name: /sign in/i }).or(page.getByText(/Tu clase/i).first())).toBeVisible();
+  await expect(page.getByRole("button", { name: /sign in/i }).or(page.getByText(/Objetivo activo/i).first())).toBeVisible();
 });
 
 test("shows simplified two-column shell", async ({ page }) => {
   await openCoach(page);
   await requireUi(page);
   await expect(page.locator("header")).toBeHidden();
-  await expectVisibleText(page, /Tu clase/i);
+  await expectVisibleText(page, /Objetivo activo/i);
+  await expect(page.locator(".coach-status-brand")).toHaveText("English OS");
+  await expect(page.locator(".coach-status")).toContainText(/Actual|Clase|Repaso|Guía/);
+  await expectVisibleText(page, /Posición guardada:/i);
   await expectVisibleText(page, /Guías de estudio/i);
   await expectVisibleText(page, /Ayudas rápidas/i);
   await expectVisibleText(page, /Materiales de clase/i);
@@ -46,7 +52,7 @@ test("places controls on the left and chat on the right on desktop", async ({ pa
   await openCoach(page);
   await requireUi(page);
 
-  const leftPanel = page.getByText(/Tu clase/i).first();
+  const leftPanel = page.getByText(/Objetivo activo/i).first();
   const chat = page.locator("article").first();
   const leftBox = await leftPanel.boundingBox();
   const chatBox = await chat.boundingBox();
@@ -66,6 +72,30 @@ test("can type answer", async ({ page }) => {
   await input.fill("The way I see it, you ought to improve communication first.");
   await expect(input).toHaveValue(/ought to improve communication/);
   await expect(page.getByRole("button", { name: /Enviar respuesta/i })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /Dictar con micrófono/i })).toBeEnabled();
+  await expect(page.getByText(/Copy response/i)).toHaveCount(0);
+});
+
+test("renders user messages as one compact inline line", async ({ page }) => {
+  await openCoach(page);
+  await requireUi(page);
+
+  const input = page.getByPlaceholder(/Escribe tu respuesta en inglés/i);
+  await input.fill("Hola, podemos ver la clase 1 de la unidad 5?");
+  await page.getByRole("button", { name: /Enviar respuesta/i }).click();
+
+  const userMessage = page.locator(".coach-message-user").last();
+  const label = userMessage.locator(".coach-user-message-label");
+  const content = userMessage.locator(".prose p").first();
+  await expect(label).toHaveText(/Tú —/);
+  await expect(content).toContainText("Hola, podemos ver la clase 1 de la unidad 5?");
+
+  const labelBox = await label.boundingBox();
+  const contentBox = await content.boundingBox();
+  expect(labelBox).not.toBeNull();
+  expect(contentBox).not.toBeNull();
+  expect(Math.abs(labelBox!.y - contentBox!.y)).toBeLessThan(6);
+  expect(contentBox!.x).toBeGreaterThan(labelBox!.x + labelBox!.width);
 });
 
 test("keeps coach lesson readable on mobile", async ({ page }) => {
@@ -73,7 +103,7 @@ test("keeps coach lesson readable on mobile", async ({ page }) => {
   await openCoach(page);
   await requireUi(page);
 
-  const chatPanel = page.locator("main > div > div.grid > section").first();
+  const chatPanel = page.locator(".coach-chat").first();
   const lessonText = page.locator("article .prose p").first();
 
   await expect(chatPanel).toHaveCSS("background-color", "rgb(248, 250, 252)");
@@ -85,10 +115,108 @@ test("keeps coach lesson readable on mobile", async ({ page }) => {
   expect(documentWidth).toBeLessThanOrEqual(viewportWidth);
 });
 
+test("changes themes and collapses the complete left panel", async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await openCoach(page);
+  await requireUi(page);
+
+  await page.getByLabel(/Tema/i).selectOption("sage");
+  await expect(page.locator(".coach-shell")).toHaveAttribute("data-theme", "sage");
+
+  await expect(page.getByRole("button", { name: /Disminuir tamaño de texto/i })).toBeVisible();
+  await page.getByRole("button", { name: /Aumentar tamaño de texto/i }).click();
+  await expect(page.locator(".coach-shell")).toHaveAttribute("data-text-size", "normal");
+
+  await page.getByRole("button", { name: /Ocultar panel/i }).click();
+  await expect(page.locator("#coach-sidebar")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Mostrar panel/i })).toBeVisible();
+});
+
+test("landing page opens and routes to the coach", async ({ page }) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await expect(page.getByLabel("English OS").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Una clase de inglés/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Continuar mi clase/i })).toHaveAttribute("href", "/coach");
+  await expect(page.getByRole("link", { name: /Abrir coach/i })).toBeVisible();
+  await expect(page.getByText(/Passages/i)).toHaveCount(0);
+});
+
 test("resource players are width-contained and load on demand", async () => {
-  const source = await import("node:fs/promises").then((fs) => fs.readFile("src/app/coach/page.tsx", "utf8"));
+  const fs = await import("node:fs/promises");
+  const source = await fs.readFile("src/app/coach/page.tsx", "utf8");
+  const styles = await fs.readFile("src/app/globals.css", "utf8");
 
   expect(source).toContain('data-testid="resource-card"');
+  expect(source).toContain("resourcesNotice");
+  expect(source).toContain("Los materiales conectados no están configurados");
+  expect(source).toContain("Descargar XLSX");
+  expect(source).toContain("Abrir en Sheets");
+  expect(source).toContain("coach-workbook-card");
+  expect(styles).toContain(".coach-message-user .coach-message-actions { display: none; }");
+  expect(styles).toContain(".coach-message-teacher { padding-right: 0; }");
+  expect(styles).toContain(".coach-message-teacher .prose::before");
+  expect(styles).toContain("float: right;");
+  expect(styles).toContain("width: 10.9rem;");
+  expect(styles).toContain(".coach-user-message-line");
+  expect(styles).toContain(".coach-user-message-label");
+  expect(source).toContain("coach-user-message-line");
+  expect(source).toContain("Tú —");
+  expect(styles).toContain(".coach-message-user .coach-message-label p::after");
+  expect(styles).toContain('.coach-message-user .coach-message-label p { display: inline; margin: 0; }');
+  expect(styles).toContain('.coach-message-user .prose p { display: inline; margin: 0; }');
+  expect(styles).toContain("background: #fff;");
+  expect(styles).toContain(".coach-textarea::placeholder");
+  expect(styles).toContain("min-height: 2.18rem;");
+  expect(styles).toContain("height: 2.25rem;");
+  expect(styles).toContain("--coach-message-font-size");
+  expect(styles).toContain('--coach-message-line-height: 1.28;');
+  expect(styles).toContain('.coach-shell[data-text-size="compact"]');
+  expect(styles).toContain(".coach-font-controls");
+  expect(styles).toContain(".coach-font-button");
+  expect(styles).toContain("@keyframes coach-thinking-dot");
+  expect(styles).toContain(".coach-thinking-dots");
+  expect(styles).toContain(".coach-thinking-stop");
+  expect(source).toContain('type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue"');
+  expect(source).toContain('type CoachTextSize = "compact" | "normal" | "large"');
+  expect(source).toContain("english-os-coach-text-size");
+  expect(source).toContain("data-text-size={textSize}");
+  expect(source).toContain("Disminuir tamaño de texto");
+  expect(source).toContain("Aumentar tamaño de texto");
+  expect(source).toContain("studyModeLabel");
+  expect(source).toContain("coach-status-brand");
+  expect(source).toContain("EnglishOsLogo");
+  expect(styles).toContain(".coach-status-logo");
+  expect(source).toContain("coach-panel-toggle");
+  expect(source).toContain("textareaRef");
+  expect(source).toContain("rows={1}");
+  expect(source).toContain("coach-shell h-[100dvh] max-w-full overflow-hidden");
+  expect(source).toContain("coach-layout grid min-h-0");
+  expect(source).toContain('SvgIcon name="thumbsUp"');
+  expect(source).toContain('SvgIcon name="thumbsDown"');
+  expect(source).toContain("toggleMessageFeedback");
+  expect(source).toContain("bestEnglishSpeechVoice");
+  expect(source).toContain("utterance.voice = bestEnglishSpeechVoice()");
+  expect(source).toContain("utterance.pitch = 1.02");
+  expect(source).toContain("aria-pressed={messageFeedback[index] === \"like\"}");
+  expect(source).toContain("aria-pressed={messageFeedback[index] === \"dislike\"}");
+  expect(styles).toContain(".coach-feedback-active:hover");
+  expect(source).toContain("coach-thinking-dots");
+  expect(source).toContain("AbortController");
+  expect(source).toContain("stopThinking");
+  expect(source).toContain("Parar respuesta del profesor");
+  expect(source).toContain("signal: controller.signal");
+  expect(source).toContain("selectedImage");
+  expect(source).toContain("prepareImageForVocabulary");
+  expect(source).toContain("stripEphemeralImages");
+  expect(source).toContain('accept="image/*"');
+  expect(source).toContain("Agregar foto para vocabulario");
+  expect(source).toContain("coach-message-image");
+  expect(source).toContain("coach-image-preview");
+  expect(source).toContain('SvgIcon name="mic"');
+  expect(source).toContain('name={loading ? "stop" : "send"}');
+  expect(styles).toContain(".coach-plus-button");
+  expect(styles).toContain(".coach-image-preview");
+  expect(styles).toContain(".coach-message-image");
   expect(source).toContain("Cargar reproductor");
   expect(source).toContain("expandedResourceId === resource.resourceId");
   expect(source).toContain("min-w-0 max-w-full overflow-hidden");

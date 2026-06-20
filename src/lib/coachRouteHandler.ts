@@ -37,7 +37,8 @@ const FORBIDDEN_METADATA_PATTERNS = [
 ];
 
 type CoachMessage = { role: "user" | "coach"; content: string };
-type CoachRequest = { message: string; conversationHistory?: CoachMessage[] };
+type CoachImageAttachment = { dataUrl: string; mimeType?: string; name?: string };
+type CoachRequest = { message: string; conversationHistory?: CoachMessage[]; image?: CoachImageAttachment };
 
 type ClassIdentity = {
   lessonTitle: string;
@@ -54,6 +55,16 @@ function pad2(value: number | string) {
 function isReviewQuestion(message: string) {
   const n = normalize(message);
   return (n.includes("repaso") || n.includes("repasar") || n.includes("review")) && (n.includes("unidad") || n.includes("unit"));
+}
+
+function unitGuideKind(message: string): "grammar" | "vocabulary" | null {
+  const n = normalize(message);
+  const asksGuide = n.includes("guia") || n.includes("guide");
+  const asksUnit = n.includes("unidad") || n.includes("unit");
+  if (!asksGuide || !asksUnit) return null;
+  if (n.includes("gramatica") || n.includes("grammar")) return "grammar";
+  if (n.includes("vocabulario") || n.includes("vocabulary")) return "vocabulary";
+  return null;
 }
 
 function classCoordinates(message: string, fallbackUnit?: string) {
@@ -137,26 +148,36 @@ function learnerName(context: any, fallback = "") {
   return String(user.Name || user.name || user["Full Name"] || context?.name || fallback || "").trim();
 }
 
+function learnerFriendlySavedPosition(value: string) {
+  return String(value || "")
+    .replace(/^Passages\s+Level\s+\d+\s*[-—]\s*/i, "")
+    .replace(/^Passages\s+Level\s+\d+\s*/i, "")
+    .trim();
+}
+
 function learnerPositionLine(params: {
   context: any;
   name: string;
   requestedUnit: number;
   requestedClass?: number;
   review?: boolean;
+  guideKind?: "grammar" | "vocabulary";
 }) {
   const user = params.context?.user || {};
   const currentUnit = user["Current Unit"] || params.context?.currentUnit || "";
   const currentLesson = user["Current Lesson"] || params.context?.currentLesson || "";
   const greeting = params.name ? `${params.name}, ` : "";
-  const savedPosition = [currentUnit, currentLesson].filter(Boolean).join(" — ");
-  const target = params.review
-    ? `Unit ${params.requestedUnit} review`
-    : `Unit ${params.requestedUnit}, Class ${params.requestedClass}`;
+  const savedPosition = learnerFriendlySavedPosition([currentUnit, currentLesson].filter(Boolean).join(" — "));
+  const target = params.guideKind
+    ? `Unit ${params.requestedUnit} ${params.guideKind === "grammar" ? "grammar guide" : "vocabulary guide"}`
+    : params.review
+      ? `Unit ${params.requestedUnit} review`
+      : `Unit ${params.requestedUnit}, Class ${params.requestedClass}`;
 
   if (savedPosition) {
-    return `${greeting}your saved position in English OS is **${savedPosition}**.\n\nFor this request, the active learning target is **${target}**.`;
+    return `${greeting}I found your saved position in English OS: **${savedPosition}**.\n\nYou asked for **${target}**, so we’ll work there now.`;
   }
-  return `${greeting}the active learning target for this request is **${target}**.`;
+  return `${greeting}we’ll work on **${target}** now.`;
 }
 
 function stripModelOwnedIdentity(reply: string) {
@@ -167,6 +188,14 @@ function stripModelOwnedIdentity(reply: string) {
       return !/^(Unit \d+\b|Class:|Global Class|Lesson:|Book pages:|PDF pages:|Class sections:|Main focus:|Grammar focus:|Language support:|Vocabulary focus:)/i.test(clean);
     })
     .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function sanitizeLearnerFacingReply(reply: string) {
+  return String(reply || "")
+    .replace(/\bPassages\s+Level\s+\d+\s*[-—]\s*/gi, "")
+    .replace(/\bPassages\s+Level\s+\d+\s*/gi, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -202,6 +231,20 @@ function limitToOpeningClassTurn(reply: string, sectionList: string) {
   return (boundary >= 0 ? lines.slice(0, boundary) : lines).join("\n").trim();
 }
 
+function learnerFriendlyFocus(value: string) {
+  return String(value || "")
+    .trim()
+    .replace(/^The class is not grammar-centered;\s*(?:it focuses on|its real focus is|the real focus is)\s*/i, "")
+    .replace(/^This class is not grammar-centered;\s*(?:it focuses on|its real focus is|the real focus is|the main skill focus is)\s*/i, "")
+    .replace(/^Not grammar-centered;\s*(?:the visible skill focus is|the skill focus is)\s*/i, "")
+    .replace(/^The class is grammar-centered,\s*with\s*/i, "")
+    .replace(/^This class is grammar-centered,\s*with\s*/i, "")
+    .replace(/^The class is grammar-centered,\s*/i, "")
+    .replace(/^This class is grammar-centered,\s*/i, "")
+    .replace(/\.$/, "")
+    .trim();
+}
+
 function renderClassReply(params: {
   body: string;
   position: string;
@@ -212,27 +255,40 @@ function renderClassReply(params: {
   const identity = params.identity;
   const title = unitTitle(params.unit);
   const displayLesson = identity.lessonTitle || identity.sections.split("+")[0]?.trim() || "Class session";
-  const formattedSkillFocus = identity.skillFocus.split(",").map((item) => item.trim()).filter(Boolean).join(", ");
+  const formattedSkillFocus = learnerFriendlyFocus(identity.skillFocus.split(",").map((item) => item.trim()).filter(Boolean).join(", "));
   const teachingBody = limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections);
+  const reference = [
+    `class ${params.localClass}`,
+    displayLesson,
+  ].filter(Boolean).join(" · ");
   const header = [
     `# Unit ${params.unit}${title ? ` — ${title}` : ""}`,
-    `**Class:** ${params.localClass}`,
-    `**Lesson:** ${displayLesson}`,
-    identity.sections ? `**Learning path:** ${identity.sections}` : "",
-    formattedSkillFocus ? `**Skill focus:** ${formattedSkillFocus}` : "",
-    identity.bookPages || identity.pdfPages
-      ? `**Course reference:** Book ${identity.bookPages || "—"} · PDF ${identity.pdfPages || "—"}`
-      : "",
+    `Today we’ll work on **${reference}**.`,
+    "",
+    formattedSkillFocus
+      ? `Our focus is **${formattedSkillFocus}**. I’ll guide you one step at a time, then you’ll answer a short task before we continue.`
+      : "I’ll guide you one step at a time, then you’ll answer a short task before we continue.",
+    "",
+    identity.sections ? `We’ll start with **${identity.sections.split("+")[0]?.trim() || displayLesson}**.` : "",
   ].filter(Boolean);
 
-  return [params.position, "", ...header, "", teachingBody]
+  return sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]
     .join("\n")
-    .trim();
+    .trim());
 }
 
 function renderReviewReply(params: { body: string; position: string; unit: number }) {
   const title = unitTitle(params.unit);
   return [params.position, "", `# Unit ${params.unit}${title ? ` — ${title}` : ""} — Strategic review`, "", stripModelOwnedIdentity(params.body)]
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function renderUnitGuideReply(params: { body: string; position: string; unit: number; kind: "grammar" | "vocabulary" }) {
+  const title = unitTitle(params.unit);
+  const label = params.kind === "grammar" ? "Grammar guide" : "Vocabulary guide";
+  return [params.position, "", `# Unit ${params.unit}${title ? ` — ${title}` : ""} — ${label}`, "", stripModelOwnedIdentity(params.body)]
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -394,6 +450,7 @@ ${PASSAGES_TEACHER_STYLE_GUIDANCE}
 
 Answer as English OS Coach. If the learner is in review mode, use summary + mini-checkpoint. If correcting answers, use Cambridge-style correction.
 If recent conversation shows a class in progress, continue with only the next pedagogical step, ask one compact task, and wait. Do not repeat the class header or claim evaluation, approval, progress, or logging without learner evidence and a successful write action.
+Learner-facing wording rule: never expose course-brand/source labels from the saved position. If the saved position contains a course-level source prefix before the unit, show only the unit. You may use the unit title, lesson, class, and mode only.
       `.trim(),
     },
     {
@@ -462,6 +519,115 @@ ${JSON.stringify(params.conversationHistory).slice(0, 2500)}
   ];
 }
 
+function buildVisualVocabularyInput(context: any, message: string, image: CoachImageAttachment, conversationHistory: CoachMessage[]) {
+  return [
+    {
+      role: "system",
+      content: `
+${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}
+
+You are helping an English learner expand vocabulary from a photo.
+
+Rules:
+- Analyze only the image supplied in this request.
+- Do not claim the image was stored, uploaded to Drive, or added to English OS history.
+- Do not log progress or say "Session logged".
+- Identify visible objects, people, places, actions, colors, materials, and useful everyday/professional chunks.
+- Teach mostly in English, with brief Spanish support only for meaning.
+- Be concise, useful, and interactive.
+- If uncertain about an object, say "It looks like..." instead of asserting.
+- End with a short speaking task using 5 selected words from the image.
+
+Output format:
+1. Quick image description
+2. Vocabulary from the photo: English word/chunk — Spanish meaning — example sentence
+3. Useful pronunciation or collocation notes
+4. Your turn: ask the learner to describe the image in 3–4 sentences
+      `.trim(),
+    },
+    {
+      role: "user",
+      content: [
+        {
+          type: "input_text",
+          text: `
+Learner request:
+${message || "Analyze this image and help me learn vocabulary from it."}
+
+Learner context:
+${JSON.stringify(context).slice(0, 3500)}
+
+Recent conversation:
+${JSON.stringify(conversationHistory).slice(0, 1600)}
+
+Image name: ${image.name || "learner-photo"}
+Image MIME type: ${image.mimeType || "image/jpeg"}
+          `.trim(),
+        },
+        {
+          type: "input_image",
+          image_url: image.dataUrl,
+        },
+      ],
+    },
+  ];
+}
+
+function buildUnitGuideInput(params: {
+  message: string;
+  learnerContext: any;
+  unit: number;
+  kind: "grammar" | "vocabulary";
+  contracts: ReturnType<typeof loadUnitTeachingContracts>;
+  conversationHistory: CoachMessage[];
+}) {
+  const guideFocus =
+    params.kind === "grammar"
+      ? "grammar structures, usage rules, Spanish explanations for difficult transfer points, common mistakes, and a short practice check"
+      : "high-value chunks, collocations, Spanish meanings, English examples, pronunciation tips, and a short practice check";
+
+  return [
+    {
+      role: "system",
+      content: `
+${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}
+
+${PASSAGES_TEACHER_STYLE_GUIDANCE}
+
+Hard rule for unit ${params.kind} guide:
+- Build the guide from the seven supplied class teaching contracts, not from generic course knowledge.
+- Do not ask the learner for the class index; it is supplied below.
+- Do not mention Passages, Student Book, class packs, filenames, retrieval, metadata, or internal source limitations.
+- Do not produce a long exhaustive dump. Prioritize what the learner can actually practise now.
+- Organize the guide by 3-5 practical priorities across the unit, not by dumping all seven classes.
+- Include ${guideFocus}.
+- Keep the guide under 850 words and stop with a compact 4-item practice task.
+- If a class has no relevant ${params.kind} item, skip it silently instead of saying it is missing.
+- Use English for the guide with concise Spanish support for rules/meanings.
+      `.trim(),
+    },
+    {
+      role: "user",
+      content: `
+USER REQUEST:
+${params.message}
+
+ACTIVE GUIDE UNIT: ${params.unit}
+GUIDE TYPE: ${params.kind}
+
+VERIFIED TEACHING CONTRACTS FOR ALL SEVEN CLASSES:
+${params.contracts.map((item) => `CLASS ${item.localClass}\n${item.contract}`).join("\n\n")}
+
+ENGLISH OS LEARNER CONTEXT:
+${JSON.stringify(params.learnerContext).slice(0, 5000)}
+
+RECENT CONVERSATION:
+${JSON.stringify(params.conversationHistory).slice(0, 2500)}
+      `.trim(),
+    },
+  ];
+}
+
 async function callCoachModel(input: any[], maxOutputTokens = OPENAI_COACH_MAX_OUTPUT_TOKENS) {
   if (!OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY.");
   const response = await fetch("https://api.openai.com/v1/responses", {
@@ -504,12 +670,33 @@ export async function coachPost(request: Request) {
   const body = (await request.json()) as CoachRequest;
   const message = String(body.message || "").trim();
   const conversationHistory = Array.isArray(body.conversationHistory) ? body.conversationHistory.slice(-12) : [];
-  if (!message) return NextResponse.json({ ok: false, error: "Message is required." }, { status: 400 });
+  const image = body.image?.dataUrl ? body.image : null;
+  if (!message && !image) return NextResponse.json({ ok: false, error: "Message is required." }, { status: 400 });
 
   const context = await getLearnerContext(email);
   const user = context?.user || {};
   const learnerId = user["Learner ID"] || context?.learnerId || email;
   const currentUnit = user["Current Unit"] || context?.currentUnit || "";
+
+  if (image) {
+    if (!/^data:image\/(png|jpe?g|webp);base64,/i.test(image.dataUrl)) {
+      return NextResponse.json({ ok: false, error: "Unsupported image format." }, { status: 400 });
+    }
+
+    const openaiData = await callCoachModel(
+      buildVisualVocabularyInput(context, message || "Analyze this image for English vocabulary.", image, conversationHistory),
+      2200
+    );
+    const reply = sanitizeLearnerFacingReply(getOutputText(openaiData));
+    const u = usage(openaiData);
+    return NextResponse.json({
+      ok: true,
+      agent: "coach",
+      reply,
+      source: "Ephemeral Visual Vocabulary Analysis",
+      usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
+    });
+  }
 
   if (isGiveClassQuestion(message)) {
     const { unit, localClass, globalClass } = classCoordinates(message, currentUnit);
@@ -591,8 +778,45 @@ export async function coachPost(request: Request) {
     });
   }
 
+  const guideKind = unitGuideKind(message);
+  if (guideKind) {
+    const unit = extractRequestedUnitNumber(message) || Number(String(currentUnit).match(/\d{1,2}/)?.[0] || 0);
+    if (!unit) return NextResponse.json({ ok: false, error: "I need a unit number for the guide." }, { status: 400 });
+
+    const contracts = loadUnitTeachingContracts(unit);
+    const missing = contracts.filter((item) => !item.contract);
+    if (missing.length) {
+      return NextResponse.json(
+        { ok: false, error: `Missing teaching contracts for unit ${unit}: ${missing.map((item) => item.localClass).join(", ")}` },
+        { status: 500 }
+      );
+    }
+
+    const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
+      buildUnitGuideInput({ message, learnerContext: context, unit, kind: guideKind, contracts, conversationHistory })
+    );
+    assertNoMetadataFallback(modelBody);
+    const position = learnerPositionLine({
+      context,
+      name: learnerName(context, clerkUser?.firstName || ""),
+      requestedUnit: unit,
+      guideKind,
+    });
+    const reply = renderUnitGuideReply({ body: modelBody, position, unit, kind: guideKind });
+    const u = usage(openaiData);
+    return NextResponse.json({
+      ok: true,
+      agent: "coach",
+      reply,
+      activeUnit: unit,
+      source: `Seven Local Teaching Contracts + ${guideKind} Guide Prompt`,
+      deterministicIdentity: true,
+      usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
+    });
+  }
+
   const openaiData = await callCoachModel(buildGeneralInput(context, message, conversationHistory));
-  const reply = getOutputText(openaiData);
+  const reply = sanitizeLearnerFacingReply(getOutputText(openaiData));
   const u = usage(openaiData);
   return NextResponse.json({
     ok: true,

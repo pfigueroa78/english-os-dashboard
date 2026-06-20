@@ -49,140 +49,312 @@ body {
   margin-bottom: 0.35rem;
 }
 
-/* Coach restore UI: only two zones. Left = controls/materials. Right = chat. */
-main > div > header {
-  display: none !important;
+/* Coach styles are deliberately scoped so the landing page remains independent. */
+.coach-shell {
+  --coach-bg: #eef1f4;
+  --coach-panel: #f7f8fa;
+  --coach-chat: #fbfcfd;
+  --coach-composer: rgba(247, 248, 250, 0.96);
+  --coach-text: #1f2933;
+  --coach-muted: #64707d;
+  --coach-border: #d7dde3;
+  --coach-accent: #5d6b78;
+  --coach-accent-hover: #485661;
+  background: var(--coach-bg);
+  color: var(--coach-text);
 }
 
+.coach-shell[data-theme="sage"] {
+  --coach-bg: #e4ece2;
+  --coach-panel: #f1f7ee;
+  --coach-chat: #fbfff8;
+  --coach-composer: rgba(241, 247, 238, 0.96);
+  --coach-text: #203126;
+  --coach-muted: #5c7565;
+  --coach-border: #bfd2c1;
+  --coach-accent: #52735d;
+  --coach-accent-hover: #405e4a;
+}
+
+.coach-shell[data-theme="sand"] {
+  --coach-bg: #f3eadb;
+  --coach-panel: #fff8ec;
+  --coach-chat: #fffdf8;
+  --coach-composer: rgba(255, 248, 236, 0.96);
+  --coach-text: #352a1c;
+  --coach-muted: #7a6a56;
+  --coach-border: #e2cfb5;
+  --coach-accent: #8a6843;
+  --coach-accent-hover: #705335;
+}
+
+.coach-shell[data-theme="blue"] {
+  --coach-bg: #e9eff7;
+  --coach-panel: #f4f8ff;
+  --coach-chat: #fbfdff;
+  --coach-composer: rgba(244, 248, 255, 0.96);
+  --coach-text: #1d2b3d;
+  --coach-muted: #5f7086;
+  --coach-border: #c9d6e8;
+  --coach-accent: #4f6f95;
+  --coach-accent-hover: #3f5b7c;
+}
+
+.coach-shell[data-theme="slate"] {
+  --coach-bg: #20262d;
+  --coach-panel: #29313a;
+  --coach-chat: #f5f7f8;
+  --coach-composer: rgba(35, 42, 50, 0.97);
+  --coach-text: #edf1f4;
+  --coach-muted: #aab4be;
+  --coach-border: #46515c;
+  --coach-accent: #778696;
+  --coach-accent-hover: #8998a8;
+}
+
+.coach-shell > div > header { display: none; }
+.coach-toolbar,
+.coach-sidebar > section { background: var(--coach-panel); border-color: var(--coach-border); }
+.coach-shell {
+  --coach-message-font-size: 0.9rem;
+  --coach-message-line-height: 1.32;
+  height: 100dvh;
+  overflow: hidden;
+}
+.coach-shell[data-text-size="compact"] {
+  --coach-message-font-size: 0.86rem;
+  --coach-message-line-height: 1.28;
+}
+.coach-shell[data-text-size="large"] {
+  --coach-message-font-size: 1rem;
+  --coach-message-line-height: 1.48;
+}
+.coach-layout,
+.coach-chat,
+.coach-messages { min-height: 0; }
+.coach-chat { background: var(--coach-chat); border-color: var(--coach-border); color: #17212b; }
+.coach-composer { background: var(--coach-composer); border-color: var(--coach-border); color: var(--coach-text); padding-bottom: 0.28rem; padding-top: 0.3rem; }
+.coach-theme-select,
+.coach-input,
+.coach-textarea { background: var(--coach-panel); border-color: var(--coach-border); color: var(--coach-text); }
+.coach-textarea {
+  background: #fff;
+  border-color: color-mix(in srgb, var(--coach-accent) 42%, var(--coach-border));
+  color: #17212b;
+  font-size: 0.92rem;
+  line-height: 1.25;
+  min-height: 2.18rem;
+  max-height: 9rem;
+  overflow-y: auto;
+}
+.coach-textarea::placeholder { color: #8a96a3; font-size: 0.86rem; }
+.coach-textarea:focus { border-color: var(--coach-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--coach-accent) 16%, transparent); }
+.coach-input-row { min-width: 0; }
+.coach-icon-button,
+.coach-action { border-color: var(--coach-border); color: inherit; padding: 0.4rem 0.65rem; }
+.coach-icon-button:hover,
+.coach-action:hover { background: color-mix(in srgb, var(--coach-accent) 12%, transparent); }
+.coach-action-primary { background: var(--coach-accent) !important; color: white !important; }
+.coach-action-primary:hover { background: var(--coach-accent-hover) !important; }
+.coach-panel-toggle { height: 2rem; width: 2rem; padding: 0 !important; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; border-width: 1px; }
+.coach-font-controls { align-items: center; display: inline-flex; gap: 0.25rem; }
+.coach-font-button {
+  align-items: center;
+  border: 1px solid var(--coach-border);
+  border-radius: 999px;
+  color: var(--coach-text);
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 800;
+  height: 1.75rem;
+  justify-content: center;
+  line-height: 1;
+  min-width: 1.9rem;
+  padding: 0 0.42rem;
+}
+.coach-font-button:hover:not(:disabled) { background: color-mix(in srgb, var(--coach-accent) 12%, transparent); }
+.coach-font-button:disabled { cursor: default; opacity: 0.38; }
+.coach-status { align-items: center; color: var(--coach-muted); display: inline-flex; gap: 0.35rem; min-width: 0; font-size: 0.76rem; }
+.coach-status-logo { height: 1.45rem; width: 1.45rem; }
+.coach-status-brand { color: var(--coach-text); font-size: 0.94rem; font-weight: 800; letter-spacing: -0.01em; }
+.coach-status-separator { opacity: 0.55; }
+.coach-svg-icon { display: block; height: 1rem; width: 1rem; }
+
+.coach-message {
+  width: 100%;
+  color: #17212b;
+  padding: 0.42rem 0 0.48rem 0;
+  position: relative;
+}
+.coach-message-teacher { padding-right: 0; }
+.coach-message-user { padding-right: 0; }
+.coach-message + .coach-message { border-top: 1px solid #e1e6ea; }
+.coach-message-label { margin-bottom: 0.08rem; color: #6b7783; font-size: 0.64rem; font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; }
+.coach-message-actions { position: absolute; right: 0; top: 0.35rem; display: flex; gap: 0.35rem; }
+.coach-message-teacher .prose::before {
+  content: "";
+  float: right;
+  height: 2.35rem;
+  width: 10.9rem;
+}
+.coach-message-teacher .coach-message-label { padding-right: 11.25rem; }
+.coach-message-user .coach-message-actions { display: none; }
+.coach-message-user .coach-message-label,
+.coach-message-user .prose,
+.coach-message-user .prose :where(p):not(:where([class~="not-prose"] *)) { display: inline; }
+.coach-message-user .coach-message-label { margin: 0 0.32rem 0 0; vertical-align: baseline; }
+.coach-message-user .coach-message-label p::after { content: " —"; }
+.coach-message-user .prose { white-space: normal; }
+.coach-message-user .coach-message-label p { display: inline; margin: 0; }
+.coach-message-user .coach-message-label p::after { content: " \2014"; }
+.coach-message-user .prose p { display: inline; margin: 0; }
+.coach-user-message-line { align-items: baseline; display: flex; flex-wrap: wrap; gap: 0.35rem; min-width: 0; }
+.coach-user-message-label { color: #6b7783; flex: 0 0 auto; font-size: 0.64rem; font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; }
+.coach-user-message-line .prose { display: inline; min-width: 0; white-space: normal; }
+.coach-user-message-line .prose :where(p):not(:where([class~="not-prose"] *)) { display: inline; margin: 0; }
+.coach-round-button,
+.coach-send-button {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-weight: 700;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+.coach-round-button {
+  background: #f7f8fa;
+  border: 1px solid #d5dbe1;
+  color: #27313a;
+  height: 1.85rem;
+  width: 1.85rem;
+}
+.coach-round-button:hover { background: #e9edf1; border-color: #b9c2cb; }
+.coach-speaking-button { background: #111; border-color: #111; color: white; }
+.coach-speaking-button:hover { background: #2a2a2a; border-color: #2a2a2a; }
+.coach-feedback-active,
+.coach-feedback-active:hover {
+  background: #111;
+  border-color: #111;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--coach-accent) 24%, transparent);
+  color: white;
+}
+.coach-send-button {
+  background: #111;
+  border: 1px solid #111;
+  color: white;
+  flex: 0 0 auto;
+  font-size: 1.05rem;
+  height: 2.25rem;
+  width: 2.25rem;
+}
+.coach-send-button:hover { background: #2a2a2a; border-color: #2a2a2a; }
+.coach-mic-button { flex: 0 0 auto; height: 2.25rem; width: 2.25rem; }
+.coach-mic-active { background: #111; border-color: #111; color: white; }
+.coach-plus-button { flex: 0 0 auto; font-size: 1.2rem; height: 2.25rem; width: 2.25rem; }
+.coach-image-preview {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid var(--coach-border);
+  border-radius: 0.85rem;
+  display: inline-flex;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+  max-width: min(100%, 26rem);
+  padding: 0.25rem 0.35rem;
+}
+.coach-image-preview img {
+  border-radius: 0.6rem;
+  height: 2rem;
+  object-fit: cover;
+  width: 2rem;
+}
+.coach-image-preview span { color: #5f6d78; font-size: 0.78rem; min-width: 0; }
+.coach-image-preview button {
+  align-items: center;
+  border-radius: 999px;
+  color: #5f6d78;
+  display: inline-flex;
+  font-size: 1rem;
+  height: 1.35rem;
+  justify-content: center;
+  width: 1.35rem;
+}
+.coach-image-preview button:hover { background: #e9edf1; color: #111; }
+.coach-message-image {
+  border-radius: 1rem;
+  margin: 0.25rem 0 0.45rem;
+  max-width: min(100%, 18rem);
+  overflow: hidden;
+}
+.coach-message-image img {
+  display: block;
+  height: auto;
+  max-height: 16rem;
+  object-fit: cover;
+  width: 100%;
+}
+.coach-message .prose { color: #17212b; font-size: var(--coach-message-font-size); line-height: var(--coach-message-line-height); }
+.coach-message .prose :where(p, li, ul, ol, strong, em, span, h1, h2, h3, h4):not(:where([class~="not-prose"] *)) { color: #17212b; }
+.coach-message .prose :where(p, ul, ol, blockquote, pre, table):not(:where([class~="not-prose"] *)) { margin-top: 0.12rem; margin-bottom: 0.12rem; }
+.coach-message .prose :where(li):not(:where([class~="not-prose"] *)) { margin-top: 0.04rem; margin-bottom: 0.04rem; }
+.coach-message .prose :where(h1, h2):not(:where([class~="not-prose"] *)) { font-size: 1.18rem; line-height: 1.3; }
+.coach-message .prose :where(h3, h4):not(:where([class~="not-prose"] *)) { font-size: 1.04rem; line-height: 1.3; }
+.coach-message .prose :where(blockquote):not(:where([class~="not-prose"] *)) { background: #f0f3f5; border-left-color: var(--coach-accent); margin: 0.35rem 0; }
+.coach-thinking { align-items: center; color: #5f6d78; display: inline-flex; gap: 0.1rem; padding: 0.6rem 0; }
+.coach-thinking-dots { display: inline-flex; letter-spacing: 0.08em; margin-left: 0.08rem; }
+.coach-thinking-dots span { animation: coach-thinking-dot 1.2s infinite ease-in-out; opacity: 0.25; }
+.coach-thinking-dots span:nth-child(2) { animation-delay: 0.16s; }
+.coach-thinking-dots span:nth-child(3) { animation-delay: 0.32s; }
+.coach-thinking-stop {
+  align-items: center;
+  background: #111;
+  border: 1px solid #111;
+  border-radius: 999px;
+  color: white;
+  display: inline-flex;
+  height: 1.55rem;
+  justify-content: center;
+  margin-left: 0.35rem;
+  width: 1.55rem;
+}
+.coach-thinking-stop:hover { background: #2a2a2a; border-color: #2a2a2a; }
+.coach-thinking-stop .coach-svg-icon { height: 0.72rem; width: 0.72rem; }
+@keyframes coach-thinking-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-0.08rem); }
+}
+
+/* Neutralize legacy saturated sidebar actions without changing their behavior. */
+.coach-sidebar button.bg-blue-600,
+.coach-sidebar button.bg-emerald-600,
+.coach-sidebar button.bg-cyan-600 { background: var(--coach-accent) !important; color: white !important; }
+.coach-sidebar button[class*="border-emerald"],
+.coach-sidebar button[class*="border-cyan"] { border-color: var(--coach-border) !important; color: inherit !important; }
+.coach-workbook-card {
+  background: color-mix(in srgb, var(--coach-panel) 92%, white 8%);
+  border-color: var(--coach-border);
+  color: var(--coach-text);
+}
+.coach-workbook-card p:last-of-type { color: var(--coach-muted); }
+.coach-workbook-link {
+  background: #111;
+  border: 1px solid #111;
+  color: white;
+}
+.coach-workbook-link:hover { background: #2a2a2a; border-color: #2a2a2a; }
+
 @media (min-width: 1024px) {
-  main > div {
-    max-width: 100vw !important;
-    min-height: 100dvh !important;
-    padding: 0.75rem !important;
-  }
-
-  main > div > div.grid {
-    grid-template-columns: 360px minmax(0, 1fr) !important;
-    gap: 0.75rem !important;
-    align-items: stretch !important;
-    flex: 1 1 auto !important;
-  }
-
-  main > div > div.grid > aside {
-    order: 1 !important;
-    height: calc(100dvh - 1.5rem) !important;
-    overflow-y: auto !important;
-  }
-
-  main > div > div.grid > section {
-    order: 2 !important;
-    height: calc(100dvh - 1.5rem) !important;
-    border-radius: 1rem !important;
-    background: #f8fafc !important;
-    color: #0f172a !important;
-    box-shadow: none !important;
-  }
-
-  main > div > div.grid > section > div:first-child {
-    padding: 1rem 1.25rem !important;
-    background: #f8fafc !important;
-  }
-
-  main > div > div.grid > aside > section {
-    border-radius: 1rem !important;
-    padding: 0.85rem !important;
-  }
+  .coach-layout-open { grid-template-columns: 340px minmax(0, 1fr); }
+  .coach-layout-closed { grid-template-columns: minmax(0, 1fr); }
+  .coach-chat,
+  .coach-sidebar { height: calc(100dvh - 3.75rem); max-height: calc(100dvh - 3.75rem); }
+  .coach-sidebar { overflow-y: auto; }
 }
 
 @media (max-width: 640px) {
-  html,
-  body {
-    max-width: 100%;
-    overflow-x: clip;
-  }
-
-  main > div {
-    padding: 0.5rem !important;
-  }
-}
-
-/* Chat messages should read as a clean lesson document, not large bubbles. */
-main > div > div.grid > section {
-  background: #f8fafc !important;
-  color: #0f172a !important;
-}
-
-main > div > div.grid > section > div:first-child {
-  background: #f8fafc !important;
-}
-
-main > div > div.grid > section article {
-  width: 100% !important;
-  max-width: 100% !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  padding: 0.35rem 0 1rem !important;
-  color: #0f172a !important;
-}
-
-main > div > div.grid > section article + article {
-  border-top: 1px solid #e2e8f0 !important;
-  padding-top: 1rem !important;
-}
-
-main > div > div.grid > section article > div:first-child {
-  margin-bottom: 0.25rem !important;
-}
-
-main > div > div.grid > section article > div:first-child p {
-  color: #64748b !important;
-  font-size: 0.68rem !important;
-}
-
-main > div > div.grid > section article .prose,
-main > div > div.grid > section article .prose :where(p, li, ul, ol, strong, em, span, h1, h2, h3, h4):not(:where([class~="not-prose"] *)) {
-  color: #0f172a !important;
-}
-
-main > div > div.grid > section article .prose {
-  font-size: 0.96rem !important;
-  line-height: 1.58 !important;
-}
-
-main > div > div.grid > section article .prose :where(h1, h2):not(:where([class~="not-prose"] *)) {
-  font-size: 1.2rem !important;
-  line-height: 1.35 !important;
-}
-
-main > div > div.grid > section article .prose :where(h3, h4):not(:where([class~="not-prose"] *)) {
-  font-size: 1.05rem !important;
-  line-height: 1.35 !important;
-}
-
-main > div > div.grid > section article .prose :where(blockquote):not(:where([class~="not-prose"] *)) {
-  background: #eef2ff !important;
-  border-left-color: #3b82f6 !important;
-  color: #0f172a !important;
-  font-size: 0.94rem !important;
-  line-height: 1.5 !important;
-  margin-top: 0.45rem !important;
-  margin-bottom: 0.45rem !important;
-}
-
-main > div > div.grid > section footer {
-  background: #020617 !important;
-}
-
-main > div > div.grid > section footer textarea {
-  min-height: 6rem !important;
-}
-
-article.bg-slate-800:has(.prose) {
-  background: #ffffff !important;
-  color: #0f172a !important;
-  border: 1px solid #e2e8f0;
+  html, body { max-width: 100%; overflow: hidden; }
+  .coach-toolbar { position: sticky; top: 0; z-index: 20; }
+  .coach-message-teacher { padding-right: 2.35rem; }
+  .coach-message-user { padding-right: 0; }
+  .coach-message-actions { flex-direction: column; gap: 0.25rem; }
 }

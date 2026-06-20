@@ -45,6 +45,8 @@ test("teacher prompt keeps the general pedagogy workflow", async () => {
   expect(source).toContain("Review-mode architecture");
   expect(source).toContain("Never show Global Class numbers");
   expect(source).toContain("Never attribute a teacher-created simulation");
+  expect(source).toContain("Start with one short teacher reaction");
+  expect(source).toContain("Almost there — keep going");
 });
 
 test("coach API routes class requests to the pedagogy-first handler", async () => {
@@ -63,6 +65,8 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("Seven Local Teaching Contracts + Review Pedagogy Prompt");
   expect(handler).toContain("activeUnit: unit");
   expect(handler).toContain("Do not use the class-mode metadata header");
+  expect(handler).toContain("sanitizeLearnerFacingReply");
+  expect(handler).toContain("never expose course-brand/source labels");
   expect(handler).toContain("finish with exactly four numbered checkpoint items");
   expect(handler).toContain("deterministicIdentity: true");
   expect(handler).toContain("renderClassReply");
@@ -96,10 +100,29 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
 test("coach UI follows the explicitly requested unit for materials", async () => {
   const source = readFile("src/app/coach/page.tsx");
   expect(source).toContain("data.activeUnit ? `Unit ${data.activeUnit}`");
-  expect(source).toContain("setStudyUnit(unit)");
+  expect(source).toContain("normalizeUnitValue");
+  expect(source).toContain("setStudyUnit(normalizeUnitValue(unit))");
+  expect(source).not.toContain("setCurrentUnit(unit);\n        setStudyUnit(unit)");
+  expect(source).toContain("const nextMode: StudyMode = isReviewRequest(message) ? \"review\" : isGuideRequest(message) ? \"guide\" : \"class\"");
+  expect(source).toContain("setStudyMode(nextMode)");
+  expect(source).toContain("setStudyClassNumber(data.activeClass && nextMode === \"class\" ? Number(data.activeClass) : null)");
+  expect(source).toContain("Posición guardada:");
   expect(source).toContain("No pude completar la respuesta esta vez");
   expect(source).toContain("readJsonResponse(response)");
   expect(source).toContain("El servidor no devolvió contenido");
+});
+
+test("unit grammar and vocabulary guides use verified unit contracts", async () => {
+  const handler = readFile("src/lib/coachRouteHandler.ts");
+  const source = readFile("src/app/coach/page.tsx");
+
+  expect(handler).toContain("function unitGuideKind");
+  expect(handler).toContain("buildUnitGuideInput");
+  expect(handler).toContain("VERIFIED TEACHING CONTRACTS FOR ALL SEVEN CLASSES");
+  expect(handler).toContain("Do not ask the learner for the class index");
+  expect(handler).toContain("Do not mention Passages");
+  expect(handler).toContain("renderUnitGuideReply");
+  expect(source).toContain("No menciones Passages ni pidas el índice.");
 });
 
 test("explicit unit and class switches always use class delivery", async () => {
@@ -196,13 +219,24 @@ test("application-owned identity precedes model-authored teaching", async () => 
   const renderer = handler.slice(rendererStart, rendererEnd);
 
   expect(renderer).toContain("const teachingBody = limitToOpeningClassTurn");
-  expect(renderer).toContain('return [params.position, "", ...header, "", teachingBody]');
+  expect(renderer).toContain('return sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]');
   expect(renderer).toContain('`# Unit ${params.unit}${title ? ` — ${title}` : ""}`');
-  expect(renderer).toContain('`**Class:** ${params.localClass}`');
-  expect(renderer).toContain('`**Lesson:** ${displayLesson}`');
+  expect(renderer).toContain('Today we’ll work on **${reference}**.');
+  expect(renderer).toContain('Our focus is **${formattedSkillFocus}**');
+  expect(renderer).toContain('We’ll start with **${identity.sections.split("+")[0]?.trim() || displayLesson}**.');
+  expect(renderer).toContain("learnerFriendlyFocus");
+  expect(renderer).not.toContain("const courseReference");
+  expect(renderer).not.toContain("bookPages");
+  expect(renderer).not.toContain("pdfPages");
+  expect(renderer).not.toContain("Book ${");
+  expect(renderer).not.toContain("PDF ${");
+  expect(handler).toContain("not grammar-centered");
+  expect(handler).toContain("Book pages:|PDF pages:");
   expect(handler).toContain("The application renders learner position and lesson identity");
-  expect(handler).toContain("your saved position in English OS is");
-  expect(handler).toContain("For this request, the active learning target is");
+  expect(handler).toContain("I found your saved position in English OS");
+  expect(handler).toContain("You asked for **${target}**, so we’ll work there now.");
+  expect(handler).toContain(".replace(/\\bPassages\\s+Level\\s+\\d+\\s*[-—]\\s*/gi, \"\")");
+  expect(handler).not.toContain("For this request, the active learning target is");
   expect(handler).toContain("/\\bclass pack\\b/i");
 });
 
@@ -227,6 +261,9 @@ test("class opening cannot invent evaluation or logging results", async () => {
   expect(behavior).toContain("SESSION CLOSING — ONLY AFTER LEARNER EVIDENCE");
   expect(behavior).toContain("Never claim that a session was logged unless");
   expect(behavior).toContain("only after confirmed success");
+  expect(behavior).toContain("Teacher reaction");
+  expect(behavior).toContain("Use 👍 when the answer is clearly correct or strong");
+  expect(handler).toContain("Cambridge-style correction");
 });
 
 test("UTF-8 integrity is enforced before every build", async () => {
@@ -251,6 +288,19 @@ test("UTF-8 integrity is enforced before every build", async () => {
   for (const source of files) {
     for (const marker of forbidden) expect(source).not.toContain(marker);
   }
+});
+
+test("visual vocabulary image analysis is ephemeral and learner-safe", async () => {
+  const fs = await import("node:fs/promises");
+  const source = await fs.readFile("src/lib/coachRouteHandler.ts", "utf8");
+
+  expect(source).toContain("type CoachImageAttachment");
+  expect(source).toContain("buildVisualVocabularyInput");
+  expect(source).toContain("Ephemeral Visual Vocabulary Analysis");
+  expect(source).toContain("Do not claim the image was stored");
+  expect(source).toContain("Do not log progress");
+  expect(source).toContain("input_image");
+  expect(source).toContain("Unsupported image format");
 });
 
 test("contract generation and audit preserve the complete lesson title", async () => {

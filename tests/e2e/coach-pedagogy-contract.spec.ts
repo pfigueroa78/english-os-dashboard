@@ -137,6 +137,8 @@ test("explicit unit and class switches always use class delivery", async () => {
     "Cambiemos a la unidad 4 clase 1",
     "Let's switch to Unit 4 Class 1",
     "Dame clase 1 de unidad 4",
+    "posiciona mi clase a partir de hoy en la unidad 2, clase 1",
+    "actualiza mi clase a Unit 2 Class 1",
     "Empecemos clase",
   ];
   for (const request of classRequests) expect(isGiveClassQuestion(request), request).toBe(true);

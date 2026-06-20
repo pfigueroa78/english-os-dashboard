@@ -84,7 +84,9 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("limitToOpeningClassTurn");
   expect(handler).toContain("stripPrematureClassClosure");
   expect(handler).toContain("This response is the opening turn of a teacher-led class");
-  expect(handler).toContain("Keep this opening turn under 450 words");
+  expect(handler).toContain("Keep this opening turn under 280 words");
+  expect(handler).toContain("strategic opening architecture");
+  expect(handler).toContain("no inventar **Class 1**");
   expect(handler).toContain("openingSectionInstruction");
   expect(handler).toContain("Activate the topic only");
   expect(handler).toContain("Do not teach grammar rules, structure tables, or vocabulary lists yet");
@@ -108,6 +110,9 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(source).toContain("setStudyClassNumber(data.activeClass && nextMode === \"class\" ? Number(data.activeClass) : null)");
   expect(source).toContain("Posición guardada:");
   expect(source).toContain("No pude completar la respuesta esta vez");
+  expect(source).toContain("no inventes Class 1");
+  expect(source).toContain("apertura estratégica por etapas");
+  expect(source).not.toContain("finish with an evaluation gate before progress can advance");
   expect(source).toContain("readJsonResponse(response)");
   expect(source).toContain("El servidor no devolvió contenido");
 });
@@ -132,6 +137,7 @@ test("explicit unit and class switches always use class delivery", async () => {
     "Cambiemos a la unidad 4 clase 1",
     "Let's switch to Unit 4 Class 1",
     "Dame clase 1 de unidad 4",
+    "Empecemos clase",
   ];
   for (const request of classRequests) expect(isGiveClassQuestion(request), request).toBe(true);
 
@@ -225,9 +231,9 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(handler).toContain("function ensureTerminalPeriod");
   expect(handler).toContain("Learning objective|Communication mission");
   expect(handler).toContain("?::\\*\\*|\\*\\*:|:");
-  expect(renderer).toContain('Today we’ll work on **${reference}**.');
-  expect(renderer).toContain('Our focus is **${formattedSkillFocus}**');
-  expect(renderer).toContain('We’ll start with **${identity.sections.split("+")[0]?.trim() || displayLesson}**.');
+  expect(renderer).toContain('Current target: **${reference}**.');
+  expect(renderer).toContain('Focus: **${formattedSkillFocus}**');
+  expect(renderer).toContain('First micro-step: **${identity.sections.split("+")[0]?.trim() || displayLesson}**.');
   expect(renderer).toContain("learnerFriendlyFocus");
   expect(renderer).not.toContain("const courseReference");
   expect(renderer).not.toContain("bookPages");

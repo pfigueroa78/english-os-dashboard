@@ -67,9 +67,61 @@ function unitGuideKind(message: string): "grammar" | "vocabulary" | null {
   return null;
 }
 
-function classCoordinates(message: string, fallbackUnit?: string) {
+function firstNumericValue(...values: unknown[]) {
+  for (const value of values) {
+    const match = String(value || "").match(/\d{1,2}/);
+    if (match?.[0]) return Number(match[0]);
+  }
+  return null;
+}
+
+function localClassFromAnyClassNumber(value: number | null, unit: number | null) {
+  if (!value) return null;
+  if (value >= 1 && value <= 7) return value;
+  if (unit && value > 7) {
+    const local = value - (unit - 1) * 7;
+    if (local >= 1 && local <= 7) return local;
+  }
+  return null;
+}
+
+function resolveCurrentLocalClass(context: any, unit: number | null) {
+  const user = context?.user || {};
+  const recommended = context?.recommendedCurrentPosition || {};
+  const current = context?.currentPosition || {};
+  const learningState = context?.learningState || {};
+  const missionControl = context?.missionControl?.missionControl || context?.missionControl || {};
+  const classIndex = context?.currentClassIndex || context?.classContent?.currentClassIndex || {};
+  const rawClass = firstNumericValue(
+    user["Current Class"],
+    user.CurrentClass,
+    user["Class"],
+    recommended.currentClass,
+    recommended.classNumber,
+    recommended.globalClass,
+    current.currentClass,
+    current.classNumber,
+    current.globalClass,
+    learningState.currentClass,
+    learningState.classNumber,
+    learningState.globalClass,
+    missionControl.currentClass,
+    missionControl.classNumber,
+    missionControl.globalClass,
+    classIndex.classNumber,
+    classIndex.localClass,
+    classIndex.globalClass,
+    user["Current Position"],
+    context?.currentLesson,
+    missionControl.currentLesson,
+  );
+  return localClassFromAnyClassNumber(rawClass, unit);
+}
+
+function classCoordinates(message: string, fallbackUnit?: string, context?: any) {
   const unit = extractRequestedUnitNumber(message) || Number(String(fallbackUnit || "").match(/\d{1,2}/)?.[0] || 0) || null;
-  const localClass = extractRequestedClassNumber(message);
+  const explicitClass = extractRequestedClassNumber(message);
+  const localClass = explicitClass || resolveCurrentLocalClass(context, unit);
   const globalClass = unit && localClass ? (unit - 1) * 7 + localClass : null;
   return { unit, localClass, globalClass };
 }
@@ -291,13 +343,13 @@ function renderClassReply(params: {
   ].filter(Boolean).join(" · ");
   const header = [
     `# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`,
-    `Today we’ll work on **${reference}**.`,
+    `Current target: **${reference}**.`,
     "",
     formattedSkillFocus
-      ? `Our focus is **${formattedSkillFocus}**. I’ll guide you one step at a time, then you’ll answer a short task before we continue.`
-      : "I’ll guide you one step at a time, then you’ll answer a short task before we continue.",
+      ? `Focus: **${formattedSkillFocus}**. We’ll work one step at a time.`
+      : "We’ll work one step at a time.",
     "",
-    identity.sections ? `We’ll start with **${identity.sections.split("+")[0]?.trim() || displayLesson}**.` : "",
+    identity.sections ? `First micro-step: **${identity.sections.split("+")[0]?.trim() || displayLesson}**.` : "",
   ].filter(Boolean);
 
   return readableMarkdownPunctuation(sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]
@@ -425,7 +477,8 @@ Hard rule for class delivery:
 - Never expose placeholders such as Extract exact or Extract vocabulary.
 - Use the class pack and lesson context as teacher planning input.
 - This response is the opening turn of a teacher-led class, not the entire class transcript.
-- Give the learning objective, communication mission, and only the first active teaching section. Explain briefly, give no more than two examples, ask one compact learner task, and stop for the learner's answer.
+- Use this strategic opening architecture: current target -> why this matters -> first micro-step -> one learner task.
+- Give the learning objective in one short sentence, the communication mission in one short sentence, and only the first active teaching section. Explain briefly, give no more than two examples, ask one compact learner task, and stop for the learner's answer.
 - Do not teach the second or later active section yet. Do not include the evaluation gate, recap, achievement, weakness, correction priority, next action, approval, or session-log language in this opening turn.
 - Continue with the next active section only after the learner answers. Present the evaluation gate only after the learner has practised the active sections.
 - If the source is incomplete, say what is missing instead of inventing.
@@ -434,7 +487,7 @@ Hard rule for class delivery:
 - Do not invent or attribute an audio transcript or answer key to people named in the source.
 - The application renders learner position and lesson identity. Do not write the learner-position paragraph, Unit/Class header, Global Class, lesson title, pages, class sections, main focus, language support, or vocabulary-focus metadata.
 - Start with the learning objective, then the communication mission, then the exact active teaching sections.
-- Keep this opening turn under 450 words and avoid nested generic wrappers.
+- Keep this opening turn under 280 words and avoid nested generic wrappers.
 - Teach interactively: explain briefly, model, ask the learner to produce, and make the final instruction unmistakable.
 - Every grammar form and vocabulary item taught must be supported by the active teaching contract or visible source. Do not broaden the lesson with adjacent language systems.
 - Use English for teaching. Use brief Spanish support only for a genuinely difficult B1/B2 concept or a known transfer error.
@@ -727,9 +780,23 @@ export async function coachPost(request: Request) {
   }
 
   if (isGiveClassQuestion(message)) {
-    const { unit, localClass, globalClass } = classCoordinates(message, currentUnit);
+    const { unit, localClass, globalClass } = classCoordinates(message, currentUnit, context);
     if (!unit || !localClass) {
-      return NextResponse.json({ ok: false, error: "I need both unit and class to teach a class." }, { status: 400 });
+      const savedUnit = unit ? `Unit ${unit}` : "tu unidad actual";
+      return NextResponse.json({
+        ok: true,
+        agent: "coach",
+        reply: [
+          `Encontré ${savedUnit}, pero no tengo un número de clase activo confiable.`,
+          "",
+          "Para no inventar **Class 1** ni mezclar una lección guardada con otra clase, dime exactamente cuál quieres abrir.",
+          "",
+          "Puedes escribir, por ejemplo: **Dame la clase 2 de la unidad 4**.",
+        ].join("\n"),
+        activeUnit: unit || null,
+        activeClass: null,
+        source: "Current Class Clarification",
+      });
     }
 
     const classContent = await callEnglishOSAction("getClassContent", {

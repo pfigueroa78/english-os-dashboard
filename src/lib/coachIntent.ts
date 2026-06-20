@@ -36,6 +36,8 @@ export function isGiveClassQuestion(message: string) {
     "ensename la clase",
     "continua la clase",
     "continuar la clase",
+    "empecemos clase",
+    "empezar clase",
     "empezar la clase",
     "empecemos la clase",
     "give me class",

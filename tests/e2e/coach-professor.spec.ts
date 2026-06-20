@@ -29,7 +29,13 @@ async function expectVisibleText(page: any, pattern: RegExp) {
 
 test("loads coach or sign in", async ({ page }) => {
   await openCoach(page);
-  await expect(page.getByRole("button", { name: /sign in/i }).or(page.getByText(/Objetivo activo/i).first())).toBeVisible();
+  await expect(
+    page
+      .getByRole("button", { name: /sign in/i })
+      .or(page.getByText(/Objetivo activo/i).first())
+      .or(page.getByText(/PROFESOR DIJO/i).first())
+      .first(),
+  ).toBeVisible();
 });
 
 test("shows simplified two-column shell", async ({ page }) => {

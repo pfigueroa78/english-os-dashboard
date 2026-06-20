@@ -28,11 +28,12 @@ export function isActiveClassRequest(message: string) {
   if (reviewRequest) return false;
 
   const hasClassWord = /\b(clase|class|lesson)\b/.test(normalized);
+  const classModeRequest = /\b(?:modo clase|modo de clase|class mode|lesson mode)\b/.test(normalized);
   const asksCurrent = /\b(mi|mis|actual|activa|hoy|guardada|posicion|posicionada|donde|voy|quede|quedamos|continue|continua|continuar|continuemos|sigamos|seguir|empecemos|empezar|arranquemos|arrancar|abre|abrir|start|continue|resume|open|today|current|saved)\b/.test(normalized);
   const shortClassRequest = /^(dame|dar|quiero|quisiera|vamos|abre|abrir|empecemos|empezar|arranquemos|continua|continuar|continuemos|sigamos|start|open|continue|resume)\s+(la\s+)?(clase|class|lesson)\b/.test(normalized);
   const resumeCurrentRequest = /\b(continua|continuar|continuemos|sigamos|seguir|retoma|retomar|resume|continue)\b.*\b(donde|voy|quede|quedamos|actual|hoy|current|saved)\b/.test(normalized);
 
-  return (hasClassWord && asksCurrent) || shortClassRequest || resumeCurrentRequest;
+  return classModeRequest || (hasClassWord && asksCurrent) || shortClassRequest || resumeCurrentRequest;
 }
 
 export function isGiveClassQuestion(message: string) {

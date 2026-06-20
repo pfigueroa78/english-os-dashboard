@@ -13,6 +13,7 @@ import {
   normalizeCoachMessage as normalize,
   unitGuideIntentKind,
 } from "@/lib/coachIntent";
+import { createCoachSessionContract, legacyActiveClass, legacyActiveUnit } from "@/modules/coach-session/contract";
 import passagesUnitTitles from "../../knowledge/passages-unit-titles.json";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
@@ -873,6 +874,14 @@ export async function coachPost(request: Request) {
   const user = context?.user || {};
   const learnerId = user["Learner ID"] || context?.learnerId || email;
   const currentUnit = user["Current Unit"] || context?.currentUnit || "";
+  const currentLesson = user["Current Lesson"] || context?.currentLesson || "";
+  const sessionFor = (input: Parameters<typeof createCoachSessionContract>[0]) =>
+    createCoachSessionContract({
+      savedUnit: currentUnit,
+      savedLesson: currentLesson,
+      source: "english_os",
+      ...input,
+    });
 
   if (image) {
     if (!/^data:image\/(png|jpe?g|webp);base64,/i.test(image.dataUrl)) {
@@ -885,10 +894,12 @@ export async function coachPost(request: Request) {
     );
     const reply = sanitizeLearnerFacingReply(getOutputText(openaiData));
     const u = usage(openaiData);
+    const session = sessionFor({ mode: "conversation", activeUnit: currentUnit, resourcesUnit: currentUnit });
     return NextResponse.json({
       ok: true,
       agent: "coach",
       reply,
+      session,
       source: "Ephemeral Visual Vocabulary Analysis",
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
@@ -910,6 +921,7 @@ export async function coachPost(request: Request) {
     }
     if (!unit || !localClass) {
       const savedUnit = unit ? `Unit ${unit}` : "tu unidad actual";
+      const session = sessionFor({ mode: "class", activeUnit: unit, activeClassNumber: null, resourcesUnit: unit });
       return NextResponse.json({
         ok: true,
         agent: "coach",
@@ -920,8 +932,9 @@ export async function coachPost(request: Request) {
           "",
           "Puedes escribir, por ejemplo: **Dame la clase 2 de la unidad 4**.",
         ].join("\n"),
-        activeUnit: unit || null,
-        activeClass: null,
+        session,
+        activeUnit: legacyActiveUnit(session),
+        activeClass: legacyActiveClass(session),
         source: "Current Class Clarification",
       });
     }
@@ -952,13 +965,21 @@ export async function coachPost(request: Request) {
     });
     const reply = renderClassReply({ body: modelBody, position, identity, unit, localClass });
     const u = usage(openaiData);
+    const session = sessionFor({
+      mode: "class",
+      activeUnit: unit,
+      activeClassNumber: localClass,
+      lessonTitle: identity.lessonTitle,
+      resourcesUnit: unit,
+    });
 
     return NextResponse.json({
       ok: true,
       agent: "coach",
       reply,
-      activeUnit: unit,
-      activeClass: localClass,
+      session,
+      activeUnit: legacyActiveUnit(session),
+      activeClass: legacyActiveClass(session),
       source: "Local Class Pack + Pedagogy Prompt",
       deterministicIdentity: true,
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
@@ -990,11 +1011,13 @@ export async function coachPost(request: Request) {
     });
     const reply = renderReviewReply({ body: modelBody, position, unit });
     const u = usage(openaiData);
+    const session = sessionFor({ mode: "review", activeUnit: unit, resourcesUnit: unit });
     return NextResponse.json({
       ok: true,
       agent: "coach",
       reply,
-      activeUnit: unit,
+      session,
+      activeUnit: legacyActiveUnit(session),
       source: "Seven Local Teaching Contracts + Review Pedagogy Prompt",
       deterministicIdentity: true,
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
@@ -1027,11 +1050,13 @@ export async function coachPost(request: Request) {
     });
     const reply = renderUnitGuideReply({ body: modelBody, position, unit, kind: guideKind });
     const u = usage(openaiData);
+    const session = sessionFor({ mode: "guide", activeUnit: unit, resourcesUnit: unit });
     return NextResponse.json({
       ok: true,
       agent: "coach",
       reply,
-      activeUnit: unit,
+      session,
+      activeUnit: legacyActiveUnit(session),
       source: `Seven Local Teaching Contracts + ${guideKind} Guide Prompt`,
       deterministicIdentity: true,
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
@@ -1041,10 +1066,12 @@ export async function coachPost(request: Request) {
   const openaiData = await callCoachModel(buildGeneralInput(context, message, conversationHistory));
   const reply = sanitizeLearnerFacingReply(getOutputText(openaiData));
   const u = usage(openaiData);
+  const session = sessionFor({ mode: "conversation", activeUnit: currentUnit, resourcesUnit: currentUnit });
   return NextResponse.json({
     ok: true,
     agent: "coach",
     reply,
+    session,
     usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
   });
 }

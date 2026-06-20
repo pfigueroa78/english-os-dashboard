@@ -228,7 +228,7 @@ body {
 .coach-message-user .prose p { display: inline; margin: 0; }
 .coach-user-message-line { align-items: baseline; display: block; margin: 0; min-width: 0; white-space: pre-wrap; }
 .coach-user-message-label { color: #6b7783; flex: 0 0 auto; font-size: 0.64rem; font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; }
-.coach-user-message-content { font-size: 0.95rem; line-height: 1.35; }
+.coach-user-message-content { display: inline-block; font-size: 0.95rem; line-height: 1.35; margin-left: 0.22rem; }
 .coach-round-button,
 .coach-send-button {
   align-items: center;

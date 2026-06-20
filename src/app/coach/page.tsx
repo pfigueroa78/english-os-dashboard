@@ -123,9 +123,10 @@ function buildInitialCoachMessage(unit: string, lesson: string, progressSnapshot
   return [
     greeting,
     "",
-    `Unidad activa: ${unitLabel(unit)}`,
-    `Clase / lección actual: ${lesson || "Clase guiada de English OS"}`,
-    progressSnapshot ? `Avance: ${progressSnapshot}` : "",
+    `Unidad activa: ${unitLabel(unit)}.`,
+    "",
+    `Clase / lección actual: ${lesson || "Clase guiada de English OS"}.`,
+    progressSnapshot ? `Avance: ${progressSnapshot}.` : "",
     "",
     "Puedes empezar la explicación, pedir una pista, practicar gramática o responder la evaluación pendiente. Yo mantengo el avance bloqueado hasta que la evaluación quede aprobada.",
   ].filter((line, index, lines) => line || lines[index - 1]).join("\n");
@@ -258,29 +259,39 @@ function bestEnglishSpeechVoice() {
 
 function getSavedPosition(data: any) {
   const context = data?.context || {};
+  const user = context?.user || data?.user || {};
   const recommended = context?.recommendedCurrentPosition || data?.recommendedCurrentPosition || {};
   const current = context?.currentPosition || data?.currentPosition || {};
   const missionControl = context?.missionControl || data?.missionControl || context || {};
+  const sources = [
+    {
+      unit: recommended.unit || recommended.currentUnit,
+      lesson: recommended.lesson || recommended.currentLesson,
+    },
+    {
+      unit: current.unit || current.currentUnit,
+      lesson: current.lesson || current.currentLesson,
+    },
+    {
+      unit: user["Current Unit"] || user.CurrentUnit || user.unit || user.currentUnit,
+      lesson: user["Current Lesson"] || user.CurrentLesson || user.lesson || user.currentLesson,
+    },
+    {
+      unit: missionControl.currentUnit || missionControl.CurrentUnit || missionControl.unit,
+      lesson: missionControl.currentLesson || missionControl.CurrentLesson || missionControl.lesson,
+    },
+  ];
+  const pairedSource = sources.find((source) => String(source.unit || "").trim());
+  if (pairedSource) {
+    return {
+      unit: String(pairedSource.unit || "").trim(),
+      lesson: String(pairedSource.lesson || "").trim(),
+    };
+  }
 
   return {
-    unit:
-      recommended.unit ||
-      recommended.currentUnit ||
-      current.unit ||
-      current.currentUnit ||
-      missionControl.currentUnit ||
-      missionControl.CurrentUnit ||
-      missionControl.unit ||
-      "",
-    lesson:
-      recommended.lesson ||
-      recommended.currentLesson ||
-      current.lesson ||
-      current.currentLesson ||
-      missionControl.currentLesson ||
-      missionControl.CurrentLesson ||
-      missionControl.lesson ||
-      "",
+    unit: "",
+    lesson: String(sources.find((source) => String(source.lesson || "").trim())?.lesson || "").trim(),
   };
 }
 

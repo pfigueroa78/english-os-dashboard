@@ -147,6 +147,19 @@ test("explicit unit and class switches always use class delivery", async () => {
   expect(isGiveClassQuestion("¿Qué gramática tiene la unidad 4?")).toBe(false);
 });
 
+test("saved position uses unit and lesson from the same context source", async () => {
+  const source = readFile("src/app/coach/page.tsx");
+  const start = source.indexOf("function getSavedPosition");
+  const end = source.indexOf("function firstProgressValue", start);
+  const getSavedPositionSource = source.slice(start, end);
+
+  expect(getSavedPositionSource).toContain("const sources = [");
+  expect(getSavedPositionSource).toContain("const pairedSource = sources.find");
+  expect(getSavedPositionSource).toContain("unit: String(pairedSource.unit");
+  expect(getSavedPositionSource).toContain("lesson: String(pairedSource.lesson");
+  expect(getSavedPositionSource).not.toContain("recommended.lesson ||\n      recommended.currentLesson ||\n      current.lesson");
+});
+
 test("all 84 class packs expose usable learner-safe teaching contracts", async () => {
   const filenames = fs.readdirSync(packsRoot).filter((filename) => filename.endsWith(".md")).sort();
   expect(filenames).toHaveLength(84);

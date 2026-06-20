@@ -72,7 +72,7 @@
     white-space: nowrap;
   }
 
-  #coach-sidebar > section:nth-of-type(n + 3) {
+  #coach-sidebar > section:nth-of-type(4) {
     display: none;
   }
 

@@ -137,6 +137,8 @@ test("explicit unit and class switches always use class delivery", async () => {
     "Cambiemos a la unidad 4 clase 1",
     "Let's switch to Unit 4 Class 1",
     "Dame clase 1 de unidad 4",
+    "Dame la clase 1 de la unidad 5",
+    "Start Unit 5, Class 1",
     "posiciona mi clase a partir de hoy en la unidad 2, clase 1",
     "actualiza mi clase a Unit 2 Class 1",
     "Empecemos clase",
@@ -259,7 +261,7 @@ test("application-owned identity precedes model-authored teaching", async () => 
   const renderer = handler.slice(rendererStart, rendererEnd);
 
   expect(renderer).toContain("const teachingBody = ensureMinimumOpeningTask");
-  expect(renderer).toContain("limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections)");
+  expect(renderer).toContain("stripClassConfirmationDetours(limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections))");
   expect(renderer).toContain('return readableMarkdownPunctuation(sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]');
   expect(renderer).toContain('`# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`');
   expect(handler).toContain("function readableMarkdownPunctuation");
@@ -282,6 +284,15 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(handler).toContain("The application renders learner position and lesson identity");
   expect(handler).toContain("encontré tu clase activa en English OS");
   expect(handler).toContain("Trabajaremos con **${target}**.");
+  expect(handler).toContain("Explicit class request wins");
+  expect(handler).toContain("Teach the requested unit and class even if the saved English OS position is different");
+  expect(handler).toContain('do not offer "continue my current class" alternatives');
+  expect(handler).toContain("stripClassConfirmationDetours");
+  expect(handler).toContain("current english os position is different");
+  expect(handler).toContain("without your confirmation");
+  expect(handler).toContain("continue my current class");
+  expect(handler).toContain("found your (?:saved|current) (?:position|english os position)");
+  expect(handler).toContain("you asked for\\s+unit\\s+\\d+");
   expect(handler).toContain(".replace(/\\bPassages\\s+Level\\s+\\d+\\s*[-—]\\s*/gi, \"\")");
   expect(handler).not.toContain("For this request, the active learning target is");
   expect(handler).toContain("/\\bclass pack\\b/i");

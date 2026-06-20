@@ -302,6 +302,10 @@ function stripModelOwnedIdentity(reply: string) {
       const clean = line.replace(/[*#]/g, "").trim();
       return !/^(Unit \d+\b|Class:|Global Class|Lesson:|Book pages:|PDF pages:|Class sections:|Main focus:|Grammar focus:|Language support:|Vocabulary focus:)/i.test(clean);
     })
+    .filter((line) => {
+      const clean = line.replace(/[*#]/g, "").trim();
+      return !/(?:found your (?:saved|current) (?:position|english os position)|you asked for\s+unit\s+\d+|active learning target for this request|for this request,? the active)/i.test(clean);
+    })
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -374,6 +378,19 @@ function limitToOpeningClassTurn(reply: string, sectionList: string) {
   return (boundary >= 0 ? lines.slice(0, boundary) : lines).join("\n").trim();
 }
 
+const CLASS_CONFIRMATION_DETOUR = /(?:current english os position is different|saved position is different|different from unit|can't start|cannot start|without your confirmation|please reply with one option|continue my current class|continue the current class|review unit \d+ overview)/i;
+
+function stripClassConfirmationDetours(reply: string) {
+  const lines = String(reply || "").split("\n");
+  const boundary = lines.findIndex((line) => CLASS_CONFIRMATION_DETOUR.test(line.replace(/[*"“”]/g, "").trim()));
+  const kept = boundary >= 0 ? lines.slice(0, boundary) : lines;
+  return kept
+    .filter((line) => !/^\s*\d+\.\s*["“]?(?:start unit|continue my current class|continue the current class|review unit)/i.test(line.trim()))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function learnerFriendlyFocus(value: string) {
   return String(value || "")
     .trim()
@@ -424,7 +441,10 @@ function renderClassReply(params: {
   const title = unitTitle(params.unit);
   const displayLesson = identity.lessonTitle || identity.sections.split("+")[0]?.trim() || "Class session";
   const formattedSkillFocus = learnerFriendlyFocus(identity.skillFocus.split(",").map((item) => item.trim()).filter(Boolean).join(", "));
-  const teachingBody = ensureMinimumOpeningTask(limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections), identity);
+  const teachingBody = ensureMinimumOpeningTask(
+    stripClassConfirmationDetours(limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections)),
+    identity,
+  );
   const reference = [
     `class ${params.localClass}`,
     displayLesson,
@@ -551,6 +571,7 @@ function buildClassInput(params: {
   conversationHistory: CoachMessage[];
 }) {
   const identity = classIdentity(params.classPack);
+  const explicitCoordinates = hasExplicitClassCoordinates(params.message);
   return [
     {
       role: "system",
@@ -579,6 +600,14 @@ Hard rule for class delivery:
 - Teach interactively: explain briefly, model, ask the learner to produce, and make the final instruction unmistakable.
 - Every grammar form and vocabulary item taught must be supported by the active teaching contract or visible source. Do not broaden the lesson with adjacent language systems.
 - Use English for teaching. Use brief Spanish support only for a genuinely difficult B1/B2 concept or a known transfer error.
+${explicitCoordinates ? `
+
+Explicit class request wins:
+- The learner explicitly asked for a unit and class number. That request is authoritative for this turn.
+- Teach the requested unit and class even if the saved English OS position is different.
+- Use the saved position only as background context, not as a permission gate.
+- Do not ask for confirmation, do not offer "continue my current class" alternatives, and do not switch back to the saved/current class.
+` : ""}
 
 ${openingSectionInstruction(identity.sections)}
       `.trim(),

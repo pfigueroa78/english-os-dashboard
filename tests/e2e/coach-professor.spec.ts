@@ -213,9 +213,15 @@ test("resource players are width-contained and load on demand", async () => {
   expect(source).toContain("coach-image-preview");
   expect(source).toContain('SvgIcon name="mic"');
   expect(source).toContain('name={loading ? "stop" : "send"}');
-  expect(styles).toContain(".coach-plus-button");
+  expect(source).toContain("coach-text-input-shell");
+  expect(source).toContain("coach-inline-plus-button");
+  expect(styles).toContain(".coach-text-input-shell");
+  expect(styles).toContain(".coach-inline-plus-button");
+  expect(styles).toContain("bottom: 0.46rem;");
   expect(styles).toContain(".coach-image-preview");
   expect(styles).toContain(".coach-message-image");
+  expect(styles).toContain("max-width: 7rem;");
+  expect(styles).toContain("max-height: 7rem;");
   expect(source).toContain("Cargar reproductor");
   expect(source).toContain("expandedResourceId === resource.resourceId");
   expect(source).toContain("min-w-0 max-w-full overflow-hidden");

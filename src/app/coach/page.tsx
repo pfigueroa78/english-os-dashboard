@@ -1062,24 +1062,26 @@ export default function CoachPage() {
                   className="hidden"
                   onChange={(event) => handleImageSelected(event.target.files?.[0])}
                 />
-                <button type="button" onClick={() => imageInputRef.current?.click()} disabled={!hydrated || loading} className="coach-round-button coach-plus-button" aria-label="Agregar foto para vocabulario" title="Agregar foto">
-                  +
-                </button>
-                <textarea
-                  ref={textareaRef}
-                  rows={1}
-                  value={input}
-                  disabled={!hydrated}
-                  onChange={(event) => setInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      sendMessage();
-                    }
-                  }}
-                  placeholder="Escribe tu respuesta en inglés o pide una explicación..."
-                  className="coach-textarea flex-1 resize-none rounded-xl border px-3 py-1.5 text-base outline-none"
-                />
+                <div className="coach-text-input-shell flex-1">
+                  <button type="button" onClick={() => imageInputRef.current?.click()} disabled={!hydrated || loading} className="coach-inline-plus-button" aria-label="Agregar foto para vocabulario" title="Agregar foto">
+                    +
+                  </button>
+                  <textarea
+                    ref={textareaRef}
+                    rows={1}
+                    value={input}
+                    disabled={!hydrated}
+                    onChange={(event) => setInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                    placeholder="Escribe tu respuesta en inglés o pide una explicación..."
+                    className="coach-textarea block w-full resize-none rounded-xl border py-1.5 pl-11 pr-3 text-base outline-none"
+                  />
+                </div>
                 <button type="button" onClick={startDictation} disabled={!hydrated || loading} className={`coach-round-button coach-mic-button ${listening ? "coach-mic-active" : ""}`} aria-label={listening ? "Detener micrófono" : "Dictar con micrófono"} title={listening ? "Detener micrófono" : "Micrófono"}>
                   <SvgIcon name="mic" />
                 </button>

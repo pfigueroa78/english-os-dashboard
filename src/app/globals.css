@@ -150,6 +150,24 @@ body {
 .coach-textarea::placeholder { color: #8a96a3; font-size: 0.86rem; }
 .coach-textarea:focus { border-color: var(--coach-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--coach-accent) 16%, transparent); }
 .coach-input-row { min-width: 0; }
+.coach-text-input-shell { min-width: 0; position: relative; }
+.coach-inline-plus-button {
+  align-items: center;
+  border-radius: 999px;
+  bottom: 0.46rem;
+  color: #8a96a3;
+  display: inline-flex;
+  font-size: 1.35rem;
+  height: 1.35rem;
+  justify-content: center;
+  left: 0.65rem;
+  line-height: 1;
+  position: absolute;
+  width: 1.35rem;
+  z-index: 2;
+}
+.coach-inline-plus-button:hover:not(:disabled) { background: #eef1f4; color: #111; }
+.coach-inline-plus-button:disabled { opacity: 0.42; }
 .coach-icon-button,
 .coach-action { border-color: var(--coach-border); color: inherit; padding: 0.4rem 0.65rem; }
 .coach-icon-button:hover,
@@ -250,7 +268,6 @@ body {
 .coach-send-button:hover { background: #2a2a2a; border-color: #2a2a2a; }
 .coach-mic-button { flex: 0 0 auto; height: 2.25rem; width: 2.25rem; }
 .coach-mic-active { background: #111; border-color: #111; color: white; }
-.coach-plus-button { flex: 0 0 auto; font-size: 1.2rem; height: 2.25rem; width: 2.25rem; }
 .coach-image-preview {
   align-items: center;
   background: rgba(255, 255, 255, 0.74);
@@ -281,15 +298,16 @@ body {
 }
 .coach-image-preview button:hover { background: #e9edf1; color: #111; }
 .coach-message-image {
-  border-radius: 1rem;
-  margin: 0.25rem 0 0.45rem;
-  max-width: min(100%, 18rem);
+  border: 1px solid #d7dde3;
+  border-radius: 0.8rem;
+  margin: 0.25rem 0 0.35rem;
+  max-width: 7rem;
   overflow: hidden;
 }
 .coach-message-image img {
   display: block;
   height: auto;
-  max-height: 16rem;
+  max-height: 7rem;
   object-fit: cover;
   width: 100%;
 }

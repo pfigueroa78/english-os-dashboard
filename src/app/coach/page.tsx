@@ -93,6 +93,11 @@ const SPECIALIST_AGENTS: SpecialistAgent[] = [
   },
 ];
 
+function getLearnerDisplayName(user: ReturnType<typeof useUser>["user"]) {
+  const candidate = user?.firstName || user?.fullName || user?.username || "";
+  return String(candidate).trim();
+}
+
 function extractUnitNumber(value: string) {
   const match = String(value || "").match(/(\d{1,2})/);
   return match?.[1] || "";
@@ -107,13 +112,16 @@ function normalizeUnitValue(value: string) {
   return unitLabel(value);
 }
 
-function buildTodayClassMessage(unit: string, lesson: string) {
-  return buildInitialCoachMessage(unit, lesson);
+function buildTodayClassMessage(unit: string, lesson: string, learnerName = "") {
+  return buildInitialCoachMessage(unit, lesson, "", learnerName);
 }
 
-function buildInitialCoachMessage(unit: string, lesson: string, progressSnapshot = "") {
+function buildInitialCoachMessage(unit: string, lesson: string, progressSnapshot = "", learnerName = "") {
+  const greeting = learnerName
+    ? `Hola, ${learnerName}. Soy tu profesor de English OS y hoy vamos a trabajar paso a paso.`
+    : "Hola. Soy tu profesor de English OS y hoy vamos a trabajar paso a paso.";
   return [
-    "Hola, Pedro. Soy tu profesor de English OS y hoy vamos a trabajar paso a paso.",
+    greeting,
     "",
     `Unidad activa: ${unitLabel(unit)}`,
     `Clase / lección actual: ${lesson || "Clase guiada de English OS"}`,
@@ -169,7 +177,7 @@ function initialCoachMessages(): Message[] {
   return [
     {
       role: "coach",
-      content: E2E_DEMO ? buildTodayClassMessage(DEMO_UNIT, DEMO_LESSON) : "Loading your English OS class plan...",
+      content: E2E_DEMO ? buildTodayClassMessage(DEMO_UNIT, DEMO_LESSON, "Pedro") : "Loading your English OS class plan...",
     },
   ];
 }
@@ -319,7 +327,8 @@ export default function CoachPage() {
   const [authTimedOut, setAuthTimedOut] = useState(false);
   const authReady = isLoaded || authTimedOut || E2E_DEMO;
   const signedIn = isSignedIn || E2E_DEMO || authTimedOut;
-  const email = user?.primaryEmailAddress?.emailAddress || "pfigueroamiranda@gmail.com";
+  const email = user?.primaryEmailAddress?.emailAddress || (E2E_DEMO ? "demo@english-os.local" : "");
+  const learnerName = getLearnerDisplayName(user) || (E2E_DEMO ? "Pedro" : "");
 
   const [messages, setMessages] = useState<Message[]>(initialCoachMessages);
   const [input, setInput] = useState("");
@@ -360,6 +369,9 @@ export default function CoachPage() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recordedAudioChunksRef = useRef<Blob[]>([]);
   const coachAbortRef = useRef<AbortController | null>(null);
   const agentAbortRef = useRef<AbortController | null>(null);
 
@@ -422,7 +434,7 @@ export default function CoachPage() {
     }
 
     loadUserContext();
-  }, [authReady, signedIn, conversationStorageKey]);
+  }, [authReady, signedIn, conversationStorageKey, learnerName]);
 
   useEffect(() => {
     if (!activeStudyUnit || E2E_DEMO) return;
@@ -496,7 +508,7 @@ export default function CoachPage() {
 
       setMessages((current) => {
         const shouldReplace = current.length === 1 && current[0]?.content.includes("Loading your English OS class plan");
-        return shouldReplace ? [{ role: "coach", content: buildInitialCoachMessage(resolvedUnit, lesson, progressSnapshot) }] : current;
+        return shouldReplace ? [{ role: "coach", content: buildInitialCoachMessage(resolvedUnit, lesson, progressSnapshot, learnerName) }] : current;
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown context error";
@@ -872,7 +884,115 @@ export default function CoachPage() {
     setSpeechPaused(false);
   }
 
-  function startDictation() {
+  function insertDictationText(transcript: string) {
+    const cleaned = transcript.replace(/\s+/g, " ").trim();
+    if (!cleaned || !/[a-záéíóúñü]/i.test(cleaned)) return false;
+    setInput((current) => [current.trim(), cleaned].filter(Boolean).join(current.trim() ? " " : ""));
+    window.setTimeout(() => textareaRef.current?.focus(), 0);
+    return true;
+  }
+
+  async function transcribeRecordedAudio(audioBlob: Blob) {
+    if (audioBlob.size < 1200) {
+      setError("No escuché suficiente audio. Intenta hablar un poco más cerca del micrófono.");
+      return;
+    }
+
+    const formData = new FormData();
+    const mimeType = audioBlob.type || "audio/webm";
+    const extension = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
+    formData.append("audio", audioBlob, `english-os-dictation.${extension}`);
+    formData.append("language", "en");
+
+    try {
+      const response = await fetch("/api/english-os/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.text) {
+        throw new Error(data?.error || "Transcription failed.");
+      }
+      if (!insertDictationText(String(data.text))) {
+        setError("No pude convertir el audio en texto útil. Intenta hablar más claro y con menos ruido de fondo.");
+      }
+    } catch {
+      setError("No pude transcribir el audio. Puedes escribir tu respuesta o intentar de nuevo.");
+    }
+  }
+
+  function stopMediaDictation() {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    }
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+    mediaRecorderRef.current = null;
+    setListening(false);
+    window.setTimeout(() => textareaRef.current?.focus(), 0);
+  }
+
+  async function startMediaDictation() {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      return false;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+    const preferredType = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+      "audio/ogg;codecs=opus",
+    ].find((type) => MediaRecorder.isTypeSupported(type));
+    const recorder = preferredType ? new MediaRecorder(stream, { mimeType: preferredType }) : new MediaRecorder(stream);
+    recordedAudioChunksRef.current = [];
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) recordedAudioChunksRef.current.push(event.data);
+    };
+    recorder.onstop = () => {
+      const chunks = recordedAudioChunksRef.current;
+      recordedAudioChunksRef.current = [];
+      stream.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+      mediaRecorderRef.current = null;
+      setListening(false);
+      window.setTimeout(() => textareaRef.current?.focus(), 0);
+      if (chunks.length) {
+        const audioBlob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+        void transcribeRecordedAudio(audioBlob);
+      }
+    };
+    mediaStreamRef.current = stream;
+    mediaRecorderRef.current = recorder;
+    setListening(true);
+    recorder.start();
+    window.setTimeout(() => textareaRef.current?.focus(), 0);
+    return true;
+  }
+
+  async function startDictation() {
+    if (mediaRecorderRef.current) {
+      stopMediaDictation();
+      return;
+    }
+
+    try {
+      if (await startMediaDictation()) return;
+    } catch {
+      setError("No pude abrir el micrófono para grabar. Intentaré con el dictado básico del navegador.");
+    }
+
+    startBrowserDictation();
+  }
+
+  function startBrowserDictation() {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setError("Tu navegador no soporta dictado por micrófono. Puedes escribir tu respuesta normalmente.");
@@ -889,17 +1009,15 @@ export default function CoachPage() {
 
     const recognition = new SpeechRecognition();
     recognition.lang = "en-US";
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
+    recognition.interimResults = false;
+    recognition.continuous = false;
+    recognition.maxAlternatives = 3;
     recognition.onresult = (event: any) => {
       const transcript = Array.from(event.results)
         .map((result: any) => result?.[0]?.transcript || "")
         .join(" ")
         .trim();
-      if (transcript) {
-        setInput((current) => [current, transcript].filter(Boolean).join(current ? " " : ""));
-        window.setTimeout(() => textareaRef.current?.focus(), 0);
-      }
+      if (transcript && !insertDictationText(transcript)) setError("No pude convertir el audio en texto útil. Intenta hablar más claro y con menos ruido.");
     };
     recognition.onerror = () => {
       setError("No pude escuchar el micrófono. Revisa permisos del navegador e intenta otra vez.");

@@ -399,6 +399,9 @@ body {
   .coach-status span:not(.coach-status-brand) {
     display: none;
   }
+  #coach-sidebar > section:nth-of-type(n + 3) {
+    display: none;
+  }
   .coach-layout {
     grid-template-columns: minmax(0, 1fr);
   }

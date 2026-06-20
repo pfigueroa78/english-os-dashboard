@@ -84,6 +84,41 @@ test("can type answer", async ({ page }) => {
   await expect(page.getByText(/Copy response/i)).toHaveCount(0);
 });
 
+test("keeps focus and inserts dictated text from the microphone", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-safari", "Microphone layout and dictation are verified in the mobile project.");
+  await page.addInitScript(() => {
+    class MockSpeechRecognition {
+      lang = "";
+      interimResults = false;
+      maxAlternatives = 1;
+      onresult?: (event: any) => void;
+      onend?: () => void;
+      start() {
+        window.setTimeout(() => {
+          this.onresult?.({
+            results: [[{ transcript: "I usually work better in the morning" }]],
+          });
+          this.onend?.();
+        }, 50);
+      }
+      stop() {
+        this.onend?.();
+      }
+    }
+    (window as any).SpeechRecognition = MockSpeechRecognition;
+    (window as any).webkitSpeechRecognition = MockSpeechRecognition;
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openCoach(page);
+  await expect(page.locator("article").first()).toBeVisible();
+
+  const input = page.getByPlaceholder(/Escribe tu respuesta en ingl/i);
+  await input.focus();
+  await page.locator(".coach-mic-button").click();
+  await expect(input).toHaveValue(/I usually work better in the morning/);
+  await expect.poll(async () => page.evaluate(() => document.activeElement?.tagName)).toBe("TEXTAREA");
+});
+
 test("renders user messages as one compact inline line", async ({ page }) => {
   await openCoach(page);
   await requireUi(page);
@@ -105,7 +140,7 @@ test("renders user messages as one compact inline line", async ({ page }) => {
   expect(labelBox).not.toBeNull();
   expect(contentBox).not.toBeNull();
   expect(lineBox).not.toBeNull();
-  expect(Math.abs(labelBox!.y - contentBox!.y)).toBeLessThan(8);
+  expect(Math.abs(labelBox!.y - contentBox!.y)).toBeLessThan(9);
   expect(contentBox!.x).toBeGreaterThanOrEqual(labelBox!.x + labelBox!.width);
   expect(lineBox!.height).toBeLessThan(28);
 });

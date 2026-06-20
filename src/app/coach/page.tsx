@@ -883,19 +883,23 @@ export default function CoachPage() {
       recognitionRef.current.stop();
       recognitionRef.current = null;
       setListening(false);
+      window.setTimeout(() => textareaRef.current?.focus(), 0);
       return;
     }
 
     const recognition = new SpeechRecognition();
     recognition.lang = "en-US";
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.maxAlternatives = 1;
     recognition.onresult = (event: any) => {
       const transcript = Array.from(event.results)
         .map((result: any) => result?.[0]?.transcript || "")
         .join(" ")
         .trim();
-      if (transcript) setInput((current) => [current, transcript].filter(Boolean).join(current ? " " : ""));
+      if (transcript) {
+        setInput((current) => [current, transcript].filter(Boolean).join(current ? " " : ""));
+        window.setTimeout(() => textareaRef.current?.focus(), 0);
+      }
     };
     recognition.onerror = () => {
       setError("No pude escuchar el micrófono. Revisa permisos del navegador e intenta otra vez.");
@@ -903,10 +907,19 @@ export default function CoachPage() {
     recognition.onend = () => {
       recognitionRef.current = null;
       setListening(false);
+      window.setTimeout(() => textareaRef.current?.focus(), 0);
     };
     recognitionRef.current = recognition;
     setListening(true);
-    recognition.start();
+    try {
+      recognition.start();
+      window.setTimeout(() => textareaRef.current?.focus(), 0);
+    } catch {
+      recognitionRef.current = null;
+      setListening(false);
+      setError("No pude iniciar el micrófono. Revisa permisos del navegador e intenta otra vez.");
+      window.setTimeout(() => textareaRef.current?.focus(), 0);
+    }
   }
 
   function renderWorkbookCard(kind: "grammar" | "vocabulary", workbook: Workbook | null) {
@@ -1145,7 +1158,7 @@ export default function CoachPage() {
                     className="coach-textarea block w-full resize-none rounded-xl border py-1.5 pl-11 pr-3 text-base outline-none"
                   />
                 </div>
-                <button type="button" onClick={startDictation} disabled={!hydrated || loading} className={`coach-round-button coach-mic-button ${listening ? "coach-mic-active" : ""}`} aria-label={listening ? "Detener micrófono" : "Dictar con micrófono"} title={listening ? "Detener micrófono" : "Micrófono"}>
+                <button type="button" onPointerDown={(event) => event.preventDefault()} onClick={startDictation} disabled={!hydrated || loading} className={`coach-round-button coach-mic-button ${listening ? "coach-mic-active" : ""}`} aria-label={listening ? "Detener micrófono" : "Dictar con micrófono"} title={listening ? "Detener micrófono" : "Micrófono"}>
                   <SvgIcon name="mic" />
                 </button>
                 <button onClick={() => (loading ? stopThinking() : sendMessage())} disabled={!hydrated || (!loading && !input.trim() && !selectedImage)} className="coach-send-button disabled:cursor-not-allowed disabled:opacity-40" aria-label={loading ? "Parar respuesta del profesor" : "Enviar respuesta"} title={loading ? "Parar" : "Enviar"}>

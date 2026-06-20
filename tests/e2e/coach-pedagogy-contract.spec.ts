@@ -117,6 +117,19 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(source).toContain("El servidor no devolvió contenido");
 });
 
+test("mobile coach header keeps mode and unit/class visible", async () => {
+  const source = readFile("src/app/coach/page.tsx");
+  const globals = readFile("src/app/globals.css");
+  const overrides = readFile("src/app/coach-qa-overrides.css");
+
+  expect(source).toContain("coach-status-detail");
+  expect(source).toContain("{studyModeLabel(studyMode)} · {activeLocationLabel}");
+  expect(globals).toContain(".coach-status-detail");
+  expect(overrides).toContain(".coach-status-detail");
+  expect(globals).not.toContain("span:not(.coach-status-brand)");
+  expect(overrides).not.toContain("span:not(.coach-status-brand)");
+});
+
 test("unit grammar and vocabulary guides use verified unit contracts", async () => {
   const handler = readFile("src/lib/coachRouteHandler.ts");
   const source = readFile("src/app/coach/page.tsx");

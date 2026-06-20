@@ -1169,9 +1169,10 @@ export default function CoachPage() {
             <EnglishOsLogo size="sm" showText={false} markClassName="coach-status-logo" />
             <span className="coach-status-brand">English OS</span>
             <span className="coach-status-separator">—</span>
-            <span>{studyModeLabel(studyMode)}</span>
+            <span className="coach-status-mode">{studyModeLabel(studyMode)}</span>
             <span className="coach-status-separator">—</span>
-            <span>{activeLocationLabel}</span>
+            <span className="coach-status-location">{activeLocationLabel}</span>
+            <span className="coach-status-detail">{studyModeLabel(studyMode)} · {activeLocationLabel}</span>
           </span>
           {!E2E_DEMO && isLoaded && isSignedIn && <UserButton />}
         </div>

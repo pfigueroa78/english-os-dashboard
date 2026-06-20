@@ -219,8 +219,12 @@ test("application-owned identity precedes model-authored teaching", async () => 
   const renderer = handler.slice(rendererStart, rendererEnd);
 
   expect(renderer).toContain("const teachingBody = limitToOpeningClassTurn");
-  expect(renderer).toContain('return sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]');
-  expect(renderer).toContain('`# Unit ${params.unit}${title ? ` — ${title}` : ""}`');
+  expect(renderer).toContain('return readableMarkdownPunctuation(sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]');
+  expect(renderer).toContain('`# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`');
+  expect(handler).toContain("function readableMarkdownPunctuation");
+  expect(handler).toContain("function ensureTerminalPeriod");
+  expect(handler).toContain("Learning objective|Communication mission");
+  expect(handler).toContain("?::\\*\\*|\\*\\*:|:");
   expect(renderer).toContain('Today we’ll work on **${reference}**.');
   expect(renderer).toContain('Our focus is **${formattedSkillFocus}**');
   expect(renderer).toContain('We’ll start with **${identity.sections.split("+")[0]?.trim() || displayLesson}**.');

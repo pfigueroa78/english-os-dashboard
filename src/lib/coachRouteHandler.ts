@@ -200,6 +200,34 @@ function sanitizeLearnerFacingReply(reply: string) {
     .trim();
 }
 
+function hasTerminalPunctuation(value: string) {
+  return /[.!?:;…)](?:\s*[*_`>]+)?$/.test(String(value || "").trim());
+}
+
+function ensureTerminalPeriod(value: string) {
+  const text = String(value || "").trim();
+  if (!text || hasTerminalPunctuation(text)) return text;
+  return `${text}.`;
+}
+
+function readableMarkdownPunctuation(reply: string) {
+  return String(reply || "")
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return line;
+
+      const heading = line.match(/^(\s*#{1,6}\s+)(.+?)(\s*)$/);
+      if (heading) return `${heading[1]}${ensureTerminalPeriod(heading[2])}${heading[3]}`;
+
+      const labelLine = line.match(/^(\s*(?:[-*]\s+)?(?:\*\*)?(?:Learning objective|Communication mission|Main focus|Skill focus|Grammar focus|Vocabulary focus|Language support|Your turn|Try|Model answers?)(?::\*\*|\*\*:|:)\s+)(.+?)(\s*)$/i);
+      if (labelLine) return `${labelLine[1]}${ensureTerminalPeriod(labelLine[2])}${labelLine[3]}`;
+
+      return line;
+    })
+    .join("\n");
+}
+
 const PREMATURE_CLASS_CLOSURE = /^(evaluation gate|recap|main achievement|main weakness|priority correction|new vocabulary\/chunks|next action|session logged(?: in english os)?)[\s:]*$/i;
 
 function stripPrematureClassClosure(reply: string) {
@@ -262,7 +290,7 @@ function renderClassReply(params: {
     displayLesson,
   ].filter(Boolean).join(" · ");
   const header = [
-    `# Unit ${params.unit}${title ? ` — ${title}` : ""}`,
+    `# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`,
     `Today we’ll work on **${reference}**.`,
     "",
     formattedSkillFocus
@@ -272,26 +300,26 @@ function renderClassReply(params: {
     identity.sections ? `We’ll start with **${identity.sections.split("+")[0]?.trim() || displayLesson}**.` : "",
   ].filter(Boolean);
 
-  return sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]
+  return readableMarkdownPunctuation(sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]
     .join("\n")
-    .trim());
+    .trim()));
 }
 
 function renderReviewReply(params: { body: string; position: string; unit: number }) {
   const title = unitTitle(params.unit);
-  return [params.position, "", `# Unit ${params.unit}${title ? ` — ${title}` : ""} — Strategic review`, "", stripModelOwnedIdentity(params.body)]
+  return readableMarkdownPunctuation([params.position, "", `# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""} — Strategic review`)}`, "", stripModelOwnedIdentity(params.body)]
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
-    .trim();
+    .trim());
 }
 
 function renderUnitGuideReply(params: { body: string; position: string; unit: number; kind: "grammar" | "vocabulary" }) {
   const title = unitTitle(params.unit);
   const label = params.kind === "grammar" ? "Grammar guide" : "Vocabulary guide";
-  return [params.position, "", `# Unit ${params.unit}${title ? ` — ${title}` : ""} — ${label}`, "", stripModelOwnedIdentity(params.body)]
+  return readableMarkdownPunctuation([params.position, "", `# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""} — ${label}`)}`, "", stripModelOwnedIdentity(params.body)]
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
-    .trim();
+    .trim());
 }
 
 function loadUnitTeachingContracts(unit: number) {

@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { toCoachWorkbookContract } from "@/modules/coach-integrations/workbookContract";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
@@ -69,16 +70,11 @@ export async function GET(request: Request) {
       throw new Error(data.error || "Failed to create grammar workbook.");
     }
 
+    const workbook = toCoachWorkbookContract("grammar", data);
+
     return NextResponse.json({
       ok: true,
-      title: data.title,
-      fileId: data.fileId,
-      fileUrl: data.fileUrl,
-      exportUrl: data.exportUrl,
-      mimeType: data.mimeType,
-      unit: data.unit,
-      lesson: data.lesson,
-      generatedAt: data.generatedAt,
+      workbook,
     });
   } catch (error) {
     return NextResponse.json(

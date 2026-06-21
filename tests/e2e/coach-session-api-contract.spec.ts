@@ -89,7 +89,7 @@ test("coach resource view models expose render-only contracts", async () => {
     nextStep: "short speaking drill",
   });
 
-  expect(toCoachGuidesPanelModel({
+  const guidesPanel = toCoachGuidesPanelModel({
     unitLabel: "Unit 4",
     canUseWorkbookActions: true,
     chatActionsDisabled: false,
@@ -97,9 +97,11 @@ test("coach resource view models expose render-only contracts", async () => {
     vocabularyWorkbookLoading: true,
     grammarWorkbookError: "",
     vocabularyWorkbookError: "Retry later",
-    grammarWorkbook: { title: "Grammar", fileUrl: "https://sheets", exportUrl: "https://xlsx" },
+    grammarWorkbook: { title: "Grammar", fileUrl: "https://sheets", exportUrl: "https://xlsx", kind: "grammar", fileId: "hidden" },
     vocabularyWorkbook: null,
-  })).toEqual({
+  });
+
+  expect(guidesPanel).toEqual({
     unitLabel: "Unit 4",
     canUseWorkbookActions: true,
     chatActionsDisabled: false,
@@ -116,6 +118,8 @@ test("coach resource view models expose render-only contracts", async () => {
       workbook: null,
     },
   });
+  expect(JSON.stringify(guidesPanel)).not.toContain("fileId");
+  expect(JSON.stringify(guidesPanel)).not.toContain("kind");
 
   const rawAgents: Array<{ id: string; name: string; shortName: string; defaultPrompt: string }> = [
     { id: "grammar", name: "Grammar", shortName: "Gram", defaultPrompt: "hidden" },
@@ -134,10 +138,10 @@ test("coach resource view models expose render-only contracts", async () => {
     error: "",
   });
 
-  expect(toCoachClassMaterialsPanelModel({
+  const materialsPanel = toCoachClassMaterialsPanelModel({
     unitLabel: "Unit 4",
     resources: [{
-      resourceId: "r1",
+      id: "r1",
       title: "Audio 1",
       description: "Listening practice",
       type: "audio",
@@ -153,7 +157,9 @@ test("coach resource view models expose render-only contracts", async () => {
     resourcesError: "",
     expandedResourceId: "r1",
     practiceDisabled: false,
-  })).toEqual({
+  });
+
+  expect(materialsPanel).toEqual({
     unitLabel: "Unit 4",
     resources: [{
       id: "r1",
@@ -169,6 +175,8 @@ test("coach resource view models expose render-only contracts", async () => {
     expandedResourceId: "r1",
     practiceDisabled: false,
   });
+  expect(JSON.stringify(materialsPanel)).not.toContain("mimeType");
+  expect(JSON.stringify(materialsPanel)).not.toContain("provider");
 });
 
 test("coach session contract API preserves class coordinates and legacy compatibility", async ({ request }) => {

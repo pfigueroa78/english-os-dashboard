@@ -39,27 +39,30 @@ type Message = {
 };
 
 type DriveUnitResource = {
-  resourceId: string;
+  id: string;
   title: string;
   description: string;
   type: "audio" | "video" | "document" | "link";
-  unitNumber: number;
+  unitNumber: number | null;
   unitCode: string;
   section?: string;
   page?: string;
   exercise?: string;
   exercisePart?: string;
   url: string;
-  embedUrl?: string;
+  embedUrl: string;
   provider: string;
-  mimeType?: string;
   order?: number;
 };
 
 type Workbook = {
+  kind: "grammar" | "vocabulary";
   title: string;
+  fileId: string;
   fileUrl: string;
   exportUrl: string;
+  unit: string;
+  lesson: string;
   generatedAt?: string;
 };
 
@@ -726,7 +729,7 @@ export default function CoachPage() {
       const response = await fetch(`/api/english-os/drive-unit-resources?${params.toString()}`, { method: "GET", cache: "no-store" });
       const data = await readJsonResponse(response);
       if (!response.ok || !data.ok) throw new Error(data.error || "Failed to load unit resources.");
-      setResources(data.resources || []);
+      setResources(Array.isArray(data.resources) ? data.resources : []);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown resources error";
       if (/Missing English OS environment variables/i.test(message)) {
@@ -765,17 +768,15 @@ export default function CoachPage() {
       const data = await readJsonResponse(response);
       if (!response.ok || !data.ok) throw new Error(data.error || `Failed to create ${kind} workbook.`);
 
-      const workbook: Workbook = {
-        title: data.title,
-        fileUrl: data.fileUrl,
-        exportUrl: data.exportUrl,
-        generatedAt: data.generatedAt,
-      };
+      const workbook = data.workbook as Workbook | undefined;
+      if (!workbook?.fileUrl && !workbook?.exportUrl) {
+        throw new Error(`Invalid ${kind} workbook contract.`);
+      }
 
       if (isGrammar) setGrammarWorkbook(workbook);
       else setVocabularyWorkbook(workbook);
 
-      window.open(data.exportUrl || data.fileUrl, "_blank", "noopener,noreferrer");
+      window.open(workbook.exportUrl || workbook.fileUrl, "_blank", "noopener,noreferrer");
       setMessages((current) => [
         ...current,
         {
@@ -783,8 +784,8 @@ export default function CoachPage() {
           content: [
             `Listo. Generé la guía de ${isGrammar ? "gramática" : "vocabulario"} para ${unitLabel(unit)}.`,
             "",
-            data.exportUrl ? `- [Descargar XLSX](${data.exportUrl})` : "",
-            data.fileUrl ? `- [Abrir en Sheets](${data.fileUrl})` : "",
+            workbook.exportUrl ? `- [Descargar XLSX](${workbook.exportUrl})` : "",
+            workbook.fileUrl ? `- [Abrir en Sheets](${workbook.fileUrl})` : "",
           ]
             .filter(Boolean)
             .join("\n"),
@@ -964,7 +965,7 @@ export default function CoachPage() {
   }
 
   function requestResourcePractice(resourceId: string) {
-    const resource = resources.find((item) => item.resourceId === resourceId);
+    const resource = resources.find((item) => item.id === resourceId);
     if (!resource) return;
     const details = [
       `Title: ${resource.title}`,

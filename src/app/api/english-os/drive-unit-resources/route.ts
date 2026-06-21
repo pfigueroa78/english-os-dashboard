@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { toCoachDriveResourcesContract } from "@/modules/coach-integrations/resourcesContract";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
@@ -49,9 +50,11 @@ export async function GET(request: Request) {
       throw new Error(data.error || "Failed to load Drive unit resources.");
     }
 
+    const resources = toCoachDriveResourcesContract(data.resources);
+
     return NextResponse.json({
       ok: true,
-      resources: data.resources || [],
+      resources,
     });
   } catch (error) {
     return NextResponse.json(

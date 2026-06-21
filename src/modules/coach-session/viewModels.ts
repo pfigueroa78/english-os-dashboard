@@ -33,6 +33,13 @@ export type CoachWorkbookModel = {
   exportUrl: string;
 } | null;
 
+type CoachWorkbookInput = {
+  title: string;
+  fileUrl: string;
+  exportUrl: string;
+  [key: string]: unknown;
+} | null;
+
 export type CoachGuideActionModel = {
   buttonLabel: string;
   loading: boolean;
@@ -141,9 +148,12 @@ export function toCoachGuidesPanelModel(input: {
   vocabularyWorkbookLoading: boolean;
   grammarWorkbookError: string;
   vocabularyWorkbookError: string;
-  grammarWorkbook: CoachWorkbookModel;
-  vocabularyWorkbook: CoachWorkbookModel;
+  grammarWorkbook: CoachWorkbookInput;
+  vocabularyWorkbook: CoachWorkbookInput;
 }): CoachGuidesPanelModel {
+  const grammarWorkbook = toCoachWorkbookModel(input.grammarWorkbook);
+  const vocabularyWorkbook = toCoachWorkbookModel(input.vocabularyWorkbook);
+
   return {
     unitLabel: input.unitLabel,
     canUseWorkbookActions: input.canUseWorkbookActions,
@@ -152,14 +162,23 @@ export function toCoachGuidesPanelModel(input: {
       buttonLabel: input.grammarWorkbookLoading ? "Generando..." : `Guía de gramática · ${input.unitLabel}`,
       loading: input.grammarWorkbookLoading,
       error: input.grammarWorkbookError,
-      workbook: input.grammarWorkbook,
+      workbook: grammarWorkbook,
     },
     vocabulary: {
       buttonLabel: input.vocabularyWorkbookLoading ? "Generando..." : `Guía de vocabulario · ${input.unitLabel}`,
       loading: input.vocabularyWorkbookLoading,
       error: input.vocabularyWorkbookError,
-      workbook: input.vocabularyWorkbook,
+      workbook: vocabularyWorkbook,
     },
+  };
+}
+
+function toCoachWorkbookModel(workbook: CoachWorkbookInput): CoachWorkbookModel {
+  if (!workbook) return null;
+  return {
+    title: workbook.title,
+    fileUrl: workbook.fileUrl,
+    exportUrl: workbook.exportUrl,
   };
 }
 
@@ -186,12 +205,13 @@ export function toCoachQuickHelpPanelModel(input: {
 export function toCoachClassMaterialsPanelModel(input: {
   unitLabel: string;
   resources: Array<{
-    resourceId: string;
+    id: string;
     title: string;
     description: string;
     type: "audio" | "video" | "document" | "link";
     url: string;
     embedUrl?: string | null;
+    [key: string]: unknown;
   }>;
   resourcesLoading: boolean;
   resourcesNotice: string;
@@ -202,7 +222,7 @@ export function toCoachClassMaterialsPanelModel(input: {
   return {
     unitLabel: input.unitLabel,
     resources: input.resources.map((resource) => ({
-      id: resource.resourceId,
+      id: resource.id,
       title: resource.title,
       description: resource.description,
       type: resource.type,

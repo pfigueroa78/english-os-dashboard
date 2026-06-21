@@ -120,8 +120,10 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(topBar).not.toContain("CoachSessionState");
   expect(topBar).not.toContain("sessionHeaderDetail");
   expect(topBar).not.toContain("sessionLocationLabel");
+  expect(topBar).not.toContain("fetch(");
   expect(studyPanel).not.toContain("CoachSessionState");
   expect(studyPanel).not.toContain("sessionResourcesLabel");
+  expect(studyPanel).not.toContain("fetch(");
   expect(sessionContract).toContain("resourcesUnit");
 
   expect(source).toContain("function inferCoordinatesFromReply");

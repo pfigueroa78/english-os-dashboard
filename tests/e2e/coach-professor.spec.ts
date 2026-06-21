@@ -250,6 +250,9 @@ test("resource players are width-contained and load on demand", async () => {
   const messageList = await fs.readFile("src/modules/coach-chat/CoachMessageList.tsx", "utf8");
   const composer = await fs.readFile("src/modules/coach-chat/CoachComposer.tsx", "utf8");
   const topBar = await fs.readFile("src/modules/coach-layout/CoachTopBar.tsx", "utf8");
+  const persistence = await fs.readFile("src/modules/coach-persistence/coachPersistence.ts", "utf8");
+  const media = await fs.readFile("src/modules/coach-media/coachMedia.ts", "utf8");
+  const controller = await fs.readFile("src/modules/coach-controller/coachController.ts", "utf8");
   const styles = await fs.readFile("src/app/globals.css", "utf8");
   const qaOverrides = await fs.readFile("src/app/coach-qa-overrides.css", "utf8");
 
@@ -291,7 +294,8 @@ test("resource players are width-contained and load on demand", async () => {
   expect(styles).toContain(".coach-thinking-stop");
   expect(source).toContain('type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue"');
   expect(source).toContain('type CoachTextSize = "compact" | "normal" | "large"');
-  expect(source).toContain("english-os-coach-text-size");
+  expect(persistence).toContain("english-os-coach-text-size");
+  expect(source).toContain("saveCoachPreferences");
   expect(source).toContain("data-text-size={textSize}");
   expect(topBar).toContain("Disminuir tamaño de texto");
   expect(topBar).toContain("Aumentar tamaño de texto");
@@ -313,9 +317,10 @@ test("resource players are width-contained and load on demand", async () => {
   expect(source).toContain("buildProgressSnapshot");
   expect(source).toContain("Avance:");
   expect(source).toContain("toggleMessageFeedback");
-  expect(source).toContain("bestEnglishSpeechVoice");
-  expect(source).toContain("utterance.voice = bestEnglishSpeechVoice()");
-  expect(source).toContain("utterance.pitch = 1.02");
+  expect(media).toContain("selectBestEnglishSpeechVoice");
+  expect(source).toContain("createSpeechPayload");
+  expect(source).toContain("utterance.voice = speech.voice");
+  expect(media).toContain("pitch: 1.02");
   expect(messageList).toContain("aria-pressed={messageFeedback[index] === \"like\"}");
   expect(messageList).toContain("aria-pressed={messageFeedback[index] === \"dislike\"}");
   expect(styles).toContain(".coach-feedback-active:hover");
@@ -325,8 +330,8 @@ test("resource players are width-contained and load on demand", async () => {
   expect(`${messageList}\n${composer}`).toContain("Parar respuesta del profesor");
   expect(source).toContain("signal: controller.signal");
   expect(source).toContain("selectedImage");
-  expect(source).toContain("prepareImageForVocabulary");
-  expect(source).toContain("stripEphemeralImages");
+  expect(media).toContain("prepareImageForVocabulary");
+  expect(controller).toContain("stripEphemeralImages");
   expect(composer).toContain('accept="image/*"');
   expect(composer).toContain("Agregar foto para vocabulario");
   expect(messageList).toContain("coach-message-image");

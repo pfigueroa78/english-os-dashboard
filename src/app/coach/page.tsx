@@ -30,6 +30,15 @@ import {
   saveCoachConversation,
   saveCoachPreferences,
 } from "@/modules/coach-persistence/coachPersistence";
+import {
+  chooseMediaRecorderMimeType,
+  createDictationFormData,
+  createSpeechPayload,
+  extractSpeechRecognitionTranscript,
+  isDictationAudioTooShort,
+  mergeDictationTranscript,
+  prepareImageForVocabulary,
+} from "@/modules/coach-media/coachMedia";
 import { renderClientPrompt, type ClientPromptId } from "@/modules/coach-prompts/clientPromptRegistry";
 import { createCoachSessionContract } from "@/modules/coach-session/contract";
 import type { CoachSessionState } from "@/modules/coach-session/types";
@@ -231,35 +240,6 @@ function nextCoachTextSize(current: CoachTextSize, direction: -1 | 1) {
   const currentIndex = COACH_TEXT_SIZE_ORDER.indexOf(current);
   const nextIndex = Math.min(Math.max(currentIndex + direction, 0), COACH_TEXT_SIZE_ORDER.length - 1);
   return COACH_TEXT_SIZE_ORDER[nextIndex] || "normal";
-}
-
-function plainTextFromMarkdown(content: string) {
-  return String(content || "")
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/!\[[^\]]*]\([^)]*\)/g, " ")
-    .replace(/\[([^\]]+)]\([^)]*\)/g, "$1")
-    .replace(/[#>*_~\-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function bestEnglishSpeechVoice() {
-  if (!("speechSynthesis" in window)) return null;
-  const voices = window.speechSynthesis.getVoices();
-  if (!voices.length) return null;
-
-  const preferredName = /(natural|neural|online|premium|jenny|aria|guy|samantha|google|microsoft|apple)/i;
-  const englishVoices = voices.filter((voice) => /^en([-_]|$)/i.test(voice.lang || ""));
-  const candidates = englishVoices.length ? englishVoices : voices;
-  return candidates
-    .map((voice) => {
-      const langScore = /^en-US/i.test(voice.lang) ? 4 : /^en-GB/i.test(voice.lang) ? 3 : /^en/i.test(voice.lang) ? 2 : 0;
-      const nameScore = preferredName.test(voice.name) ? 4 : 0;
-      const localScore = voice.localService ? 1 : 0;
-      return { voice, score: langScore + nameScore + localScore };
-    })
-    .sort((a, b) => b.score - a.score)[0]?.voice || null;
 }
 
 function getSavedPosition(data: any) {
@@ -591,36 +571,6 @@ export default function CoachPage() {
     textarea.style.height = "auto";
     textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`;
   }, [input]);
-
-  async function prepareImageForVocabulary(file: File) {
-    if (!file.type.startsWith("image/")) throw new Error("Selecciona una imagen válida.");
-    const sourceDataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(new Error("No pude leer la imagen."));
-      reader.readAsDataURL(file);
-    });
-
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("No pude preparar la imagen."));
-      img.src = sourceDataUrl;
-    });
-
-    const maxSide = 1280;
-    const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
-    const width = Math.max(1, Math.round(image.width * scale));
-    const height = Math.max(1, Math.round(image.height * scale));
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("No pude procesar la imagen.");
-    context.drawImage(image, 0, 0, width, height);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-    return { dataUrl, name: file.name, mimeType: "image/jpeg" };
-  }
 
   async function handleImageSelected(file?: File) {
     if (!file) return;
@@ -983,15 +933,15 @@ export default function CoachPage() {
       return;
     }
 
-    const text = plainTextFromMarkdown(content);
-    if (!text) return;
+    const speech = createSpeechPayload(content, window.speechSynthesis.getVoices());
+    if (!speech) return;
 
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US";
-    utterance.voice = bestEnglishSpeechVoice();
-    utterance.rate = 0.94;
-    utterance.pitch = 1.02;
+    const utterance = new SpeechSynthesisUtterance(speech.text);
+    utterance.lang = speech.lang;
+    utterance.voice = speech.voice;
+    utterance.rate = speech.rate;
+    utterance.pitch = speech.pitch;
     utterance.onend = () => {
       setSpeakingMessageIndex(null);
       setSpeechPaused(false);
@@ -1034,24 +984,24 @@ export default function CoachPage() {
   }
 
   function insertDictationText(transcript: string) {
-    const cleaned = transcript.replace(/\s+/g, " ").trim();
-    if (!cleaned || !/[a-záéíóúñü]/i.test(cleaned)) return false;
-    setInput((current) => [current.trim(), cleaned].filter(Boolean).join(current.trim() ? " " : ""));
+    let inserted = false;
+    setInput((current) => {
+      const next = mergeDictationTranscript(current, transcript);
+      inserted = next.ok;
+      return next.value;
+    });
+    if (!inserted) return false;
     window.setTimeout(() => textareaRef.current?.focus(), 0);
     return true;
   }
 
   async function transcribeRecordedAudio(audioBlob: Blob) {
-    if (audioBlob.size < 1200) {
+    if (isDictationAudioTooShort(audioBlob)) {
       setError("No escuché suficiente audio. Intenta hablar un poco más cerca del micrófono.");
       return;
     }
 
-    const formData = new FormData();
-    const mimeType = audioBlob.type || "audio/webm";
-    const extension = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
-    formData.append("audio", audioBlob, `english-os-dictation.${extension}`);
-    formData.append("language", "en");
+    const formData = createDictationFormData(audioBlob);
 
     try {
       const response = await fetch("/api/english-os/transcribe", {
@@ -1094,12 +1044,7 @@ export default function CoachPage() {
         autoGainControl: true,
       },
     });
-    const preferredType = [
-      "audio/webm;codecs=opus",
-      "audio/webm",
-      "audio/mp4",
-      "audio/ogg;codecs=opus",
-    ].find((type) => MediaRecorder.isTypeSupported(type));
+    const preferredType = chooseMediaRecorderMimeType((type) => MediaRecorder.isTypeSupported(type));
     const recorder = preferredType ? new MediaRecorder(stream, { mimeType: preferredType }) : new MediaRecorder(stream);
     recordedAudioChunksRef.current = [];
     recorder.ondataavailable = (event) => {
@@ -1162,10 +1107,7 @@ export default function CoachPage() {
     recognition.continuous = false;
     recognition.maxAlternatives = 3;
     recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results)
-        .map((result: any) => result?.[0]?.transcript || "")
-        .join(" ")
-        .trim();
+      const transcript = extractSpeechRecognitionTranscript(event);
       if (transcript && !insertDictationText(transcript)) setError("No pude convertir el audio en texto útil. Intenta hablar más claro y con menos ruido.");
     };
     recognition.onerror = () => {

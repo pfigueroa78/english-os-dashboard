@@ -9,6 +9,19 @@ import {
   copyCoachText,
   toggleCoachMessageFeedback,
 } from "@/modules/coach-actions/coachActions";
+import {
+  buildInitialCoachMessages,
+  buildInitialCoachMessage,
+  buildLearningPulse,
+  buildProgressSnapshot,
+  extractUnitNumber,
+  getLearnerDisplayName,
+  getSavedPosition,
+  learningPulseDetail,
+  normalizeUnitValue,
+  unitLabel,
+  type CoachLearningPulse,
+} from "@/modules/coach-context/coachContext";
 import { CoachComposer } from "@/modules/coach-chat/CoachComposer";
 import { toCoachComposerModel } from "@/modules/coach-chat/composerViewModel";
 import { CoachMessageList } from "@/modules/coach-chat/CoachMessageList";
@@ -108,15 +121,6 @@ type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue";
 type CoachTextSize = "compact" | "normal" | "large";
 type StudyMode = CoachStudyMode;
 
-type LearningPulse = {
-  level: string;
-  practiceCount: number;
-  evidenceCount: number | null;
-  evidenceTotal: number;
-  focus: string;
-  nextStep: string;
-};
-
 type SpecialistAgent = {
   id: AgentId;
   name: string;
@@ -158,45 +162,6 @@ const SPECIALIST_AGENTS: SpecialistAgent[] = [
 
 const SPECIALIST_AGENT_CONTRACTS = toCoachAgentClientContracts(SPECIALIST_AGENTS);
 
-function getLearnerDisplayName(user: ReturnType<typeof useUser>["user"]) {
-  const candidate = user?.firstName || user?.fullName || user?.username || "";
-  return String(candidate).trim();
-}
-
-function extractUnitNumber(value: string) {
-  const match = String(value || "").match(/(\d{1,2})/);
-  return match?.[1] || "";
-}
-
-function unitLabel(value: string) {
-  const number = extractUnitNumber(value);
-  return number ? `Unit ${number}` : value || "Current unit";
-}
-
-function normalizeUnitValue(value: string) {
-  return unitLabel(value);
-}
-
-function buildTodayClassMessage(unit: string, lesson: string, learnerName = "") {
-  return buildInitialCoachMessage(unit, lesson, "", learnerName);
-}
-
-function buildInitialCoachMessage(unit: string, lesson: string, progressSnapshot = "", learnerName = "") {
-  const greeting = learnerName
-    ? `Hola, ${learnerName}. Soy tu profesor de English OS y hoy vamos a trabajar paso a paso.`
-    : "Hola. Soy tu profesor de English OS y hoy vamos a trabajar paso a paso.";
-  return [
-    greeting,
-    "",
-    `Unidad activa: ${unitLabel(unit)}.`,
-    "",
-    `Clase / lección actual: ${lesson || "Clase guiada de English OS"}.`,
-    progressSnapshot ? `Avance: ${progressSnapshot}.` : "",
-    "",
-    "Puedes empezar la explicación, pedir una pista, practicar gramática o responder la evaluación pendiente. Yo mantengo el avance bloqueado hasta que la evaluación quede aprobada.",
-  ].filter((line, index, lines) => line || lines[index - 1]).join("\n");
-}
-
 async function buildStartTodayClassPrompt(unit: string, lesson: string) {
   const unitNumber = extractUnitNumber(unit);
   return renderClientPrompt("coach.startCurrentClass", {
@@ -229,12 +194,12 @@ async function buildUnitVocabularyPrompt(unit: string) {
 }
 
 function initialCoachMessages(): Message[] {
-  return [
-    {
-      role: "coach",
-      content: E2E_DEMO ? buildTodayClassMessage(DEMO_UNIT, DEMO_LESSON, "Pedro") : "Loading your English OS class plan...",
-    },
-  ];
+  return buildInitialCoachMessages({
+    e2eDemo: E2E_DEMO,
+    demoUnit: DEMO_UNIT,
+    demoLesson: DEMO_LESSON,
+    demoLearnerName: "Pedro",
+  });
 }
 
 function studyModeLabel(mode: StudyMode) {
@@ -248,143 +213,6 @@ function nextCoachTextSize(current: CoachTextSize, direction: -1 | 1) {
   const currentIndex = COACH_TEXT_SIZE_ORDER.indexOf(current);
   const nextIndex = Math.min(Math.max(currentIndex + direction, 0), COACH_TEXT_SIZE_ORDER.length - 1);
   return COACH_TEXT_SIZE_ORDER[nextIndex] || "normal";
-}
-
-function getSavedPosition(data: any) {
-  const context = data?.context || {};
-  const user = context?.user || data?.user || {};
-  const recommended = context?.recommendedCurrentPosition || data?.recommendedCurrentPosition || {};
-  const current = context?.currentPosition || data?.currentPosition || {};
-  const missionControl = context?.missionControl || data?.missionControl || context || {};
-  const sources = [
-    {
-      unit: recommended.unit || recommended.currentUnit,
-      lesson: recommended.lesson || recommended.currentLesson,
-    },
-    {
-      unit: current.unit || current.currentUnit,
-      lesson: current.lesson || current.currentLesson,
-    },
-    {
-      unit: user["Current Unit"] || user.CurrentUnit || user.unit || user.currentUnit,
-      lesson: user["Current Lesson"] || user.CurrentLesson || user.lesson || user.currentLesson,
-    },
-    {
-      unit: missionControl.currentUnit || missionControl.CurrentUnit || missionControl.unit,
-      lesson: missionControl.currentLesson || missionControl.CurrentLesson || missionControl.lesson,
-    },
-  ];
-  const pairedSource = sources.find((source) => String(source.unit || "").trim());
-  if (pairedSource) {
-    return {
-      unit: String(pairedSource.unit || "").trim(),
-      lesson: String(pairedSource.lesson || "").trim(),
-    };
-  }
-
-  return {
-    unit: "",
-    lesson: String(sources.find((source) => String(source.lesson || "").trim())?.lesson || "").trim(),
-  };
-}
-
-function readableProgressValue(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return String(value).trim();
-  }
-  if (Array.isArray(value)) {
-    return value.map(readableProgressValue).find(Boolean) || "";
-  }
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const preferredKeys = [
-      "summary",
-      "text",
-      "label",
-      "value",
-      "name",
-      "title",
-      "focus",
-      "weakness",
-      "mistake",
-      "correction",
-      "nextAction",
-      "recommendedAction",
-      "action",
-      "description",
-      "cefrEstimate",
-      "score",
-      "status",
-    ];
-    for (const key of preferredKeys) {
-      const readable = readableProgressValue(record[key]);
-      if (readable) return readable;
-    }
-  }
-  return "";
-}
-
-function firstProgressValue(...values: unknown[]) {
-  return values.map(readableProgressValue).find(Boolean) || "";
-}
-
-function buildProgressSnapshot(data: any) {
-  const context = data?.context || data || {};
-  const missionControl = context?.missionControl?.missionControl || context?.missionControl || data?.missionControl || {};
-  const user = context?.user || data?.user || {};
-  const recentLogs = Array.isArray(context?.recentDailyLogs) ? context.recentDailyLogs : Array.isArray(data?.recentDailyLogs) ? data.recentDailyLogs : [];
-  const recentMistakes = Array.isArray(context?.recentMistakes) ? context.recentMistakes : Array.isArray(data?.recentMistakes) ? data.recentMistakes : [];
-  const recentProgress = Array.isArray(context?.recentProgress) ? context.recentProgress : Array.isArray(data?.recentProgress) ? data.recentProgress : [];
-
-  const cefr = firstProgressValue(user["Current CEFR"], context.currentCEFR, missionControl.currentCEFR, missionControl.cefr);
-  const lastEvaluation = firstProgressValue(missionControl.lastEvaluation, missionControl.lastEvaluationScore, context.lastEvaluation, recentProgress[0]?.cefrEstimate);
-  const topMistake = firstProgressValue(missionControl.topMistake, context.topMistake, recentMistakes[0]?.mistake);
-
-  const parts = [
-    cefr ? `nivel actual ${cefr}` : "",
-    lastEvaluation ? `última evidencia: ${lastEvaluation}` : "",
-    recentLogs.length ? `${recentLogs.length} prácticas recientes` : "",
-    topMistake ? `foco: ${topMistake}` : "",
-  ].filter(Boolean);
-
-  return parts.length ? parts.slice(0, 3).join(" · ") : "sin evaluaciones recientes disponibles";
-}
-
-function buildLearningPulse(data: any): LearningPulse {
-  const context = data?.context || data || {};
-  const missionControl = context?.missionControl?.missionControl || context?.missionControl || data?.missionControl || {};
-  const user = context?.user || data?.user || {};
-  const recentLogs = Array.isArray(context?.recentDailyLogs) ? context.recentDailyLogs : Array.isArray(data?.recentDailyLogs) ? data.recentDailyLogs : [];
-  const recentMistakes = Array.isArray(context?.recentMistakes) ? context.recentMistakes : Array.isArray(data?.recentMistakes) ? data.recentMistakes : [];
-  const recentProgress = Array.isArray(context?.recentProgress) ? context.recentProgress : Array.isArray(data?.recentProgress) ? data.recentProgress : [];
-  const activeVocabulary = Array.isArray(context?.activeVocabulary) ? context.activeVocabulary : Array.isArray(data?.activeVocabulary) ? data.activeVocabulary : [];
-
-  const level = firstProgressValue(user["Current CEFR"], context.currentCEFR, missionControl.currentCEFR, missionControl.cefr, recentProgress[0]?.cefrEstimate);
-  const lastEvaluation = firstProgressValue(missionControl.lastEvaluation, missionControl.lastEvaluationScore, context.lastEvaluation, recentProgress[0]?.cefrEstimate);
-  const topMistake = firstProgressValue(missionControl.topMistake, context.topMistake, recentMistakes[0]?.mistake);
-  const nextAction = firstProgressValue(missionControl.nextAction, context.nextRecommendedAction, context.nextAction, recentLogs[0]?.nextAction);
-
-  const evidenceFlags = [
-    Boolean(lastEvaluation),
-    recentLogs.length > 0,
-    recentProgress.length > 0,
-    activeVocabulary.length > 0 || recentMistakes.length > 0,
-  ];
-  const evidenceCount = evidenceFlags.some(Boolean) ? evidenceFlags.filter(Boolean).length : null;
-
-  return {
-    level: level || "Sin nivel confirmado",
-    practiceCount: recentLogs.length,
-    evidenceCount,
-    evidenceTotal: 4,
-    focus: topMistake || nextAction || "responder con más evidencia",
-    nextStep: nextAction || "producir una respuesta breve y corregible",
-  };
-}
-
-function learningPulseDetail(pulse: LearningPulse) {
-  return pulse.evidenceCount === null ? "sin evidencias" : `${pulse.evidenceCount}/${pulse.evidenceTotal}`;
 }
 
 async function readJsonResponse(response: Response) {
@@ -432,7 +260,7 @@ export default function CoachPage() {
       source: E2E_DEMO ? "fallback" : "english_os",
     }),
   );
-  const [learningPulse, setLearningPulse] = useState<LearningPulse>(() => buildLearningPulse({}));
+  const [learningPulse, setLearningPulse] = useState<CoachLearningPulse>(() => buildLearningPulse({}));
   const [theme, setTheme] = useState<CoachTheme>("paper");
   const [textSize, setTextSize] = useState<CoachTextSize>("compact");
   const [sidebarOpen, setSidebarOpen] = useState(true);

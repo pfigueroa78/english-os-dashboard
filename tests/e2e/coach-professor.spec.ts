@@ -256,6 +256,7 @@ test("resource players are width-contained and load on demand", async () => {
   const persistence = await fs.readFile("src/modules/coach-persistence/coachPersistence.ts", "utf8");
   const media = await fs.readFile("src/modules/coach-media/coachMedia.ts", "utf8");
   const controller = await fs.readFile("src/modules/coach-controller/coachController.ts", "utf8");
+  const contextController = await fs.readFile("src/modules/coach-context/coachContext.ts", "utf8");
   const styles = await fs.readFile("src/app/globals.css", "utf8");
   const qaOverrides = await fs.readFile("src/app/coach-qa-overrides.css", "utf8");
 
@@ -318,7 +319,7 @@ test("resource players are width-contained and load on demand", async () => {
   expect(messageListViewModel).toContain("Reportar error en esta respuesta");
   expect(actions).toContain("mailto:info@citizen-life.com");
   expect(source).toContain("buildProgressSnapshot");
-  expect(source).toContain("Avance:");
+  expect(contextController).toContain("Avance:");
   expect(source).toContain("toggleMessageFeedback");
   expect(media).toContain("selectBestEnglishSpeechVoice");
   expect(source).toContain("createSpeechPayload");

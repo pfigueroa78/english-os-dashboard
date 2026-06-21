@@ -209,19 +209,22 @@ test("mobile coach header keeps mode and unit/class visible", async () => {
 
 test("coach shows an evidence-based learning pulse without inventing progress", async () => {
   const source = readFile("src/app/coach/page.tsx");
+  const contextController = readFile("src/modules/coach-context/coachContext.ts");
   const topBar = readFile("src/modules/coach-layout/CoachTopBar.tsx");
   const learningPulsePanel = readFile("src/modules/coach-resources/CoachLearningPulsePanel.tsx");
   const globals = readFile("src/app/globals.css");
 
-  expect(source).toContain("type LearningPulse");
-  expect(source).toContain("function buildLearningPulse");
-  expect(source).toContain("function readableProgressValue");
-  expect(source).toContain("typeof value === \"object\"");
-  expect(source).toContain("\"nextAction\"");
-  expect(source).toContain("\"mistake\"");
-  expect(source).toContain("function learningPulseDetail");
-  expect(source).toContain("Sin nivel confirmado");
-  expect(source).toContain("sin evidencias");
+  expect(contextController).toContain("export type CoachLearningPulse");
+  expect(contextController).toContain("function buildLearningPulse");
+  expect(contextController).toContain("function readableProgressValue");
+  expect(contextController).toContain("typeof value === \"object\"");
+  expect(contextController).toContain("\"nextAction\"");
+  expect(contextController).toContain("\"mistake\"");
+  expect(contextController).toContain("function learningPulseDetail");
+  expect(contextController).toContain("Sin nivel confirmado");
+  expect(contextController).toContain("sin evidencias");
+  expect(source).toContain("buildLearningPulse");
+  expect(source).toContain("learningPulseDetail");
   expect(topBar).toContain("coach-status-pulse");
   expect(source).toContain("<CoachLearningPulsePanel");
   expect(learningPulsePanel).toContain("coach-learning-pulse");
@@ -343,7 +346,7 @@ test("ambiguous active class requests consult English OS current class before cl
 });
 
 test("saved position uses unit and lesson from the same context source", async () => {
-  const source = readFile("src/app/coach/page.tsx");
+  const source = readFile("src/modules/coach-context/coachContext.ts");
   const start = source.indexOf("function getSavedPosition");
   const end = source.indexOf("function firstProgressValue", start);
   const getSavedPositionSource = source.slice(start, end);

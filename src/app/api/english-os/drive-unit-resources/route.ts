@@ -1,5 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { getApiLearnerIdentity } from "@/lib/apiLearnerIdentity";
 import { toCoachDriveResourcesContract } from "@/modules/coach-integrations/resourcesContract";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
@@ -7,9 +7,9 @@ const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
 
 export async function GET(request: Request) {
   try {
-    const { userId } = await auth();
+    const identity = await getApiLearnerIdentity(request);
 
-    if (!userId) {
+    if (!identity.authenticated) {
       return NextResponse.json(
         { ok: false, error: "Unauthorized" },
         { status: 401 }

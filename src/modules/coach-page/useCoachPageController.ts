@@ -133,27 +133,30 @@ const E2E_DEMO = process.env.NEXT_PUBLIC_E2E_DEMO === "1";
 const DEMO_UNIT = "Unit 1";
 const DEMO_LESSON = "Business advice speaking practice";
 const COACH_TEXT_SIZE_ORDER: CoachTextSize[] = ["compact", "normal", "large"];
+const DEFAULT_SIDEBAR_WIDTH = 340;
+const MIN_SIDEBAR_WIDTH = 260;
+const MAX_SIDEBAR_WIDTH = 560;
 
 const SPECIALIST_AGENTS: SpecialistAgent[] = [
   {
     id: "grammar_corrector",
-    name: "Corrector de gramática",
-    shortName: "Gramática",
-    description: "Corrige estructura, artículos, preposiciones y naturalidad.",
+    name: "Corrector de gramatica",
+    shortName: "Gramatica",
+    description: "Corrige estructura, articulos, preposiciones y naturalidad.",
     defaultPromptId: "agents.grammarCorrector.default",
   },
   {
     id: "speaking_partner",
-    name: "Compañero de speaking",
+    name: "Companero de speaking",
     shortName: "Speaking",
-    description: "Practica conversación, fluidez y respuestas profesionales.",
+    description: "Practica conversacion, fluidez y respuestas profesionales.",
     defaultPromptId: "agents.speakingPartner.default",
   },
   {
     id: "english_evaluator",
     name: "Evaluador B1/B2",
     shortName: "Evaluar",
-    description: "Evalúa CEFR, precisión, vocabulario y próximos pasos.",
+    description: "Evalua CEFR, precision, vocabulario y proximos pasos.",
     defaultPromptId: "agents.englishEvaluator.default",
   },
 ];
@@ -164,9 +167,9 @@ async function buildStartTodayClassPrompt(unit: string, lesson: string) {
   const unitNumber = extractUnitNumber(unit);
   return renderClientPrompt("coach.startCurrentClass", {
     startRequest: unitNumber
-      ? `Empecemos la clase actual de la unidad ${unitNumber}. Usa el contrato real de English OS; si no hay número de clase activo confiable, no inventes Class 1 y pide confirmación breve.`
-      : "Empecemos mi clase actual. Usa el contrato real de English OS; si no hay número de clase activo confiable, no inventes Class 1 y pide confirmación breve.",
-    lessonContext: lesson ? `Contexto guardado de lección o foco: ${lesson}` : "",
+      ? `Empecemos la clase actual de la unidad ${unitNumber}. Usa el contrato real de English OS; si no hay numero de clase activo confiable, no inventes Class 1 y pide confirmacion breve.`
+      : "Empecemos mi clase actual. Usa el contrato real de English OS; si no hay numero de clase activo confiable, no inventes Class 1 y pide confirmacion breve.",
+    lessonContext: lesson ? `Contexto guardado de leccion o foco: ${lesson}` : "",
   });
 }
 
@@ -180,14 +183,14 @@ async function buildHintPrompt(unit: string, lesson: string) {
 async function buildUnitGrammarPrompt(unit: string) {
   const number = extractUnitNumber(unit);
   return renderClientPrompt("coach.unitGrammarGuide", {
-    requestLine: number ? `Dame una guía de gramática de la unidad ${number}.` : "Dame una guía de gramática de mi unidad actual.",
+    requestLine: number ? `Dame una guia de gramatica de la unidad ${number}.` : "Dame una guia de gramatica de mi unidad actual.",
   });
 }
 
 async function buildUnitVocabularyPrompt(unit: string) {
   const number = extractUnitNumber(unit);
   return renderClientPrompt("coach.unitVocabularyGuide", {
-    requestLine: number ? `Dame una guía de vocabulario de la unidad ${number}.` : "Dame una guía de vocabulario de mi unidad actual.",
+    requestLine: number ? `Dame una guia de vocabulario de la unidad ${number}.` : "Dame una guia de vocabulario de mi unidad actual.",
   });
 }
 
@@ -200,9 +203,29 @@ function initialCoachMessages(): Message[] {
   });
 }
 
+function replaceInitialCoachGreeting(messages: Message[], freshInitialMessage: string) {
+  const shouldReplaceLoading =
+    messages.length === 1 &&
+    messages[0]?.role === "coach" &&
+    messages[0]?.content.includes("Loading your English OS class plan");
+  if (shouldReplaceLoading) return [{ role: "coach" as const, content: freshInitialMessage }];
+
+  const first = messages[0];
+  const firstLooksLikeInitialGreeting =
+    first?.role === "coach" &&
+    first.content.includes("Soy tu profesor de English OS") &&
+    first.content.includes("Unidad activa:");
+
+  if (firstLooksLikeInitialGreeting) {
+    return [{ ...first, content: freshInitialMessage }, ...messages.slice(1)];
+  }
+
+  return messages;
+}
+
 function studyModeLabel(mode: StudyMode) {
   if (mode === "review") return "Repaso";
-  if (mode === "guide") return "Guía";
+  if (mode === "guide") return "Guia";
   if (mode === "class") return "Clase";
   return "Actual";
 }
@@ -250,6 +273,7 @@ export function useCoachPageController() {
   const [theme, setTheme] = useState<CoachTheme>("paper");
   const [textSize, setTextSize] = useState<CoachTextSize>("compact");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
   const [messageFeedback, setMessageFeedback] = useState<Record<number, "like" | "dislike">>({});
   const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
@@ -257,6 +281,9 @@ export function useCoachPageController() {
   const [listening, setListening] = useState(false);
   const [contextLoading, setContextLoading] = useState(false);
   const [contextError, setContextError] = useState("");
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
+  const [diagnosticsError, setDiagnosticsError] = useState("");
+  const [diagnosticChecks, setDiagnosticChecks] = useState<Array<{ name: string; ok: boolean; detail: string }>>([]);
   const [resources, setResources] = useState<DriveUnitResource[]>([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
   const [resourcesError, setResourcesError] = useState("");
@@ -277,7 +304,7 @@ export function useCoachPageController() {
   const recordedAudioChunksRef = useRef<Blob[]>([]);
   const coachAbortRef = useRef<AbortController | null>(null);
   const agentAbortRef = useRef<AbortController | null>(null);
-  const coachApi = createCoachApiClient();
+  const coachApi = createCoachApiClient(fetch, email);
 
   const activeAgent = SPECIALIST_AGENT_CONTRACTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENT_CONTRACTS[0];
   const activeAgentMetadata = SPECIALIST_AGENTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENTS[0];
@@ -285,22 +312,22 @@ export function useCoachPageController() {
     mode: coachModeFromStudyMode(studyMode),
     savedUnit: currentUnit || coachSession.savedUnit,
     savedLesson: currentLesson || coachSession.savedLesson,
-    activeUnit: studyUnit || coachSession.activeUnit || currentUnit,
+    activeUnit: coachSession.activeUnit || studyUnit || currentUnit,
     activeClassNumber: studyClassNumber || coachSession.activeClassNumber,
     lessonTitle: coachSession.lessonTitle || currentLesson,
-    resourcesUnit: coachSession.resourcesUnit || studyUnit || currentUnit,
+    resourcesUnit: coachSession.resourcesUnit || coachSession.activeUnit || studyUnit || currentUnit,
     source: coachSession.source,
   });
   const activeStudyUnit = uiSession.resourcesUnit || uiSession.activeUnit || currentUnit;
   const activeStudyUnitLabel = unitLabel(activeStudyUnit);
-  const activeLocationLabel = [activeStudyUnitLabel, studyClassNumber ? `Class ${studyClassNumber}` : ""].filter(Boolean).join(" · ");
+  const activeLocationLabel = [activeStudyUnitLabel, studyClassNumber ? `Class ${studyClassNumber}` : ""].filter(Boolean).join(" - ");
   const learningPulseLabel = learningPulseDetail(learningPulse);
   const topBarModel = toCoachTopBarModel(uiSession, learningPulseLabel);
   const studyPanelModel = toCoachStudyPanelModel({
     session: uiSession,
     currentUnitLabel: unitLabel(currentUnit),
     contextLoading,
-    studyUnitValue: studyUnit,
+    studyUnitValue: uiSession.activeUnit || studyUnit,
     loading,
   });
   const learningPulsePanelModel = toCoachLearningPulsePanelModel({
@@ -337,6 +364,12 @@ export function useCoachPageController() {
     expandedResourceId,
     practiceDisabled: loading,
   });
+  const diagnosticsPanelModel = {
+    visible: !E2E_DEMO && Boolean(contextError || diagnosticsError || diagnosticChecks.length > 0),
+    loading: diagnosticsLoading,
+    error: diagnosticsError,
+    checks: diagnosticChecks,
+  };
   const chatMessageItems = messages.map((message) => ({
     role: message.role,
     content: message.content,
@@ -370,6 +403,7 @@ export function useCoachPageController() {
     if (preferences.theme) setTheme(preferences.theme);
     if (preferences.textSize && COACH_TEXT_SIZE_ORDER.includes(preferences.textSize)) setTextSize(preferences.textSize);
     if (typeof preferences.sidebarOpen === "boolean") setSidebarOpen(preferences.sidebarOpen);
+    if (typeof preferences.sidebarWidth === "number") setSidebarWidth(preferences.sidebarWidth);
   }, []);
 
   useEffect(() => {
@@ -380,8 +414,8 @@ export function useCoachPageController() {
 
   useEffect(() => {
     if (!hydrated) return;
-    saveCoachPreferences(window.localStorage, { theme, textSize, sidebarOpen });
-  }, [hydrated, theme, textSize, sidebarOpen]);
+    saveCoachPreferences(window.localStorage, { theme, textSize, sidebarOpen, sidebarWidth });
+  }, [hydrated, theme, textSize, sidebarOpen, sidebarWidth]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -430,14 +464,15 @@ export function useCoachPageController() {
     try {
       const data = await coachApi.getContext();
 
-      const { unit, lesson } = getSavedPosition(data);
+      const { unit, lesson, classNumber } = getSavedPosition(data);
       const resolvedUnit = unit ? normalizeUnitValue(unit) : "";
       const progressSnapshot = buildProgressSnapshot(data);
       setCoachSession(createCoachSessionContract({
-        mode: "current",
+        mode: classNumber ? "class" : "current",
         savedUnit: resolvedUnit || null,
         savedLesson: lesson || null,
         activeUnit: resolvedUnit || null,
+        activeClassNumber: classNumber,
         lessonTitle: lesson || null,
         resourcesUnit: resolvedUnit || null,
         source: "english_os",
@@ -445,18 +480,25 @@ export function useCoachPageController() {
 
       if (resolvedUnit) {
         setCurrentUnit(resolvedUnit);
-        setStudyUnit((current) => current || resolvedUnit);
+        setStudyUnit(resolvedUnit);
+      }
+      if (classNumber) {
+        setStudyClassNumber(classNumber);
+        setStudyMode("class");
       }
       if (lesson) setCurrentLesson(lesson);
       setLearningPulse(buildLearningPulse(data));
 
-      setMessages((current) => {
-        const shouldReplace = current.length === 1 && current[0]?.content.includes("Loading your English OS class plan");
-        return shouldReplace ? [{ role: "coach", content: buildInitialCoachMessage(resolvedUnit || "tu posición actual", lesson, progressSnapshot, learnerName) }] : current;
-      });
+      setMessages((current) =>
+        replaceInitialCoachGreeting(
+          current,
+          buildInitialCoachMessage(resolvedUnit || "tu posición actual", lesson, progressSnapshot, learnerName),
+        ),
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown context error";
       setContextError(message);
+      void runDiagnostics();
       setCurrentUnit((current) => current || "");
       setStudyUnit((current) => current || "");
       setMessages((current) => {
@@ -466,12 +508,30 @@ export function useCoachPageController() {
           {
             role: "coach",
             content:
-              "No pude cargar tu English plan todavía, pero no voy a dejar la clase bloqueada.\n\nPuedes pedir una clase, un repaso o practicar una unidad. Cuando la conexión con English OS vuelva a responder, recuperaré tu posición guardada automáticamente.",
+              "No pude cargar tu English plan todavia, pero no voy a dejar la clase bloqueada.\n\nPuedes pedir una clase, un repaso o practicar una unidad. Cuando la conexion con English OS vuelva a responder, recuperare tu posicion guardada automaticamente.",
           },
         ];
       });
     } finally {
       setContextLoading(false);
+    }
+  }
+
+  async function runDiagnostics() {
+    if (E2E_DEMO || diagnosticsLoading) return;
+    setDiagnosticsLoading(true);
+    setDiagnosticsError("");
+    try {
+      const data = await coachApi.getDiagnostics();
+      const checks = Array.isArray(data?.checks) ? data.checks : [];
+      setDiagnosticChecks(checks);
+      if (data?.ok === false) {
+        setDiagnosticsError("El diagnostico encontro uno o mas puntos para revisar.");
+      }
+    } catch (err) {
+      setDiagnosticsError(err instanceof Error ? err.message : "No pude ejecutar el diagnostico.");
+    } finally {
+      setDiagnosticsLoading(false);
     }
   }
 
@@ -486,7 +546,7 @@ export function useCoachPageController() {
       const message = err instanceof Error ? err.message : "Unknown resources error";
       if (/Missing English OS environment variables/i.test(message)) {
         setResourcesNotice(
-          "Los materiales conectados no están configurados en este entorno local. Para cargarlos aquí hacen falta ENGLISH_OS_BASE_URL y ENGLISH_OS_TOKEN en .env.local."
+          "Los materiales conectados no estan configurados en este entorno local. Para cargarlos aqui hacen falta ENGLISH_OS_BASE_URL y ENGLISH_OS_TOKEN en .env.local."
         );
         setResources([]);
       } else {
@@ -534,7 +594,7 @@ export function useCoachPageController() {
         {
           role: "coach",
           content: [
-            `Listo. Generé la guía de ${isGrammar ? "gramática" : "vocabulario"} para ${unitLabel(unit)}.`,
+            `Listo. Genere la guia de ${isGrammar ? "gramatica" : "vocabulario"} para ${unitLabel(unit)}.`,
             "",
             workbook.exportUrl ? `- [Descargar XLSX](${workbook.exportUrl})` : "",
             workbook.fileUrl ? `- [Abrir en Sheets](${workbook.fileUrl})` : "",
@@ -757,7 +817,7 @@ export function useCoachPageController() {
 
   async function transcribeRecordedAudio(audioBlob: Blob) {
     if (isDictationAudioTooShort(audioBlob)) {
-      setError("No escuché suficiente audio. Intenta hablar un poco más cerca del micrófono.");
+      setError("No escuche suficiente audio. Intenta hablar un poco mas cerca del microfono.");
       return;
     }
 
@@ -766,7 +826,7 @@ export function useCoachPageController() {
     try {
       const data = await coachApi.transcribeAudio(formData);
       if (!insertDictationText(String(data.text))) {
-        setError("No pude convertir el audio en texto útil. Intenta hablar más claro y con menos ruido de fondo.");
+        setError("No pude convertir el audio en texto util. Intenta hablar mas claro y con menos ruido de fondo.");
       }
     } catch {
       setError("No pude transcribir el audio. Puedes escribir tu respuesta o intentar de nuevo.");
@@ -830,7 +890,7 @@ export function useCoachPageController() {
     try {
       if (await startMediaDictation()) return;
     } catch {
-      setError("No pude abrir el micrófono para grabar. Intentaré con el dictado básico del navegador.");
+      setError("No pude abrir el microfono para grabar. Intentare con el dictado basico del navegador.");
     }
 
     startBrowserDictation();
@@ -896,6 +956,40 @@ export function useCoachPageController() {
     sendAgentMessage(undefined, agentId as AgentId);
   }
 
+  function resizeSidebarFromClientX(clientX: number) {
+    const viewportWidth = window.innerWidth || 1280;
+    const responsiveMax = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, viewportWidth - 560));
+    const nextWidth = Math.min(Math.max(Math.round(clientX), MIN_SIDEBAR_WIDTH), responsiveMax);
+    setSidebarWidth(nextWidth);
+  }
+
+  function startSidebarResize(clientX: number) {
+    if (typeof window === "undefined") return;
+
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    resizeSidebarFromClientX(clientX);
+
+    const handlePointerMove = (event: PointerEvent) => {
+      event.preventDefault();
+      resizeSidebarFromClientX(event.clientX);
+    };
+
+    const stopResize = () => {
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopResize);
+      window.removeEventListener("pointercancel", stopResize);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopResize);
+    window.addEventListener("pointercancel", stopResize);
+  }
+
   return {
     auth: {
       authReady,
@@ -910,6 +1004,7 @@ export function useCoachPageController() {
       textSize,
       hydrated,
       sidebarOpen,
+      sidebarWidth,
       error,
       contextError,
       contextLoading,
@@ -931,11 +1026,13 @@ export function useCoachPageController() {
       guidesPanelModel,
       quickHelpPanelModel,
       classMaterialsPanelModel,
+      diagnosticsPanelModel,
       messageListModel,
       composerModel,
     },
     actions: {
       setSidebarOpen,
+      startSidebarResize,
       setTheme,
       decreaseTextSize: () => setTextSize((size) => nextCoachTextSize(size, -1)),
       increaseTextSize: () => setTextSize((size) => nextCoachTextSize(size, 1)),
@@ -962,6 +1059,7 @@ export function useCoachPageController() {
       createVocabularyWorkbook: () => createWorkbook("vocabulary"),
       setActiveAgentId: (agentId: string) => setActiveAgentId(agentId as AgentId),
       handleRunAgent,
+      runDiagnostics,
       toggleResource: (resourceId: string) => setExpandedResourceId((current) => current === resourceId ? null : resourceId),
       requestResourcePractice,
     },

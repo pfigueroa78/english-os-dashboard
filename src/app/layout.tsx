@@ -8,6 +8,9 @@ import "./coach-qa-overrides.css";
 export const metadata: Metadata = {
   title: "English OS Dashboard",
   description: "English OS learner dashboard",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export const viewport: Viewport = {

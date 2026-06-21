@@ -1,12 +1,15 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import { CoachIcon } from "@/components/CoachIcon";
 import { CoachComposer } from "@/modules/coach-chat/CoachComposer";
 import { CoachMessageList } from "@/modules/coach-chat/CoachMessageList";
+import { CoachSplitHandle } from "@/modules/coach-layout/CoachSplitHandle";
 import { CoachTopBar } from "@/modules/coach-layout/CoachTopBar";
 import { useCoachPageController } from "@/modules/coach-page/useCoachPageController";
 import { CoachClassMaterialsPanel } from "@/modules/coach-resources/CoachClassMaterialsPanel";
+import { CoachDiagnosticsPanel } from "@/modules/coach-resources/CoachDiagnosticsPanel";
 import { CoachGuidesPanel } from "@/modules/coach-resources/CoachGuidesPanel";
 import { CoachLearningPulsePanel } from "@/modules/coach-resources/CoachLearningPulsePanel";
 import { CoachQuickHelpPanel } from "@/modules/coach-resources/CoachQuickHelpPanel";
@@ -17,6 +20,7 @@ const PROGRESS_STATUS = "Evaluación pendiente";
 export default function CoachPage() {
   const coach = useCoachPageController();
   const { auth, state, refs, models, actions } = coach;
+  const layoutStyle = { "--coach-sidebar-width": `${state.sidebarWidth}px` } as CSSProperties;
 
   if (!auth.authReady && !auth.e2eDemo) {
     return (
@@ -105,8 +109,52 @@ export default function CoachPage() {
 
         {state.error && <div className="mb-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">{state.error}</div>}
 
-        <div className={`coach-layout grid min-h-0 min-w-0 max-w-full flex-1 gap-2 ${state.sidebarOpen ? "coach-layout-open" : "coach-layout-closed"}`}>
-          <section className="coach-chat order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border">
+        <div
+          className={`coach-layout grid min-h-0 min-w-0 max-w-full flex-1 gap-2 ${state.sidebarOpen ? "coach-layout-open" : "coach-layout-closed"}`}
+          style={layoutStyle}
+        >
+          {state.sidebarOpen && <aside id="coach-sidebar" className="coach-sidebar min-w-0 max-w-full space-y-2 overflow-x-hidden">
+            <CoachStudyPanel
+              model={models.studyPanelModel}
+              onStudyUnitChange={actions.handleStudyUnitChange}
+              onStudyUnitBlur={actions.handleStudyUnitBlur}
+              onUseSavedPosition={actions.handleUseSavedPosition}
+              onStartClass={actions.startTodayClass}
+            />
+
+            <CoachLearningPulsePanel
+              model={models.learningPulsePanelModel}
+            />
+
+            <CoachDiagnosticsPanel
+              model={models.diagnosticsPanelModel}
+              onRunDiagnostics={actions.runDiagnostics}
+            />
+
+            <CoachGuidesPanel
+              model={models.guidesPanelModel}
+              onCreateGrammarWorkbook={actions.createGrammarWorkbook}
+              onCreateVocabularyWorkbook={actions.createVocabularyWorkbook}
+              onRequestGrammarGuide={actions.requestUnitGrammar}
+              onRequestVocabularyGuide={actions.requestUnitVocabulary}
+            />
+
+            <CoachQuickHelpPanel
+              model={models.quickHelpPanelModel}
+              onSelectAgent={actions.setActiveAgentId}
+              onRunAgent={actions.handleRunAgent}
+            />
+
+            <CoachClassMaterialsPanel
+              model={models.classMaterialsPanelModel}
+              onToggleResource={actions.toggleResource}
+              onPracticeResource={actions.requestResourcePractice}
+            />
+          </aside>}
+
+          {state.sidebarOpen && <CoachSplitHandle onResizeStart={actions.startSidebarResize} />}
+
+          <section className="coach-chat coach-chat-pane flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border">
             <div className="coach-messages min-h-0 flex-1 overflow-y-auto px-4 py-2 sm:px-5">
               <CoachMessageList
                 model={models.messageListModel}
@@ -138,40 +186,6 @@ export default function CoachPage() {
               }}
             />
           </section>
-
-          {state.sidebarOpen && <aside id="coach-sidebar" className="coach-sidebar order-1 min-w-0 max-w-full space-y-2 overflow-x-hidden">
-            <CoachStudyPanel
-              model={models.studyPanelModel}
-              onStudyUnitChange={actions.handleStudyUnitChange}
-              onStudyUnitBlur={actions.handleStudyUnitBlur}
-              onUseSavedPosition={actions.handleUseSavedPosition}
-              onStartClass={actions.startTodayClass}
-            />
-
-            <CoachLearningPulsePanel
-              model={models.learningPulsePanelModel}
-            />
-
-            <CoachGuidesPanel
-              model={models.guidesPanelModel}
-              onCreateGrammarWorkbook={actions.createGrammarWorkbook}
-              onCreateVocabularyWorkbook={actions.createVocabularyWorkbook}
-              onRequestGrammarGuide={actions.requestUnitGrammar}
-              onRequestVocabularyGuide={actions.requestUnitVocabulary}
-            />
-
-            <CoachQuickHelpPanel
-              model={models.quickHelpPanelModel}
-              onSelectAgent={actions.setActiveAgentId}
-              onRunAgent={actions.handleRunAgent}
-            />
-
-            <CoachClassMaterialsPanel
-              model={models.classMaterialsPanelModel}
-              onToggleResource={actions.toggleResource}
-              onPracticeResource={actions.requestResourcePractice}
-            />
-          </aside>}
         </div>
       </div>
     </main>

@@ -17,11 +17,15 @@ export type CoachPreferences = {
   theme?: CoachStoredTheme;
   textSize?: CoachStoredTextSize;
   sidebarOpen?: boolean;
+  sidebarWidth?: number;
 };
 
 const THEME_STORAGE_KEY = "english-os-coach-theme";
 const TEXT_SIZE_STORAGE_KEY = "english-os-coach-text-size";
 const SIDEBAR_STORAGE_KEY = "english-os-coach-sidebar";
+const SIDEBAR_WIDTH_STORAGE_KEY = "english-os-coach-sidebar-width";
+const MIN_SIDEBAR_WIDTH = 260;
+const MAX_SIDEBAR_WIDTH = 560;
 const VALID_THEMES: CoachStoredTheme[] = ["slate", "paper", "sage", "sand", "blue"];
 const VALID_TEXT_SIZES: CoachStoredTextSize[] = ["compact", "normal", "large"];
 
@@ -36,6 +40,7 @@ export function loadCoachPreferences(
   const storedTheme = storage.getItem(THEME_STORAGE_KEY);
   const storedTextSize = storage.getItem(TEXT_SIZE_STORAGE_KEY);
   const storedSidebar = storage.getItem(SIDEBAR_STORAGE_KEY);
+  const storedSidebarWidth = storage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
   const preferences: CoachPreferences = {};
 
   if (isCoachStoredTheme(storedTheme)) preferences.theme = storedTheme;
@@ -49,16 +54,25 @@ export function loadCoachPreferences(
     preferences.sidebarOpen = false;
   }
 
+  const parsedSidebarWidth = storedSidebarWidth === null ? Number.NaN : Number(storedSidebarWidth);
+  if (Number.isFinite(parsedSidebarWidth)) {
+    preferences.sidebarWidth = clampSidebarWidth(parsedSidebarWidth);
+  }
+
   return preferences;
 }
 
 export function saveCoachPreferences(
   storage: Pick<Storage, "setItem">,
-  preferences: Required<Pick<CoachPreferences, "theme" | "textSize" | "sidebarOpen">>,
+  preferences: Required<Pick<CoachPreferences, "theme" | "textSize" | "sidebarOpen">> &
+    Pick<CoachPreferences, "sidebarWidth">,
 ) {
   storage.setItem(THEME_STORAGE_KEY, preferences.theme);
   storage.setItem(TEXT_SIZE_STORAGE_KEY, preferences.textSize);
   storage.setItem(SIDEBAR_STORAGE_KEY, preferences.sidebarOpen ? "open" : "closed");
+  if (typeof preferences.sidebarWidth === "number") {
+    storage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(clampSidebarWidth(preferences.sidebarWidth)));
+  }
 }
 
 export function loadCoachConversation(
@@ -111,6 +125,10 @@ function isCoachStoredTheme(value: unknown): value is CoachStoredTheme {
 
 function isCoachStoredTextSize(value: unknown): value is CoachStoredTextSize {
   return typeof value === "string" && VALID_TEXT_SIZES.includes(value as CoachStoredTextSize);
+}
+
+function clampSidebarWidth(width: number) {
+  return Math.min(Math.max(Math.round(width), MIN_SIDEBAR_WIDTH), MAX_SIDEBAR_WIDTH);
 }
 
 function isUsage(value: unknown): value is CoachStoredMessage["usage"] {

@@ -23,19 +23,22 @@ test("coach persistence loads and saves only stable UI preferences", () => {
     "english-os-coach-theme": "sand",
     "english-os-coach-text-size": "compact",
     "english-os-coach-sidebar": "closed",
+    "english-os-coach-sidebar-width": "420",
   });
 
   expect(loadCoachPreferences(storage, { isSmallViewport: false })).toEqual({
     theme: "sand",
     textSize: "compact",
     sidebarOpen: false,
+    sidebarWidth: 420,
   });
 
-  saveCoachPreferences(storage, { theme: "blue", textSize: "large", sidebarOpen: true });
+  saveCoachPreferences(storage, { theme: "blue", textSize: "large", sidebarOpen: true, sidebarWidth: 900 });
   expect(storage.dump()).toMatchObject({
     "english-os-coach-theme": "blue",
     "english-os-coach-text-size": "large",
     "english-os-coach-sidebar": "open",
+    "english-os-coach-sidebar-width": "560",
   });
 });
 
@@ -44,6 +47,9 @@ test("coach persistence defaults the sidebar closed on mobile only when no user 
   expect(loadCoachPreferences(memoryStorage(), { isSmallViewport: false })).toEqual({});
   expect(loadCoachPreferences(memoryStorage({ "english-os-coach-sidebar": "open" }), { isSmallViewport: true })).toEqual({
     sidebarOpen: true,
+  });
+  expect(loadCoachPreferences(memoryStorage({ "english-os-coach-sidebar-width": "120" }), { isSmallViewport: false })).toEqual({
+    sidebarWidth: 260,
   });
 });
 

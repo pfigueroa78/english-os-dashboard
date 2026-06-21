@@ -10,6 +10,7 @@ export type CoachLearningPulse = {
 export type CoachSavedPosition = {
   unit: string;
   lesson: string;
+  classNumber: number | null;
 };
 
 export type CoachInitialMessage = {
@@ -78,23 +79,34 @@ export function getSavedPosition(data: any): CoachSavedPosition {
   const user = context?.user || data?.user || {};
   const recommended = context?.recommendedCurrentPosition || data?.recommendedCurrentPosition || {};
   const current = context?.currentPosition || data?.currentPosition || {};
+  const learningState = context?.learningState || data?.learningState || {};
+  const currentClassIndex = context?.currentClassIndex || data?.currentClassIndex || {};
   const missionControl = context?.missionControl || data?.missionControl || context || {};
   const sources = [
     {
+      unit: learningState.currentUnit || currentClassIndex.unit || learningState.unit,
+      lesson: currentClassIndex.lesson || learningState.currentLesson || learningState.lesson || (learningState.currentClass ? `Class ${learningState.currentClass}` : ""),
+      classNumber: learningState.currentClass || currentClassIndex.classNumber,
+    },
+    {
       unit: recommended.unit || recommended.currentUnit,
       lesson: recommended.lesson || recommended.currentLesson,
+      classNumber: recommended.currentClass || recommended.classNumber,
     },
     {
       unit: current.unit || current.currentUnit,
       lesson: current.lesson || current.currentLesson,
+      classNumber: current.currentClass || current.classNumber,
     },
     {
       unit: user["Current Unit"] || user.CurrentUnit || user.unit || user.currentUnit,
       lesson: user["Current Lesson"] || user.CurrentLesson || user.lesson || user.currentLesson,
+      classNumber: user["Current Class"] || user.CurrentClass,
     },
     {
       unit: missionControl.currentUnit || missionControl.CurrentUnit || missionControl.unit,
       lesson: missionControl.currentLesson || missionControl.CurrentLesson || missionControl.lesson,
+      classNumber: missionControl.currentClass || missionControl.classNumber,
     },
   ];
   const pairedSource = sources.find((source) => String(source.unit || "").trim());
@@ -102,12 +114,14 @@ export function getSavedPosition(data: any): CoachSavedPosition {
     return {
       unit: String(pairedSource.unit || "").trim(),
       lesson: String(pairedSource.lesson || "").trim(),
+      classNumber: Number(pairedSource.classNumber || 0) || null,
     };
   }
 
   return {
     unit: "",
     lesson: String(sources.find((source) => String(source.lesson || "").trim())?.lesson || "").trim(),
+    classNumber: null,
   };
 }
 

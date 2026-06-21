@@ -124,7 +124,25 @@ export function resolveClassCoordinatesFromPayload(value: unknown, fallbackUnit:
 }
 
 export function resolveClassTargetFromMessage(message: string, fallbackUnit?: string, context?: any): CoachClassTarget {
-  const unit = extractRequestedUnitNumber(message) || Number(String(fallbackUnit || "").match(/\d{1,2}/)?.[0] || 0) || null;
+  const user = context?.user || {};
+  const recommended = context?.recommendedCurrentPosition || {};
+  const current = context?.currentPosition || {};
+  const learningState = context?.learningState || {};
+  const missionControl = context?.missionControl?.missionControl || context?.missionControl || {};
+  const classIndex = context?.currentClassIndex || context?.classContent?.currentClassIndex || {};
+  const activeUnit = firstNumericValue(
+    learningState.currentUnit,
+    classIndex.unit,
+    recommended.currentUnit,
+    recommended.unit,
+    current.currentUnit,
+    current.unit,
+    missionControl.currentUnit,
+    missionControl.unit,
+    user["Current Unit"],
+    user.CurrentUnit,
+  );
+  const unit = extractRequestedUnitNumber(message) || activeUnit || Number(String(fallbackUnit || "").match(/\d{1,2}/)?.[0] || 0) || null;
   const explicitClass = extractRequestedClassNumber(message);
   const localClass = explicitClass || resolveCurrentLocalClass(context, unit);
   const globalClass = unit && localClass ? (unit - 1) * 7 + localClass : null;

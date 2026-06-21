@@ -3,6 +3,7 @@ export type CoachFetch = typeof fetch;
 export type CoachApiClient = {
   readJsonResponse: (response: Response) => Promise<any>;
   getContext: () => Promise<any>;
+  getDiagnostics: () => Promise<any>;
   getDriveUnitResources: (unit: string) => Promise<any>;
   createWorkbook: (params: { kind: "grammar" | "vocabulary"; unit: string; lesson?: string }) => Promise<any>;
   sendAgentMessage: (params: { body: unknown; signal?: AbortSignal }) => Promise<any>;
@@ -29,9 +30,20 @@ function assertOkResponse(response: Response, data: any, fallbackMessage: string
   return data;
 }
 
-export function createCoachApiClient(fetcher: CoachFetch = fetch): CoachApiClient {
+function headersWithLearnerEmail(headers: HeadersInit | undefined, learnerEmail: string) {
+  const nextHeaders = new Headers(headers);
+  if (learnerEmail) {
+    nextHeaders.set("x-english-os-user-email", learnerEmail);
+  }
+  return nextHeaders;
+}
+
+export function createCoachApiClient(fetcher: CoachFetch = fetch, learnerEmail = ""): CoachApiClient {
   async function requestJson(url: string, init: RequestInit, fallbackMessage: string) {
-    const response = await fetcher(url, init);
+    const response = await fetcher(url, {
+      ...init,
+      headers: headersWithLearnerEmail(init.headers, learnerEmail),
+    });
     const data = await readJsonResponse(response);
     return assertOkResponse(response, data, fallbackMessage);
   }
@@ -45,6 +57,14 @@ export function createCoachApiClient(fetcher: CoachFetch = fetch): CoachApiClien
         { method: "GET", cache: "no-store" },
         "Failed to load English OS context.",
       );
+    },
+
+    getDiagnostics() {
+      return fetcher("/api/english-os/diagnostics", {
+        method: "GET",
+        cache: "no-store",
+        headers: headersWithLearnerEmail(undefined, learnerEmail),
+      }).then(readJsonResponse);
     },
 
     getDriveUnitResources(unit: string) {
@@ -95,6 +115,7 @@ export function createCoachApiClient(fetcher: CoachFetch = fetch): CoachApiClien
     async transcribeAudio(formData: FormData) {
       const response = await fetcher("/api/english-os/transcribe", {
         method: "POST",
+        headers: headersWithLearnerEmail(undefined, learnerEmail),
         body: formData,
       });
       const data = await response.json().catch(() => ({}));
@@ -105,4 +126,3 @@ export function createCoachApiClient(fetcher: CoachFetch = fetch): CoachApiClien
     },
   };
 }
-

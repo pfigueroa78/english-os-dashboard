@@ -1,7 +1,7 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
+import { getApiLearnerIdentity } from "@/lib/apiLearnerIdentity";
 import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
 import { renderServerPrompt } from "@/modules/coach-prompts/serverPromptRegistry";
@@ -159,24 +159,29 @@ function learnerPositionLine(params: {
   explicitClassRequest?: boolean;
 }) {
   const user = params.context?.user || {};
-  const currentUnit = user["Current Unit"] || params.context?.currentUnit || "";
-  const currentLesson = user["Current Lesson"] || params.context?.currentLesson || "";
+  const learningState = params.context?.learningState || {};
+  const classIndex = params.context?.currentClassIndex || {};
+  const currentUnit = learningState.currentUnit || classIndex.unit || user["Current Unit"] || params.context?.currentUnit || "";
+  const currentClass = learningState.currentClass || classIndex.classNumber || "";
   const greeting = params.name ? `${params.name}, ` : "";
-  const savedPosition = learnerFriendlySavedPosition([currentUnit, currentLesson].filter(Boolean).join(" — "));
   const target = params.guideKind
     ? `Unit ${params.requestedUnit} ${params.guideKind === "grammar" ? "grammar guide" : "vocabulary guide"}`
     : params.review
       ? `Unit ${params.requestedUnit} review`
       : `Unit ${params.requestedUnit}, Class ${params.requestedClass}`;
+  const activeTargetMatches =
+    String(currentUnit || "").trim() === String(params.requestedUnit) &&
+    (!params.requestedClass || String(currentClass || "").trim() === String(params.requestedClass));
 
-  if (savedPosition) {
-    return params.explicitClassRequest
-      ? `${greeting}encontré tu posición actual en English OS: **${savedPosition}**.\n\nTrabajaremos con **${target}**.`
-      : `${greeting}encontré tu clase activa en English OS: **${target}**.\n\nPosición guardada: **${savedPosition}**.`;
+  if (params.review || params.guideKind || params.explicitClassRequest) {
+    return greeting ? `${greeting}trabajaremos con **${target}**.` : `Trabajaremos con **${target}**.`;
   }
-  return params.explicitClassRequest
-    ? `${greeting}trabajaremos con **${target}**.`
-    : `${greeting}abriremos tu clase activa: **${target}**.`;
+
+  if (activeTargetMatches) {
+    return greeting ? `${greeting}encontré tu clase activa en English OS: **${target}**.` : `Encontré tu clase activa en English OS: **${target}**.`;
+  }
+
+  return greeting ? `${greeting}vamos con **${target}**.` : `Vamos con **${target}**.`;
 }
 
 function stripModelOwnedIdentity(reply: string) {
@@ -337,13 +342,13 @@ function renderClassReply(params: {
   ].filter(Boolean).join(" · ");
   const header = [
     `# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`,
-    `Current target: **${reference}**.`,
+    `Hoy trabajaremos **${reference}**.`,
     "",
     formattedSkillFocus
-      ? `Focus: **${formattedSkillFocus}**. We’ll work one step at a time.`
-      : "We’ll work one step at a time.",
+      ? `Focus: **${formattedSkillFocus}**. Iremos paso a paso.`
+      : "Iremos paso a paso.",
     "",
-    identity.sections ? `First micro-step: **${identity.sections.split("+")[0]?.trim() || displayLesson}**.` : "",
+    identity.sections ? `Empezamos con **${identity.sections.split("+")[0]?.trim() || displayLesson}**.` : "",
   ].filter(Boolean);
 
   return readableMarkdownPunctuation(sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]
@@ -637,11 +642,10 @@ async function callCompleteCoachModel(input: any[]) {
 }
 
 export async function coachPost(request: Request) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ ok: false, error: "Authentication required." }, { status: 401 });
+  const identity = await getApiLearnerIdentity(request);
+  if (!identity.authenticated) return NextResponse.json({ ok: false, error: "Authentication required." }, { status: 401 });
 
-  const clerkUser = await currentUser();
-  const email = clerkUser?.emailAddresses?.[0]?.emailAddress;
+  const email = identity.email;
   if (!email) return NextResponse.json({ ok: false, error: "No email found for current user." }, { status: 400 });
 
   const body = (await request.json()) as CoachRequest;
@@ -736,7 +740,7 @@ export async function coachPost(request: Request) {
     const identity = classIdentity(content);
     const position = learnerPositionLine({
       context,
-      name: learnerName(context, clerkUser?.firstName || ""),
+      name: learnerName(context, ""),
       requestedUnit: unit,
       requestedClass: localClass,
       explicitClassRequest: target.explicitClassRequest,
@@ -783,7 +787,7 @@ export async function coachPost(request: Request) {
     assertNoMetadataFallback(modelBody);
     const position = learnerPositionLine({
       context,
-      name: learnerName(context, clerkUser?.firstName || ""),
+      name: learnerName(context, ""),
       requestedUnit: unit,
       review: true,
     });
@@ -822,7 +826,7 @@ export async function coachPost(request: Request) {
     assertNoMetadataFallback(modelBody);
     const position = learnerPositionLine({
       context,
-      name: learnerName(context, clerkUser?.firstName || ""),
+      name: learnerName(context, ""),
       requestedUnit: unit,
       guideKind,
     });

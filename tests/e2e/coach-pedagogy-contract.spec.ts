@@ -103,15 +103,27 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
 
 test("coach UI follows the explicitly requested unit for materials", async () => {
   const source = readFile("src/app/coach/page.tsx");
+  const sessionContract = readFile("src/modules/coach-session/contract.ts");
+  const topBar = readFile("src/modules/coach-layout/CoachTopBar.tsx");
+  const studyPanel = readFile("src/modules/coach-resources/CoachStudyPanel.tsx");
+
+  expect(source).toContain("const [coachSession, setCoachSession]");
+  expect(source).toContain("const uiSession = createCoachSessionContract");
+  expect(source).toContain("session={uiSession}");
+  expect(topBar).toContain("sessionHeaderDetail(session)");
+  expect(topBar).toContain("sessionLocationLabel(session)");
+  expect(studyPanel).toContain("sessionResourcesLabel(session)");
+  expect(sessionContract).toContain("resourcesUnit");
+
   expect(source).toContain("function inferCoordinatesFromReply");
   expect(source).toContain("const inferredCoordinates = inferCoordinatesFromReply(reply)");
   expect(source).toContain("const activeUnit = data.activeUnit || inferredCoordinates.unit");
   expect(source).toContain("normalizeUnitValue");
-  expect(source).toContain("setStudyUnit(normalizeUnitValue(unit))");
+  expect(source).toContain("setStudyUnit(normalizeUnitValue(nextSession.activeUnit || unit))");
   expect(source).not.toContain("setCurrentUnit(unit);\n        setStudyUnit(unit)");
   expect(source).toContain("const nextMode: StudyMode = isReviewRequest(message) ? \"review\" : isGuideRequest(message) ? \"guide\" : \"class\"");
   expect(source).toContain("setStudyMode(nextMode)");
-  expect(source).toContain("setStudyClassNumber(activeClass && nextMode === \"class\" ? Number(activeClass) : null)");
+  expect(source).toContain("setStudyClassNumber(nextSession.activeClassNumber && nextMode === \"class\" ? Number(nextSession.activeClassNumber) : null)");
   expect(source).toContain("Posición guardada:");
   expect(source).toContain("No pude completar la respuesta esta vez");
   expect(source).toContain("no inventes Class 1");
@@ -123,11 +135,13 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
 
 test("mobile coach header keeps mode and unit/class visible", async () => {
   const source = readFile("src/app/coach/page.tsx");
+  const topBar = readFile("src/modules/coach-layout/CoachTopBar.tsx");
   const globals = readFile("src/app/globals.css");
   const overrides = readFile("src/app/coach-qa-overrides.css");
 
-  expect(source).toContain("coach-status-detail");
-  expect(source).toContain("{studyModeLabel(studyMode)} · {activeLocationLabel}");
+  expect(source).toContain("<CoachTopBar");
+  expect(topBar).toContain("coach-status-detail");
+  expect(topBar).toContain("sessionHeaderDetail(session)");
   expect(globals).toContain(".coach-status-detail");
   expect(overrides).toContain(".coach-status-detail");
   expect(globals).not.toContain("span:not(.coach-status-brand)");

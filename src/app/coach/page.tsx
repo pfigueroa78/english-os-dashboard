@@ -4,6 +4,10 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { EnglishOsLogo } from "@/components/EnglishOsLogo";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
+import { CoachTopBar } from "@/modules/coach-layout/CoachTopBar";
+import { CoachStudyPanel } from "@/modules/coach-resources/CoachStudyPanel";
+import { createCoachSessionContract } from "@/modules/coach-session/contract";
+import type { CoachSessionState } from "@/modules/coach-session/types";
 
 type Message = {
   role: "user" | "coach";
@@ -205,6 +209,11 @@ function studyModeLabel(mode: StudyMode) {
   if (mode === "guide") return "Guía";
   if (mode === "class") return "Clase";
   return "Actual";
+}
+
+function coachModeFromStudyMode(mode: StudyMode): CoachSessionState["mode"] {
+  if (mode === "review" || mode === "guide" || mode === "class") return mode;
+  return "current";
 }
 
 function inferCoordinatesFromReply(reply: string) {
@@ -446,6 +455,17 @@ export default function CoachPage() {
   const [studyUnit, setStudyUnit] = useState(E2E_DEMO ? DEMO_UNIT : "");
   const [studyMode, setStudyMode] = useState<StudyMode>("current");
   const [studyClassNumber, setStudyClassNumber] = useState<number | null>(null);
+  const [coachSession, setCoachSession] = useState<CoachSessionState>(() =>
+    createCoachSessionContract({
+      mode: "current",
+      savedUnit: E2E_DEMO ? DEMO_UNIT : null,
+      savedLesson: E2E_DEMO ? DEMO_LESSON : null,
+      activeUnit: E2E_DEMO ? DEMO_UNIT : null,
+      lessonTitle: E2E_DEMO ? DEMO_LESSON : null,
+      resourcesUnit: E2E_DEMO ? DEMO_UNIT : null,
+      source: E2E_DEMO ? "fallback" : "english_os",
+    }),
+  );
   const [learningPulse, setLearningPulse] = useState<LearningPulse>(() => buildLearningPulse({}));
   const [theme, setTheme] = useState<CoachTheme>("paper");
   const [textSize, setTextSize] = useState<CoachTextSize>("compact");
@@ -479,7 +499,17 @@ export default function CoachPage() {
   const agentAbortRef = useRef<AbortController | null>(null);
 
   const activeAgent = SPECIALIST_AGENTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENTS[0];
-  const activeStudyUnit = studyUnit || currentUnit;
+  const uiSession = createCoachSessionContract({
+    mode: coachModeFromStudyMode(studyMode),
+    savedUnit: currentUnit || coachSession.savedUnit,
+    savedLesson: currentLesson || coachSession.savedLesson,
+    activeUnit: studyUnit || coachSession.activeUnit || currentUnit,
+    activeClassNumber: studyClassNumber || coachSession.activeClassNumber,
+    lessonTitle: coachSession.lessonTitle || currentLesson,
+    resourcesUnit: coachSession.resourcesUnit || studyUnit || currentUnit,
+    source: coachSession.source,
+  });
+  const activeStudyUnit = uiSession.resourcesUnit || uiSession.activeUnit || currentUnit;
   const activeStudyUnitLabel = unitLabel(activeStudyUnit);
   const activeLocationLabel = [activeStudyUnitLabel, studyClassNumber ? `Class ${studyClassNumber}` : ""].filter(Boolean).join(" · ");
   const learningPulseLabel = learningPulseDetail(learningPulse);
@@ -605,6 +635,15 @@ export default function CoachPage() {
       const { unit, lesson } = getSavedPosition(data);
       const resolvedUnit = unit ? normalizeUnitValue(unit) : "";
       const progressSnapshot = buildProgressSnapshot(data);
+      setCoachSession(createCoachSessionContract({
+        mode: "current",
+        savedUnit: resolvedUnit || null,
+        savedLesson: lesson || null,
+        activeUnit: resolvedUnit || null,
+        lessonTitle: lesson || null,
+        resourcesUnit: resolvedUnit || null,
+        source: "english_os",
+      }));
 
       if (resolvedUnit) {
         setCurrentUnit(resolvedUnit);
@@ -817,13 +856,26 @@ export default function CoachPage() {
       const unit = activeUnit ? `Unit ${activeUnit}` : "";
       const lesson = savedPosition.lesson;
       const nextMode: StudyMode = isReviewRequest(message) ? "review" : isGuideRequest(message) ? "guide" : "class";
+      const nextSession = data.session
+        ? data.session as CoachSessionState
+        : createCoachSessionContract({
+          mode: coachModeFromStudyMode(nextMode),
+          savedUnit: savedPosition.unit || currentUnit,
+          savedLesson: lesson || currentLesson,
+          activeUnit: unit || currentUnit,
+          activeClassNumber: activeClass,
+          lessonTitle: lesson || currentLesson,
+          resourcesUnit: unit || currentUnit,
+          source: "english_os",
+        });
 
       setStudyMode(nextMode);
-      if (unit) {
-        setStudyUnit(normalizeUnitValue(unit));
+      setCoachSession(nextSession);
+      if (nextSession.activeUnit || unit) {
+        setStudyUnit(normalizeUnitValue(nextSession.activeUnit || unit));
       }
-      setStudyClassNumber(activeClass && nextMode === "class" ? Number(activeClass) : null);
-      if (lesson) setCurrentLesson(lesson);
+      setStudyClassNumber(nextSession.activeClassNumber && nextMode === "class" ? Number(nextSession.activeClassNumber) : null);
+      if (nextSession.lessonTitle || lesson) setCurrentLesson(nextSession.lessonTitle || lesson);
 
       setMessages((current) => [
         ...current,
@@ -1241,7 +1293,21 @@ export default function CoachPage() {
           {contextError && <div className="mt-3 rounded-2xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">{contextError}</div>}
         </header>
 
-        <div className="coach-toolbar mb-2 flex min-h-10 items-center gap-2 rounded-xl border px-2 py-1.5">
+        <CoachTopBar
+          session={uiSession}
+          sidebarOpen={sidebarOpen}
+          theme={theme}
+          textSize={textSize}
+          learningPulseLabel={learningPulseLabel}
+          panelIcon={<SvgIcon name={sidebarOpen ? "panelOpen" : "panel"} />}
+          userMenu={!E2E_DEMO && isLoaded && isSignedIn ? <UserButton /> : null}
+          onToggleSidebar={() => setSidebarOpen((open) => !open)}
+          onThemeChange={setTheme}
+          onDecreaseText={() => setTextSize((size) => nextCoachTextSize(size, -1))}
+          onIncreaseText={() => setTextSize((size) => nextCoachTextSize(size, 1))}
+        />
+
+        {false && (<>
           <button type="button" className="coach-icon-button coach-panel-toggle" onClick={() => setSidebarOpen((open) => !open)} aria-expanded={sidebarOpen} aria-controls="coach-sidebar" aria-label={sidebarOpen ? "Ocultar panel" : "Mostrar panel"} title={sidebarOpen ? "Ocultar panel" : "Mostrar panel"}>
             <SvgIcon name={sidebarOpen ? "panelOpen" : "panel"} />
           </button>
@@ -1253,7 +1319,7 @@ export default function CoachPage() {
               A+
             </button>
           </div>
-          <label className="flex items-center gap-2 text-xs font-medium">
+          <div className="flex items-center gap-2 text-xs font-medium">
             <span className="hidden sm:inline">Tema</span>
             <select value={theme} onChange={(event) => setTheme(event.target.value as CoachTheme)} className="coach-theme-select rounded-lg border px-2 py-1.5">
               <option value="paper">Papel</option>
@@ -1262,10 +1328,10 @@ export default function CoachPage() {
               <option value="blue">Azul</option>
               <option value="slate">Pizarra</option>
             </select>
-          </label>
-          <span className="coach-status ml-auto truncate">
+          </div>
+          <span className="coach-status-legacy ml-auto truncate">
             <EnglishOsLogo size="sm" showText={false} markClassName="coach-status-logo" />
-            <span className="coach-status-brand">English OS</span>
+            <span className="coach-status-brand-legacy">English OS</span>
             <span className="coach-status-separator">—</span>
             <span className="coach-status-mode">{studyModeLabel(studyMode)}</span>
             <span className="coach-status-separator">—</span>
@@ -1275,7 +1341,7 @@ export default function CoachPage() {
             <span className="coach-status-detail">{studyModeLabel(studyMode)} · {activeLocationLabel}</span>
           </span>
           {!E2E_DEMO && isLoaded && isSignedIn && <UserButton />}
-        </div>
+        </>)}
 
         {error && <div className="mb-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">{error}</div>}
 
@@ -1401,7 +1467,56 @@ export default function CoachPage() {
           </section>
 
           {sidebarOpen && <aside id="coach-sidebar" className="coach-sidebar order-1 min-w-0 max-w-full space-y-2 overflow-x-hidden">
-            <section className="coach-panel min-w-0 max-w-full overflow-hidden rounded-xl border p-3">
+            <CoachStudyPanel
+              session={uiSession}
+              contextLoading={contextLoading}
+              studyUnit={studyUnit}
+              currentUnit={unitLabel(currentUnit)}
+              loading={loading}
+              onStudyUnitChange={(unit) => {
+                setStudyUnit(unit);
+                setStudyMode("class");
+                setCoachSession(createCoachSessionContract({
+                  mode: "class",
+                  savedUnit: currentUnit,
+                  savedLesson: currentLesson,
+                  activeUnit: unit,
+                  activeClassNumber: null,
+                  lessonTitle: currentLesson,
+                  resourcesUnit: unit,
+                  source: "request",
+                }));
+              }}
+              onStudyUnitBlur={(unit) => {
+                const normalizedUnit = normalizeUnitValue(unit);
+                setStudyUnit(normalizedUnit);
+                setCoachSession(createCoachSessionContract({
+                  mode: "class",
+                  savedUnit: currentUnit,
+                  savedLesson: currentLesson,
+                  activeUnit: normalizedUnit,
+                  activeClassNumber: null,
+                  lessonTitle: currentLesson,
+                  resourcesUnit: normalizedUnit,
+                  source: "request",
+                }));
+              }}
+              onUseSavedPosition={() => {
+                setStudyUnit(normalizeUnitValue(currentUnit));
+                setStudyMode("current");
+                setCoachSession(createCoachSessionContract({
+                  mode: "current",
+                  savedUnit: currentUnit,
+                  savedLesson: currentLesson,
+                  activeUnit: currentUnit,
+                  lessonTitle: currentLesson,
+                  resourcesUnit: currentUnit,
+                  source: "english_os",
+                }));
+              }}
+              onStartClass={startTodayClass}
+            />
+            {false && (<section>
               <p className="text-[11px] font-semibold uppercase tracking-wide opacity-60">Objetivo activo</p>
               <h2 className="mt-1 text-lg font-bold">{activeLocationLabel}</h2>
               <p className="mt-1 text-xs font-semibold uppercase tracking-wide opacity-60">Modo: {studyModeLabel(studyMode)}</p>
@@ -1417,7 +1532,7 @@ export default function CoachPage() {
                   Clase
                 </button>
               </div>
-            </section>
+            </section>)}
 
             <section className="coach-panel coach-learning-pulse min-w-0 max-w-full overflow-hidden rounded-xl border p-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide opacity-60">Tu avance</p>

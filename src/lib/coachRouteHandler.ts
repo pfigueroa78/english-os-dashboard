@@ -5,8 +5,6 @@ import path from "node:path";
 import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
 import {
-  extractRequestedClassNumber,
-  extractRequestedUnitNumber,
   hasExplicitClassCoordinates,
   isGiveClassQuestion,
   isReviewIntent,
@@ -14,6 +12,11 @@ import {
   unitGuideIntentKind,
 } from "@/lib/coachIntent";
 import { createCoachSessionContract, legacyActiveClass, legacyActiveUnit } from "@/modules/coach-session/contract";
+import {
+  mergeClassTargetWithPayload,
+  resolveClassTargetFromMessage,
+  resolveUnitTarget,
+} from "@/modules/coach-target/resolve";
 import passagesUnitTitles from "../../knowledge/passages-unit-titles.json";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
@@ -62,122 +65,6 @@ function isReviewQuestion(message: string) {
 
 function unitGuideKind(message: string): "grammar" | "vocabulary" | null {
   return unitGuideIntentKind(message);
-}
-
-function firstNumericValue(...values: unknown[]) {
-  for (const value of values) {
-    const match = String(value || "").match(/\d{1,2}/);
-    if (match?.[0]) return Number(match[0]);
-  }
-  return null;
-}
-
-function localClassFromAnyClassNumber(value: number | null, unit: number | null) {
-  if (!value) return null;
-  if (value >= 1 && value <= 7) return value;
-  if (unit && value > 7) {
-    const local = value - (unit - 1) * 7;
-    if (local >= 1 && local <= 7) return local;
-  }
-  return null;
-}
-
-function resolveCurrentLocalClass(context: any, unit: number | null) {
-  const user = context?.user || {};
-  const recommended = context?.recommendedCurrentPosition || {};
-  const current = context?.currentPosition || {};
-  const learningState = context?.learningState || {};
-  const missionControl = context?.missionControl?.missionControl || context?.missionControl || {};
-  const classIndex = context?.currentClassIndex || context?.classContent?.currentClassIndex || {};
-  const rawClass = firstNumericValue(
-    user["Current Class"],
-    user.CurrentClass,
-    user["Class"],
-    recommended.currentClass,
-    recommended.classNumber,
-    recommended.globalClass,
-    current.currentClass,
-    current.classNumber,
-    current.globalClass,
-    learningState.currentClass,
-    learningState.classNumber,
-    learningState.globalClass,
-    missionControl.currentClass,
-    missionControl.classNumber,
-    missionControl.globalClass,
-    classIndex.classNumber,
-    classIndex.localClass,
-    classIndex.globalClass,
-    user["Current Position"],
-    context?.currentLesson,
-    missionControl.currentLesson,
-  );
-  return localClassFromAnyClassNumber(rawClass, unit);
-}
-
-function firstNumberByKey(value: unknown, keyPattern: RegExp): number | null {
-  const seen = new Set<unknown>();
-  const visit = (node: unknown): number | null => {
-    if (!node || typeof node !== "object") return null;
-    if (seen.has(node)) return null;
-    seen.add(node);
-    for (const [key, child] of Object.entries(node as Record<string, unknown>)) {
-      if (keyPattern.test(key)) {
-        const found = firstNumericValue(child);
-        if (found) return found;
-      }
-      const nested = visit(child);
-      if (nested) return nested;
-    }
-    return null;
-  };
-  return visit(value);
-}
-
-function collectStrings(value: unknown, limit = 80) {
-  const strings: string[] = [];
-  const seen = new Set<unknown>();
-  const visit = (node: unknown) => {
-    if (strings.length >= limit || node == null) return;
-    if (typeof node === "string") {
-      const text = node.trim();
-      if (text) strings.push(text);
-      return;
-    }
-    if (typeof node !== "object" || seen.has(node)) return;
-    seen.add(node);
-    for (const child of Object.values(node as Record<string, unknown>)) visit(child);
-  };
-  visit(value);
-  return strings;
-}
-
-function coordinatesFromPayload(value: unknown, fallbackUnit: number | null = null) {
-  const unit =
-    firstNumberByKey(value, /^(currentUnit|unit|unitNumber|activeUnit)$/i) ||
-    fallbackUnit ||
-    null;
-  const localByKey = firstNumberByKey(value, /^(localClass|currentLocalClass|activeLocalClass)$/i);
-  const globalByKey = firstNumberByKey(value, /^(globalClass|currentGlobalClass|activeGlobalClass|classNumber)$/i);
-  const strings = collectStrings(value);
-  const textUnit = unit || firstNumericValue(strings.find((text) => /\bunit\s+\d{1,2}\b/i.test(text)));
-  const classText = strings.find((text) => /\bclass\s+\d{1,2}\b/i.test(text));
-  const classFromText = classText?.match(/\bclass\s+(\d{1,2})\b/i)?.[1] ? Number(classText.match(/\bclass\s+(\d{1,2})\b/i)?.[1]) : null;
-  const resolvedUnit = textUnit || null;
-  const localClass =
-    localClassFromAnyClassNumber(localByKey, resolvedUnit) ||
-    localClassFromAnyClassNumber(globalByKey, resolvedUnit) ||
-    localClassFromAnyClassNumber(classFromText, resolvedUnit);
-  const globalClass = resolvedUnit && localClass ? (resolvedUnit - 1) * 7 + localClass : null;
-  return { unit: resolvedUnit, localClass, globalClass };
-}
-
-function classCoordinates(message: string, fallbackUnit?: string, context?: any) {
-  const unit = extractRequestedUnitNumber(message) || Number(String(fallbackUnit || "").match(/\d{1,2}/)?.[0] || 0) || null;
-  const explicitClass = extractRequestedClassNumber(message);
-  const localClass = explicitClass || resolveCurrentLocalClass(context, unit);
-  const globalClass = unit && localClass ? (unit - 1) * 7 + localClass : null;
-  return { unit, localClass, globalClass };
 }
 
 function classPackFilename(unit: number, localClass: number) {
@@ -906,19 +793,17 @@ export async function coachPost(request: Request) {
   }
 
   if (isGiveClassQuestion(message)) {
-    let { unit, localClass, globalClass } = classCoordinates(message, currentUnit, context);
+    let target = resolveClassTargetFromMessage(message, currentUnit, context);
     let activeClassContent: any = null;
-    if (!unit || !localClass) {
+    if (target.needsCurrentClassLookup) {
       try {
         activeClassContent = await callEnglishOSAction("getCurrentClassContent", { userEmail: email, learnerId });
-        const activeCoordinates = coordinatesFromPayload(activeClassContent, unit);
-        unit = activeCoordinates.unit || unit;
-        localClass = activeCoordinates.localClass || localClass;
-        globalClass = activeCoordinates.globalClass || (unit && localClass ? (unit - 1) * 7 + localClass : null);
+        target = mergeClassTargetWithPayload(target, activeClassContent);
       } catch {
         activeClassContent = null;
       }
     }
+    const { unit, localClass, globalClass } = target;
     if (!unit || !localClass) {
       const savedUnit = unit ? `Unit ${unit}` : "tu unidad actual";
       const session = sessionFor({ mode: "class", activeUnit: unit, activeClassNumber: null, resourcesUnit: unit });
@@ -961,7 +846,7 @@ export async function coachPost(request: Request) {
       name: learnerName(context, clerkUser?.firstName || ""),
       requestedUnit: unit,
       requestedClass: localClass,
-      explicitClassRequest: hasExplicitClassCoordinates(message),
+      explicitClassRequest: target.explicitClassRequest,
     });
     const reply = renderClassReply({ body: modelBody, position, identity, unit, localClass });
     const u = usage(openaiData);
@@ -987,7 +872,7 @@ export async function coachPost(request: Request) {
   }
 
   if (isReviewQuestion(message)) {
-    const unit = extractRequestedUnitNumber(message) || Number(String(currentUnit).match(/\d{1,2}/)?.[0] || 0);
+    const unit = resolveUnitTarget(message, currentUnit);
     if (!unit) return NextResponse.json({ ok: false, error: "I need a unit number for the review." }, { status: 400 });
 
     const contracts = loadUnitTeachingContracts(unit);
@@ -1026,7 +911,7 @@ export async function coachPost(request: Request) {
 
   const guideKind = unitGuideKind(message);
   if (guideKind) {
-    const unit = extractRequestedUnitNumber(message) || Number(String(currentUnit).match(/\d{1,2}/)?.[0] || 0);
+    const unit = resolveUnitTarget(message, currentUnit);
     if (!unit) return NextResponse.json({ ok: false, error: "I need a unit number for the guide." }, { status: 400 });
 
     const contracts = loadUnitTeachingContracts(unit);

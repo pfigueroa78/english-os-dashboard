@@ -301,13 +301,16 @@ test("coach intent resolver classifies natural request families instead of exact
 
 test("ambiguous active class requests consult English OS current class before clarification", async () => {
   const handler = readFile("src/lib/coachRouteHandler.ts");
+  const targetResolver = readFile("src/modules/coach-target/resolve.ts");
   const classBranchStart = handler.indexOf("if (isGiveClassQuestion(message))");
   const reviewBranchStart = handler.indexOf("if (isReviewQuestion(message))", classBranchStart);
   const classBranch = handler.slice(classBranchStart, reviewBranchStart);
 
-  expect(handler).toContain("function coordinatesFromPayload");
+  expect(targetResolver).toContain("function collectStrings");
+  expect(targetResolver).toContain("resolveClassCoordinatesFromPayload");
+  expect(handler).toContain("resolveClassTargetFromMessage");
   expect(classBranch).toContain('callEnglishOSAction("getCurrentClassContent"');
-  expect(classBranch).toContain("coordinatesFromPayload(activeClassContent");
+  expect(classBranch).toContain("mergeClassTargetWithPayload(target, activeClassContent)");
   expect(classBranch.indexOf('callEnglishOSAction("getCurrentClassContent"')).toBeLessThan(classBranch.indexOf("Current Class Clarification"));
 });
 

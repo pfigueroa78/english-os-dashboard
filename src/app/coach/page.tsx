@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { CoachIcon } from "@/components/CoachIcon";
 import { CoachComposer } from "@/modules/coach-chat/CoachComposer";
+import { toCoachComposerModel } from "@/modules/coach-chat/composerViewModel";
 import { CoachMessageList } from "@/modules/coach-chat/CoachMessageList";
 import { toCoachMessageListModel } from "@/modules/coach-chat/messageListViewModel";
 import { CoachTopBar } from "@/modules/coach-layout/CoachTopBar";
@@ -531,6 +532,13 @@ export default function CoachPage() {
     speechPaused,
   });
   const composerImage = selectedImage ? { dataUrl: selectedImage.dataUrl, name: selectedImage.name } : null;
+  const composerModel = toCoachComposerModel({
+    input,
+    selectedImage: composerImage,
+    hydrated,
+    loading,
+    listening,
+  });
   const conversationStorageKey = getCoachConversationStorageKey(email);
 
   useEffect(() => {
@@ -1246,19 +1254,19 @@ export default function CoachPage() {
             </div>
 
             <CoachComposer
-              input={input}
-              selectedImage={composerImage}
-              hydrated={hydrated}
-              loading={loading}
-              listening={listening}
-              imageInputRef={imageInputRef}
-              textareaRef={textareaRef}
-              onImageSelected={handleImageSelected}
-              onClearImage={() => setSelectedImage(null)}
-              onInputChange={setInput}
-              onStartDictation={startDictation}
-              onSendMessage={sendMessage}
-              onStopThinking={stopThinking}
+              model={composerModel}
+              refs={{
+                imageInputRef,
+                textareaRef,
+              }}
+              actions={{
+                onImageSelected: handleImageSelected,
+                onClearImage: () => setSelectedImage(null),
+                onInputChange: setInput,
+                onStartDictation: startDictation,
+                onSendMessage: sendMessage,
+                onStopThinking: stopThinking,
+              }}
             />
           </section>
 

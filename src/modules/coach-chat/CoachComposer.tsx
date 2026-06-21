@@ -1,20 +1,14 @@
 import type { RefObject } from "react";
 
 import { CoachIcon } from "@/components/CoachIcon";
+import type { CoachComposerModel } from "./composerViewModel";
 
-type SelectedCoachImage = {
-  dataUrl: string;
-  name?: string;
-};
-
-type CoachComposerProps = {
-  input: string;
-  selectedImage: SelectedCoachImage | null;
-  hydrated: boolean;
-  loading: boolean;
-  listening: boolean;
+type CoachComposerRefs = {
   imageInputRef: RefObject<HTMLInputElement | null>;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
+};
+
+type CoachComposerActions = {
   onImageSelected: (file?: File) => void;
   onClearImage: () => void;
   onInputChange: (value: string) => void;
@@ -23,67 +17,79 @@ type CoachComposerProps = {
   onStopThinking: () => void;
 };
 
-export function CoachComposer({
-  input,
-  selectedImage,
-  hydrated,
-  loading,
-  listening,
-  imageInputRef,
-  textareaRef,
-  onImageSelected,
-  onClearImage,
-  onInputChange,
-  onStartDictation,
-  onSendMessage,
-  onStopThinking,
-}: CoachComposerProps) {
-  const canSubmit = hydrated && (loading || input.trim() || selectedImage);
+type CoachComposerProps = {
+  model: CoachComposerModel;
+  refs: CoachComposerRefs;
+  actions: CoachComposerActions;
+};
 
+export function CoachComposer({ model, refs, actions }: CoachComposerProps) {
   return (
     <footer className="coach-composer sticky bottom-0 z-10 border-t px-3 py-1.5 backdrop-blur">
-      {selectedImage && (
+      {model.selectedImage && (
         <div className="coach-image-preview">
-          <img src={selectedImage.dataUrl} alt={selectedImage.name || "Imagen seleccionada"} />
-          <span className="truncate">{selectedImage.name || "Imagen para vocabulario"}</span>
-          <button type="button" onClick={onClearImage} aria-label="Quitar imagen" title="Quitar imagen">
+          <img src={model.selectedImage.dataUrl} alt={model.selectedImage.alt} />
+          <span className="truncate">{model.selectedImage.name}</span>
+          <button type="button" onClick={actions.onClearImage} aria-label="Quitar imagen" title="Quitar imagen">
             ×
           </button>
         </div>
       )}
       <div className="coach-input-row flex items-end gap-2">
         <input
-          ref={imageInputRef}
+          ref={refs.imageInputRef}
           type="file"
-          accept="image/*"
+          accept={model.fileInput.accept}
           className="hidden"
-          onChange={(event) => onImageSelected(event.target.files?.[0])}
+          onChange={(event) => actions.onImageSelected(event.target.files?.[0])}
         />
         <div className="coach-text-input-shell flex-1">
-          <button type="button" onClick={() => imageInputRef.current?.click()} disabled={!hydrated || loading} className="coach-inline-plus-button" aria-label="Agregar foto para vocabulario" title="Agregar foto">
+          <button
+            type="button"
+            onClick={() => refs.imageInputRef.current?.click()}
+            disabled={model.imageButton.disabled}
+            className={model.imageButton.className}
+            aria-label={model.imageButton.ariaLabel}
+            title={model.imageButton.title}
+          >
             +
           </button>
           <textarea
-            ref={textareaRef}
+            ref={refs.textareaRef}
             rows={1}
-            value={input}
-            disabled={!hydrated}
-            onChange={(event) => onInputChange(event.target.value)}
+            value={model.input}
+            disabled={model.textarea.disabled}
+            onChange={(event) => actions.onInputChange(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
-                onSendMessage();
+                actions.onSendMessage();
               }
             }}
-            placeholder="Escribe tu respuesta en inglés o pide una explicación..."
+            placeholder={model.textarea.placeholder}
             className="coach-textarea block w-full resize-none rounded-xl border py-1.5 pl-11 pr-3 text-base outline-none"
           />
         </div>
-        <button type="button" onPointerDown={(event) => event.preventDefault()} onClick={onStartDictation} disabled={!hydrated || loading} className={`coach-round-button coach-mic-button ${listening ? "coach-mic-active" : ""}`} aria-label={listening ? "Detener micrófono" : "Dictar con micrófono"} title={listening ? "Detener micrófono" : "Micrófono"}>
-          <CoachIcon name="mic" />
+        <button
+          type="button"
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={actions.onStartDictation}
+          disabled={model.microphoneButton.disabled}
+          className={model.microphoneButton.className}
+          aria-label={model.microphoneButton.ariaLabel}
+          title={model.microphoneButton.title}
+        >
+          {model.microphoneButton.icon && <CoachIcon name={model.microphoneButton.icon} />}
         </button>
-        <button type="button" onClick={() => (loading ? onStopThinking() : onSendMessage())} disabled={!canSubmit} className="coach-send-button disabled:cursor-not-allowed disabled:opacity-40" aria-label={loading ? "Parar respuesta del profesor" : "Enviar respuesta"} title={loading ? "Parar" : "Enviar"}>
-          <CoachIcon name={loading ? "stop" : "send"} />
+        <button
+          type="button"
+          onClick={() => (model.sendButton.icon === "stop" ? actions.onStopThinking() : actions.onSendMessage())}
+          disabled={model.sendButton.disabled}
+          className={model.sendButton.className}
+          aria-label={model.sendButton.ariaLabel}
+          title={model.sendButton.title}
+        >
+          {model.sendButton.icon && <CoachIcon name={model.sendButton.icon} />}
         </button>
       </div>
     </footer>

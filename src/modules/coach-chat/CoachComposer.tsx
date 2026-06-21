@@ -5,7 +5,6 @@ import { CoachIcon } from "@/components/CoachIcon";
 type SelectedCoachImage = {
   dataUrl: string;
   name?: string;
-  mimeType?: string;
 };
 
 type CoachComposerProps = {

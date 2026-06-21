@@ -13,7 +13,14 @@ import { CoachQuickHelpPanel } from "@/modules/coach-resources/CoachQuickHelpPan
 import { CoachStudyPanel } from "@/modules/coach-resources/CoachStudyPanel";
 import { createCoachSessionContract } from "@/modules/coach-session/contract";
 import type { CoachSessionState } from "@/modules/coach-session/types";
-import { toCoachStudyPanelModel, toCoachTopBarModel } from "@/modules/coach-session/viewModels";
+import {
+  toCoachClassMaterialsPanelModel,
+  toCoachGuidesPanelModel,
+  toCoachLearningPulsePanelModel,
+  toCoachQuickHelpPanelModel,
+  toCoachStudyPanelModel,
+  toCoachTopBarModel,
+} from "@/modules/coach-session/viewModels";
 
 type Message = {
   role: "user" | "coach";
@@ -506,6 +513,46 @@ export default function CoachPage() {
     studyUnitValue: studyUnit,
     loading,
   });
+  const learningPulsePanelModel = toCoachLearningPulsePanelModel({
+    level: learningPulse.level,
+    evidenceLabel: learningPulseLabel,
+    practiceCount: learningPulse.practiceCount,
+    focus: learningPulse.focus,
+    nextStep: learningPulse.nextStep,
+  });
+  const guidesPanelModel = toCoachGuidesPanelModel({
+    unitLabel: activeStudyUnitLabel,
+    canUseWorkbookActions: Boolean(activeStudyUnit) && !E2E_DEMO,
+    chatActionsDisabled: loading || !activeStudyUnit,
+    grammarWorkbookLoading,
+    vocabularyWorkbookLoading,
+    grammarWorkbookError,
+    vocabularyWorkbookError,
+    grammarWorkbook,
+    vocabularyWorkbook,
+  });
+  const quickHelpPanelModel = toCoachQuickHelpPanelModel({
+    agents: SPECIALIST_AGENTS,
+    activeAgentId,
+    activeAgentDescription: activeAgent.description,
+    loading: agentLoading,
+    error: agentError,
+  });
+  const classMaterialsPanelModel = toCoachClassMaterialsPanelModel({
+    unitLabel: activeStudyUnitLabel,
+    resources,
+    resourcesLoading,
+    resourcesNotice,
+    resourcesError,
+    expandedResourceId,
+    practiceDisabled: loading,
+  });
+  const chatMessageItems = messages.map((message) => ({
+    role: message.role,
+    content: message.content,
+    image: message.image ? { dataUrl: message.image.dataUrl, name: message.image.name } : undefined,
+  }));
+  const composerImage = selectedImage ? { dataUrl: selectedImage.dataUrl, name: selectedImage.name } : null;
   const conversationStorageKey = email ? `english-os-coach:${email}` : "";
 
   useEffect(() => {
@@ -916,7 +963,9 @@ export default function CoachPage() {
     sendMessage(buildHintPrompt(activeStudyUnit, studyMode === "current" ? currentLesson : ""));
   }
 
-  function requestResourcePractice(resource: DriveUnitResource) {
+  function requestResourcePractice(resourceId: string) {
+    const resource = resources.find((item) => item.resourceId === resourceId);
+    if (!resource) return;
     const details = [
       `Title: ${resource.title}`,
       `Type: ${resource.type}`,
@@ -1271,6 +1320,7 @@ export default function CoachPage() {
           sidebarOpen={sidebarOpen}
           theme={theme}
           textSize={textSize}
+          hydrated={hydrated}
           panelIcon={<CoachIcon name={sidebarOpen ? "panelOpen" : "panel"} />}
           userMenu={!E2E_DEMO && isLoaded && isSignedIn ? <UserButton /> : null}
           onToggleSidebar={() => setSidebarOpen((open) => !open)}
@@ -1285,7 +1335,7 @@ export default function CoachPage() {
           <section className="coach-chat order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border">
             <div className="coach-messages min-h-0 flex-1 overflow-y-auto px-4 py-2 sm:px-5">
               <CoachMessageList
-                messages={messages}
+                messages={chatMessageItems}
                 loading={loading}
                 agentLoading={agentLoading}
                 activeAgentName={activeAgent.name}
@@ -1305,7 +1355,7 @@ export default function CoachPage() {
 
             <CoachComposer
               input={input}
-              selectedImage={selectedImage}
+              selectedImage={composerImage}
               hydrated={hydrated}
               loading={loading}
               listening={listening}
@@ -1368,23 +1418,11 @@ export default function CoachPage() {
             />
 
             <CoachLearningPulsePanel
-              level={learningPulse.level}
-              evidenceLabel={learningPulseLabel}
-              practiceCount={learningPulse.practiceCount}
-              focus={learningPulse.focus}
-              nextStep={learningPulse.nextStep}
+              model={learningPulsePanelModel}
             />
 
             <CoachGuidesPanel
-              unitLabel={activeStudyUnitLabel}
-              canUseWorkbookActions={Boolean(activeStudyUnit) && !E2E_DEMO}
-              chatActionsDisabled={loading || !activeStudyUnit}
-              grammarWorkbookLoading={grammarWorkbookLoading}
-              vocabularyWorkbookLoading={vocabularyWorkbookLoading}
-              grammarWorkbookError={grammarWorkbookError}
-              vocabularyWorkbookError={vocabularyWorkbookError}
-              grammarWorkbook={grammarWorkbook}
-              vocabularyWorkbook={vocabularyWorkbook}
+              model={guidesPanelModel}
               onCreateGrammarWorkbook={() => createWorkbook("grammar")}
               onCreateVocabularyWorkbook={() => createWorkbook("vocabulary")}
               onRequestGrammarGuide={requestUnitGrammar}
@@ -1392,26 +1430,17 @@ export default function CoachPage() {
             />
 
             <CoachQuickHelpPanel
-              agents={SPECIALIST_AGENTS}
-              activeAgentId={activeAgentId}
-              activeAgentDescription={activeAgent.description}
-              agentLoading={agentLoading}
-              agentError={agentError}
+              model={quickHelpPanelModel}
               onSelectAgent={(agentId) => setActiveAgentId(agentId as AgentId)}
-              onRunAgent={(agentId, prompt) => {
+              onRunAgent={(agentId) => {
+                const agent = SPECIALIST_AGENTS.find((item) => item.id === agentId) || activeAgent;
                 setActiveAgentId(agentId as AgentId);
-                sendAgentMessage(prompt);
+                sendAgentMessage(agent.defaultPrompt);
               }}
             />
 
             <CoachClassMaterialsPanel
-              unitLabel={activeStudyUnitLabel}
-              resources={resources}
-              resourcesLoading={resourcesLoading}
-              resourcesNotice={resourcesNotice}
-              resourcesError={resourcesError}
-              expandedResourceId={expandedResourceId}
-              practiceDisabled={loading}
+              model={classMaterialsPanelModel}
               onToggleResource={(resourceId) => setExpandedResourceId((current) => current === resourceId ? null : resourceId)}
               onPracticeResource={requestResourcePractice}
             />

@@ -12,6 +12,7 @@ type CoachTopBarProps = {
   sidebarOpen: boolean;
   theme: CoachTheme;
   textSize: CoachTextSize;
+  hydrated: boolean;
   panelIcon: ReactNode;
   userMenu?: ReactNode;
   onToggleSidebar: () => void;
@@ -25,6 +26,7 @@ export function CoachTopBar({
   sidebarOpen,
   theme,
   textSize,
+  hydrated,
   panelIcon,
   userMenu,
   onToggleSidebar,
@@ -48,9 +50,9 @@ export function CoachTopBar({
       <div className="coach-font-controls" aria-label="Tamaño de texto">
         <button
           type="button"
-          className="coach-font-button"
-          onClick={onDecreaseText}
-          disabled={textSize === "compact"}
+        className="coach-font-button"
+        onClick={onDecreaseText}
+          disabled={!hydrated || textSize === "compact"}
           aria-label="Disminuir tamaño de texto"
           title="Texto más pequeño"
         >
@@ -58,9 +60,9 @@ export function CoachTopBar({
         </button>
         <button
           type="button"
-          className="coach-font-button"
-          onClick={onIncreaseText}
-          disabled={textSize === "large"}
+        className="coach-font-button"
+        onClick={onIncreaseText}
+          disabled={!hydrated || textSize === "large"}
           aria-label="Aumentar tamaño de texto"
           title="Texto más grande"
         >
@@ -73,6 +75,7 @@ export function CoachTopBar({
           aria-label="Tema"
           value={theme}
           onChange={(event) => onThemeChange(event.target.value as CoachTheme)}
+          disabled={!hydrated}
           className="coach-theme-select rounded-lg border px-2 py-1.5"
         >
           <option value="paper">Papel</option>

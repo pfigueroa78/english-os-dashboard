@@ -117,8 +117,18 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(source).toContain("const uiSession = createCoachSessionContract");
   expect(source).toContain("const topBarModel = toCoachTopBarModel(uiSession, learningPulseLabel)");
   expect(source).toContain("const studyPanelModel = toCoachStudyPanelModel");
+  expect(source).toContain("const learningPulsePanelModel = toCoachLearningPulsePanelModel");
+  expect(source).toContain("const guidesPanelModel = toCoachGuidesPanelModel");
+  expect(source).toContain("const quickHelpPanelModel = toCoachQuickHelpPanelModel");
+  expect(source).toContain("const classMaterialsPanelModel = toCoachClassMaterialsPanelModel");
+  expect(source).toContain("const chatMessageItems = messages.map");
+  expect(source).toContain("const composerImage = selectedImage");
   expect(source).toContain("model={topBarModel}");
   expect(source).toContain("model={studyPanelModel}");
+  expect(source).toContain("model={learningPulsePanelModel}");
+  expect(source).toContain("model={guidesPanelModel}");
+  expect(source).toContain("model={quickHelpPanelModel}");
+  expect(source).toContain("model={classMaterialsPanelModel}");
   expect(source).toContain("<CoachMessageList");
   expect(source).toContain("<CoachComposer");
   expect(source).toContain("<CoachLearningPulsePanel");
@@ -146,6 +156,13 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
     expect(component).not.toContain("createCoachSessionContract");
     expect(component).not.toContain("fetch(");
   }
+  expect(materialsPanel).not.toContain("unitNumber");
+  expect(materialsPanel).not.toContain("unitCode");
+  expect(materialsPanel).not.toContain("provider");
+  expect(quickHelpPanel).not.toContain("defaultPrompt");
+  expect(guidesPanel).not.toContain("grammarWorkbookLoading");
+  expect(guidesPanel).not.toContain("vocabularyWorkbookLoading");
+  expect(composer).not.toContain("mimeType");
   expect(sessionContract).toContain("resourcesUnit");
 
   expect(source).toContain("function inferCoordinatesFromReply");

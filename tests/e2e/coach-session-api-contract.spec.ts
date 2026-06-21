@@ -1,6 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { createCoachSessionContract } from "../../src/modules/coach-session/contract";
-import { toCoachStudyPanelModel, toCoachTopBarModel } from "../../src/modules/coach-session/viewModels";
+import {
+  toCoachClassMaterialsPanelModel,
+  toCoachGuidesPanelModel,
+  toCoachLearningPulsePanelModel,
+  toCoachQuickHelpPanelModel,
+  toCoachStudyPanelModel,
+  toCoachTopBarModel,
+} from "../../src/modules/coach-session/viewModels";
 
 test("coach session view models expose only component-specific display data", async () => {
   const session = createCoachSessionContract({
@@ -64,6 +71,103 @@ test("coach study panel view model disables actions from state without leaking A
     studyUnitPlaceholder: "",
     canUseSavedPosition: false,
     canStartClass: false,
+  });
+});
+
+test("coach resource view models expose render-only contracts", async () => {
+  expect(toCoachLearningPulsePanelModel({
+    level: "B1+",
+    evidenceLabel: "3/4",
+    practiceCount: 5,
+    focus: "articles",
+    nextStep: "short speaking drill",
+  })).toEqual({
+    level: "B1+",
+    evidenceLabel: "3/4",
+    practiceCount: 5,
+    focus: "articles",
+    nextStep: "short speaking drill",
+  });
+
+  expect(toCoachGuidesPanelModel({
+    unitLabel: "Unit 4",
+    canUseWorkbookActions: true,
+    chatActionsDisabled: false,
+    grammarWorkbookLoading: false,
+    vocabularyWorkbookLoading: true,
+    grammarWorkbookError: "",
+    vocabularyWorkbookError: "Retry later",
+    grammarWorkbook: { title: "Grammar", fileUrl: "https://sheets", exportUrl: "https://xlsx" },
+    vocabularyWorkbook: null,
+  })).toEqual({
+    unitLabel: "Unit 4",
+    canUseWorkbookActions: true,
+    chatActionsDisabled: false,
+    grammar: {
+      buttonLabel: "Guía de gramática · Unit 4",
+      loading: false,
+      error: "",
+      workbook: { title: "Grammar", fileUrl: "https://sheets", exportUrl: "https://xlsx" },
+    },
+    vocabulary: {
+      buttonLabel: "Generando...",
+      loading: true,
+      error: "Retry later",
+      workbook: null,
+    },
+  });
+
+  const rawAgents: Array<{ id: string; name: string; shortName: string; defaultPrompt: string }> = [
+    { id: "grammar", name: "Grammar", shortName: "Gram", defaultPrompt: "hidden" },
+  ];
+  expect(toCoachQuickHelpPanelModel({
+    agents: rawAgents,
+    activeAgentId: "grammar",
+    activeAgentDescription: "Correct grammar",
+    loading: false,
+    error: "",
+  })).toEqual({
+    agents: [{ id: "grammar", name: "Grammar", shortName: "Gram" }],
+    activeAgentId: "grammar",
+    activeAgentDescription: "Correct grammar",
+    loading: false,
+    error: "",
+  });
+
+  expect(toCoachClassMaterialsPanelModel({
+    unitLabel: "Unit 4",
+    resources: [{
+      resourceId: "r1",
+      title: "Audio 1",
+      description: "Listening practice",
+      type: "audio",
+      unitNumber: 4,
+      unitCode: "U04",
+      provider: "drive",
+      mimeType: "audio/mpeg",
+      url: "https://open",
+      embedUrl: "https://embed",
+    }],
+    resourcesLoading: false,
+    resourcesNotice: "",
+    resourcesError: "",
+    expandedResourceId: "r1",
+    practiceDisabled: false,
+  })).toEqual({
+    unitLabel: "Unit 4",
+    resources: [{
+      id: "r1",
+      title: "Audio 1",
+      description: "Listening practice",
+      type: "audio",
+      url: "https://open",
+      embedUrl: "https://embed",
+    }],
+    loading: false,
+    notice: "",
+    error: "",
+    expandedResourceId: "r1",
+    practiceDisabled: false,
   });
 });
 

@@ -343,7 +343,7 @@ test("resource players are width-contained and load on demand", async () => {
   expect(styles).toContain("max-width: 7rem;");
   expect(styles).toContain("max-height: 7rem;");
   expect(materialsPanel).toContain("Cargar reproductor");
-  expect(materialsPanel).toContain("expandedResourceId === resource.resourceId");
+  expect(materialsPanel).toContain("expandedResourceId === resource.id");
   expect(materialsPanel).toContain("min-w-0 max-w-full overflow-hidden");
   expect(materialsPanel).toContain("grid-cols-[minmax(0,1fr)_minmax(0,1fr)]");
   expect(materialsPanel).toContain('loading="lazy"');

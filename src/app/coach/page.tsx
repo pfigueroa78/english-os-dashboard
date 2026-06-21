@@ -55,13 +55,21 @@ import {
 import {
   chooseMediaRecorderMimeType,
   createDictationFormData,
-  createSpeechPayload,
-  extractSpeechRecognitionTranscript,
   isDictationAudioTooShort,
-  mergeDictationTranscript,
   prepareImageForVocabulary,
 } from "@/modules/coach-media/coachMedia";
 import { renderClientPrompt, type ClientPromptId } from "@/modules/coach-prompts/clientPromptRegistry";
+import {
+  focusTextareaSoon,
+  insertDictationTranscript,
+  isAbortError,
+  speakCoachMessageRuntime,
+  startBrowserDictationRuntime,
+  stopCoachSpeechRuntime,
+  stopCoachThinkingRuntime,
+  stopMediaDictationRuntime,
+  toggleCoachSpeechRuntime,
+} from "@/modules/coach-runtime/coachRuntime";
 import { createCoachSessionContract } from "@/modules/coach-session/contract";
 import type { CoachSessionState } from "@/modules/coach-session/types";
 import {
@@ -590,7 +598,7 @@ export default function CoachPage() {
       });
       setMessages((current) => [...current, createAgentCoachMessage(targetAgent, data)]);
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (isAbortError(err)) return;
       const message = err instanceof Error ? err.message : "Unknown agent error";
       setAgentError(message);
       setError(message);
@@ -649,7 +657,7 @@ export default function CoachPage() {
 
       setMessages((current) => [...current, next.coachMessage]);
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (isAbortError(err)) return;
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
       setError(errorMessage);
       setMessages((current) => [
@@ -663,12 +671,12 @@ export default function CoachPage() {
   }
 
   function stopThinking() {
-    coachAbortRef.current?.abort();
-    agentAbortRef.current?.abort();
-    coachAbortRef.current = null;
-    agentAbortRef.current = null;
-    setLoading(false);
-    setAgentLoading(false);
+    stopCoachThinkingRuntime({
+      coachAbortRef,
+      agentAbortRef,
+      setLoading,
+      setAgentLoading,
+    });
   }
 
   async function startTodayClass() {
@@ -718,71 +726,44 @@ export default function CoachPage() {
   }
 
   function speakMessage(content: string, index: number) {
-    if (!("speechSynthesis" in window)) {
-      setError("Tu navegador no soporta lectura en voz alta.");
-      return;
-    }
-
-    const speech = createSpeechPayload(content, window.speechSynthesis.getVoices());
-    if (!speech) return;
-
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(speech.text);
-    utterance.lang = speech.lang;
-    utterance.voice = speech.voice;
-    utterance.rate = speech.rate;
-    utterance.pitch = speech.pitch;
-    utterance.onend = () => {
-      setSpeakingMessageIndex(null);
-      setSpeechPaused(false);
-    };
-    utterance.onerror = () => {
-      setSpeakingMessageIndex(null);
-      setSpeechPaused(false);
-    };
-    setSpeakingMessageIndex(index);
-    setSpeechPaused(false);
-    window.speechSynthesis.speak(utterance);
+    return speakCoachMessageRuntime({
+      content,
+      index,
+      windowObj: window,
+      setError,
+      setSpeakingMessageIndex,
+      setSpeechPaused,
+    });
   }
 
   function toggleSpeech(content: string, index: number) {
-    if (!("speechSynthesis" in window)) {
-      setError("Tu navegador no soporta lectura en voz alta.");
-      return;
-    }
-
-    if (speakingMessageIndex === index && window.speechSynthesis.speaking && !speechPaused) {
-      window.speechSynthesis.pause();
-      setSpeechPaused(true);
-      return;
-    }
-
-    if (speakingMessageIndex === index && speechPaused) {
-      window.speechSynthesis.resume();
-      setSpeechPaused(false);
-      return;
-    }
-
-    speakMessage(content, index);
+    toggleCoachSpeechRuntime({
+      content,
+      index,
+      speakingMessageIndex,
+      speechPaused,
+      windowObj: window,
+      setError,
+      setSpeakingMessageIndex,
+      setSpeechPaused,
+      speakMessage,
+    });
   }
 
   function stopSpeech() {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    setSpeakingMessageIndex(null);
-    setSpeechPaused(false);
+    stopCoachSpeechRuntime({
+      windowObj: window,
+      setSpeakingMessageIndex,
+      setSpeechPaused,
+    });
   }
 
   function insertDictationText(transcript: string) {
-    let inserted = false;
-    setInput((current) => {
-      const next = mergeDictationTranscript(current, transcript);
-      inserted = next.ok;
-      return next.value;
+    return insertDictationTranscript({
+      transcript,
+      setInput,
+      textareaRef,
     });
-    if (!inserted) return false;
-    window.setTimeout(() => textareaRef.current?.focus(), 0);
-    return true;
   }
 
   async function transcribeRecordedAudio(audioBlob: Blob) {
@@ -804,15 +785,12 @@ export default function CoachPage() {
   }
 
   function stopMediaDictation() {
-    const recorder = mediaRecorderRef.current;
-    if (recorder && recorder.state !== "inactive") {
-      recorder.stop();
-    }
-    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-    mediaStreamRef.current = null;
-    mediaRecorderRef.current = null;
-    setListening(false);
-    window.setTimeout(() => textareaRef.current?.focus(), 0);
+    stopMediaDictationRuntime({
+      mediaRecorderRef,
+      mediaStreamRef,
+      textareaRef,
+      setListening,
+    });
   }
 
   async function startMediaDictation() {
@@ -840,7 +818,7 @@ export default function CoachPage() {
       mediaStreamRef.current = null;
       mediaRecorderRef.current = null;
       setListening(false);
-      window.setTimeout(() => textareaRef.current?.focus(), 0);
+      focusTextareaSoon(textareaRef);
       if (chunks.length) {
         const audioBlob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
         void transcribeRecordedAudio(audioBlob);
@@ -850,7 +828,7 @@ export default function CoachPage() {
     mediaRecorderRef.current = recorder;
     setListening(true);
     recorder.start();
-    window.setTimeout(() => textareaRef.current?.focus(), 0);
+    focusTextareaSoon(textareaRef);
     return true;
   }
 
@@ -870,48 +848,14 @@ export default function CoachPage() {
   }
 
   function startBrowserDictation() {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setError("Tu navegador no soporta dictado por micrófono. Puedes escribir tu respuesta normalmente.");
-      return;
-    }
-
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-      setListening(false);
-      window.setTimeout(() => textareaRef.current?.focus(), 0);
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
-    recognition.interimResults = false;
-    recognition.continuous = false;
-    recognition.maxAlternatives = 3;
-    recognition.onresult = (event: any) => {
-      const transcript = extractSpeechRecognitionTranscript(event);
-      if (transcript && !insertDictationText(transcript)) setError("No pude convertir el audio en texto útil. Intenta hablar más claro y con menos ruido.");
-    };
-    recognition.onerror = () => {
-      setError("No pude escuchar el micrófono. Revisa permisos del navegador e intenta otra vez.");
-    };
-    recognition.onend = () => {
-      recognitionRef.current = null;
-      setListening(false);
-      window.setTimeout(() => textareaRef.current?.focus(), 0);
-    };
-    recognitionRef.current = recognition;
-    setListening(true);
-    try {
-      recognition.start();
-      window.setTimeout(() => textareaRef.current?.focus(), 0);
-    } catch {
-      recognitionRef.current = null;
-      setListening(false);
-      setError("No pude iniciar el micrófono. Revisa permisos del navegador e intenta otra vez.");
-      window.setTimeout(() => textareaRef.current?.focus(), 0);
-    }
+    startBrowserDictationRuntime({
+      windowObj: window,
+      recognitionRef,
+      textareaRef,
+      setListening,
+      setError,
+      insertDictationText,
+    });
   }
   if (!authReady && !E2E_DEMO) {
     return (

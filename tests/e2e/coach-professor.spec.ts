@@ -257,6 +257,7 @@ test("resource players are width-contained and load on demand", async () => {
   const media = await fs.readFile("src/modules/coach-media/coachMedia.ts", "utf8");
   const controller = await fs.readFile("src/modules/coach-controller/coachController.ts", "utf8");
   const contextController = await fs.readFile("src/modules/coach-context/coachContext.ts", "utf8");
+  const runtime = await fs.readFile("src/modules/coach-runtime/coachRuntime.ts", "utf8");
   const styles = await fs.readFile("src/app/globals.css", "utf8");
   const qaOverrides = await fs.readFile("src/app/coach-qa-overrides.css", "utf8");
 
@@ -322,8 +323,9 @@ test("resource players are width-contained and load on demand", async () => {
   expect(contextController).toContain("Avance:");
   expect(source).toContain("toggleMessageFeedback");
   expect(media).toContain("selectBestEnglishSpeechVoice");
-  expect(source).toContain("createSpeechPayload");
-  expect(source).toContain("utterance.voice = speech.voice");
+  expect(runtime).toContain("createSpeechPayload");
+  expect(runtime).toContain("utterance.voice = speech.voice");
+  expect(source).toContain("speakCoachMessageRuntime");
   expect(media).toContain("pitch: 1.02");
   expect(messageList).toContain("aria-pressed={message.likeAction.pressed}");
   expect(messageList).toContain("aria-pressed={message.dislikeAction.pressed}");
@@ -332,6 +334,7 @@ test("resource players are width-contained and load on demand", async () => {
   expect(messageList).toContain("coach-thinking-dots");
   expect(source).toContain("AbortController");
   expect(source).toContain("stopThinking");
+  expect(source).toContain("stopCoachThinkingRuntime");
   expect(`${messageList}\n${composerViewModel}`).toContain("Parar respuesta del profesor");
   expect(source).toContain("signal: controller.signal");
   expect(source).toContain("selectedImage");

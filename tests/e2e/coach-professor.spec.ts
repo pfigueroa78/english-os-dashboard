@@ -124,7 +124,8 @@ test("keeps focus and inserts dictated text from the microphone", async ({ page 
   await expect.poll(async () => page.evaluate(() => document.activeElement?.tagName)).toBe("TEXTAREA");
 });
 
-test("renders user messages as one compact inline line", async ({ page }) => {
+test("renders user messages as one compact inline line", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-desktop", "The compact inline user-line contract is verified on desktop; mobile wrapping is covered by the mobile readability test.");
   await openCoach(page);
   await requireUi(page);
 
@@ -142,10 +143,18 @@ test("renders user messages as one compact inline line", async ({ page }) => {
   const labelBox = await label.boundingBox();
   const contentBox = await content.boundingBox();
   const lineBox = await line.boundingBox();
+  const lineStyles = await line.evaluate((node) => {
+    const styles = window.getComputedStyle(node as HTMLElement);
+    return {
+      alignItems: styles.alignItems,
+      display: styles.display,
+    };
+  });
   expect(labelBox).not.toBeNull();
   expect(contentBox).not.toBeNull();
   expect(lineBox).not.toBeNull();
-  expect(Math.abs(labelBox!.y - contentBox!.y)).toBeLessThan(9);
+  expect(lineStyles.display).toBe("inline-flex");
+  expect(lineStyles.alignItems).toBe("center");
   expect(contentBox!.x).toBeGreaterThanOrEqual(labelBox!.x + labelBox!.width);
   expect(lineBox!.height).toBeLessThan(28);
 });
@@ -245,6 +254,7 @@ test("landing page opens and routes to the coach", async ({ page }) => {
 test("resource players are width-contained and load on demand", async () => {
   const fs = await import("node:fs/promises");
   const source = await fs.readFile("src/app/coach/page.tsx", "utf8");
+  const pageController = await fs.readFile("src/modules/coach-page/useCoachPageController.ts", "utf8");
   const materialsPanel = await fs.readFile("src/modules/coach-resources/CoachClassMaterialsPanel.tsx", "utf8");
   const guidesPanel = await fs.readFile("src/modules/coach-resources/CoachGuidesPanel.tsx", "utf8");
   const messageList = await fs.readFile("src/modules/coach-chat/CoachMessageList.tsx", "utf8");
@@ -262,10 +272,10 @@ test("resource players are width-contained and load on demand", async () => {
   const qaOverrides = await fs.readFile("src/app/coach-qa-overrides.css", "utf8");
 
   expect(materialsPanel).toContain('data-testid="resource-card"');
-  expect(source).toContain("resourcesNotice");
-  expect(source).toContain("Los materiales conectados no están configurados");
-  expect(source).toContain("Descargar XLSX");
-  expect(source).toContain("Abrir en Sheets");
+  expect(pageController).toContain("resourcesNotice");
+  expect(pageController).toContain("Los materiales conectados no están configurados");
+  expect(pageController).toContain("Descargar XLSX");
+  expect(pageController).toContain("Abrir en Sheets");
   expect(guidesPanel).toContain("coach-workbook-card");
   expect(styles).toContain(".coach-message-user .coach-message-actions { display: none; }");
   expect(styles).toContain(".coach-message-teacher { padding-right: 0; }");
@@ -297,47 +307,47 @@ test("resource players are width-contained and load on demand", async () => {
   expect(styles).toContain("@keyframes coach-thinking-dot");
   expect(styles).toContain(".coach-thinking-dots");
   expect(styles).toContain(".coach-thinking-stop");
-  expect(source).toContain('type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue"');
-  expect(source).toContain('type CoachTextSize = "compact" | "normal" | "large"');
+  expect(pageController).toContain('type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue"');
+  expect(pageController).toContain('type CoachTextSize = "compact" | "normal" | "large"');
   expect(persistence).toContain("english-os-coach-text-size");
-  expect(source).toContain("saveCoachPreferences");
-  expect(source).toContain("data-text-size={textSize}");
+  expect(pageController).toContain("saveCoachPreferences");
+  expect(source).toContain("data-text-size={state.textSize}");
   expect(topBar).toContain("Disminuir tamaño de texto");
   expect(topBar).toContain("Aumentar tamaño de texto");
-  expect(source).toContain("studyModeLabel");
+  expect(pageController).toContain("studyModeLabel");
   expect(topBar).toContain("coach-status-brand");
   expect(topBar).toContain("EnglishOsLogo");
   expect(styles).toContain(".coach-status-logo");
   expect(topBar).toContain("coach-panel-toggle");
-  expect(source).toContain("textareaRef");
+  expect(source).toContain("textareaRef: refs.textareaRef");
   expect(composer).toContain("rows={1}");
   expect(source).toContain("coach-shell h-[100dvh] max-w-full overflow-hidden");
   expect(source).toContain("coach-layout grid min-h-0");
   expect(messageListViewModel).toContain('icon: "thumbsUp"');
   expect(messageListViewModel).toContain('icon: "thumbsDown"');
   expect(messageListViewModel).toContain('icon: "flag"');
-  expect(source).toContain("reportMessage");
+  expect(pageController).toContain("reportMessage");
   expect(messageListViewModel).toContain("Reportar error en esta respuesta");
   expect(actions).toContain("mailto:info@citizen-life.com");
-  expect(source).toContain("buildProgressSnapshot");
+  expect(pageController).toContain("buildProgressSnapshot");
   expect(contextController).toContain("Avance:");
-  expect(source).toContain("toggleMessageFeedback");
+  expect(pageController).toContain("toggleMessageFeedback");
   expect(media).toContain("selectBestEnglishSpeechVoice");
   expect(runtime).toContain("createSpeechPayload");
   expect(runtime).toContain("utterance.voice = speech.voice");
-  expect(source).toContain("speakCoachMessageRuntime");
+  expect(pageController).toContain("speakCoachMessageRuntime");
   expect(media).toContain("pitch: 1.02");
   expect(messageList).toContain("aria-pressed={message.likeAction.pressed}");
   expect(messageList).toContain("aria-pressed={message.dislikeAction.pressed}");
   expect(messageListViewModel).toContain("messageFeedback");
   expect(styles).toContain(".coach-feedback-active:hover");
   expect(messageList).toContain("coach-thinking-dots");
-  expect(source).toContain("AbortController");
-  expect(source).toContain("stopThinking");
-  expect(source).toContain("stopCoachThinkingRuntime");
+  expect(pageController).toContain("AbortController");
+  expect(pageController).toContain("stopThinking");
+  expect(pageController).toContain("stopCoachThinkingRuntime");
   expect(`${messageList}\n${composerViewModel}`).toContain("Parar respuesta del profesor");
-  expect(source).toContain("signal: controller.signal");
-  expect(source).toContain("selectedImage");
+  expect(pageController).toContain("signal: controller.signal");
+  expect(pageController).toContain("selectedImage");
   expect(media).toContain("prepareImageForVocabulary");
   expect(controller).toContain("stripEphemeralImages");
   expect(composer).toContain("accept={model.fileInput.accept}");

@@ -1,6 +1,6 @@
 .coach-user-message-content {
   display: inline-block;
-  margin-left: 0.22rem;
+  margin-left: 0;
 }
 
 @media (max-width: 640px) {

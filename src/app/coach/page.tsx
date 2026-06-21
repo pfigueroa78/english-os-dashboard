@@ -1,863 +1,24 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useRef, useState } from "react";
-import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
+import { SignInButton, UserButton } from "@clerk/nextjs";
 import { CoachIcon } from "@/components/CoachIcon";
-import {
-  buildCoachReportMailto,
-  buildCoachResourcePracticeMessage,
-  copyCoachText,
-  toggleCoachMessageFeedback,
-} from "@/modules/coach-actions/coachActions";
-import { createCoachApiClient } from "@/modules/coach-api/coachApiClient";
-import {
-  buildInitialCoachMessages,
-  buildInitialCoachMessage,
-  buildLearningPulse,
-  buildProgressSnapshot,
-  extractUnitNumber,
-  getLearnerDisplayName,
-  getSavedPosition,
-  learningPulseDetail,
-  normalizeUnitValue,
-  unitLabel,
-  type CoachLearningPulse,
-} from "@/modules/coach-context/coachContext";
 import { CoachComposer } from "@/modules/coach-chat/CoachComposer";
-import { toCoachComposerModel } from "@/modules/coach-chat/composerViewModel";
 import { CoachMessageList } from "@/modules/coach-chat/CoachMessageList";
-import { toCoachMessageListModel } from "@/modules/coach-chat/messageListViewModel";
 import { CoachTopBar } from "@/modules/coach-layout/CoachTopBar";
+import { useCoachPageController } from "@/modules/coach-page/useCoachPageController";
 import { CoachClassMaterialsPanel } from "@/modules/coach-resources/CoachClassMaterialsPanel";
 import { CoachGuidesPanel } from "@/modules/coach-resources/CoachGuidesPanel";
 import { CoachLearningPulsePanel } from "@/modules/coach-resources/CoachLearningPulsePanel";
 import { CoachQuickHelpPanel } from "@/modules/coach-resources/CoachQuickHelpPanel";
 import { CoachStudyPanel } from "@/modules/coach-resources/CoachStudyPanel";
-import {
-  createAgentCoachMessage,
-  createCoachErrorMessage,
-  createDemoAgentTurn,
-  createDemoCoachTurn,
-  coachModeFromStudyMode,
-  prepareAgentMessageTurn,
-  prepareCoachMessageTurn,
-  resolveCoachResponseState,
-  type CoachStudyMode,
-} from "@/modules/coach-controller/coachController";
-import { toCoachAgentClientContracts } from "@/modules/coach-integrations/agentsContract";
-import {
-  getCoachConversationStorageKey,
-  loadCoachConversation,
-  loadCoachPreferences,
-  saveCoachConversation,
-  saveCoachPreferences,
-} from "@/modules/coach-persistence/coachPersistence";
-import {
-  chooseMediaRecorderMimeType,
-  createDictationFormData,
-  isDictationAudioTooShort,
-  prepareImageForVocabulary,
-} from "@/modules/coach-media/coachMedia";
-import { renderClientPrompt, type ClientPromptId } from "@/modules/coach-prompts/clientPromptRegistry";
-import {
-  focusTextareaSoon,
-  insertDictationTranscript,
-  isAbortError,
-  speakCoachMessageRuntime,
-  startBrowserDictationRuntime,
-  stopCoachSpeechRuntime,
-  stopCoachThinkingRuntime,
-  stopMediaDictationRuntime,
-  toggleCoachSpeechRuntime,
-} from "@/modules/coach-runtime/coachRuntime";
-import { createCoachSessionContract } from "@/modules/coach-session/contract";
-import type { CoachSessionState } from "@/modules/coach-session/types";
-import {
-  toCoachClassMaterialsPanelModel,
-  toCoachGuidesPanelModel,
-  toCoachLearningPulsePanelModel,
-  toCoachQuickHelpPanelModel,
-  toCoachStudyPanelModel,
-  toCoachTopBarModel,
-} from "@/modules/coach-session/viewModels";
 
-type Message = {
-  role: "user" | "coach";
-  content: string;
-  image?: {
-    dataUrl: string;
-    name?: string;
-  };
-  usage?: {
-    model: string;
-    inputTokens: number;
-    outputTokens: number;
-    totalTokens: number;
-    estimatedCostUSD: number;
-  };
-};
-
-type DriveUnitResource = {
-  id: string;
-  title: string;
-  description: string;
-  type: "audio" | "video" | "document" | "link";
-  unitNumber: number | null;
-  unitCode: string;
-  section?: string;
-  page?: string;
-  exercise?: string;
-  exercisePart?: string;
-  url: string;
-  embedUrl: string;
-  provider: string;
-  order?: number;
-};
-
-type Workbook = {
-  kind: "grammar" | "vocabulary";
-  title: string;
-  fileId: string;
-  fileUrl: string;
-  exportUrl: string;
-  unit: string;
-  lesson: string;
-  generatedAt?: string;
-};
-
-type AgentId = "grammar_corrector" | "speaking_partner" | "english_evaluator";
-type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue";
-type CoachTextSize = "compact" | "normal" | "large";
-type StudyMode = CoachStudyMode;
-
-type SpecialistAgent = {
-  id: AgentId;
-  name: string;
-  shortName: string;
-  description: string;
-  defaultPromptId: ClientPromptId;
-};
-
-const E2E_DEMO = process.env.NEXT_PUBLIC_E2E_DEMO === "1";
-const DEMO_UNIT = "Unit 1";
-const DEMO_LESSON = "Business advice speaking practice";
-const FALLBACK_UNIT = "Unit 1";
 const PROGRESS_STATUS = "Evaluación pendiente";
-const COACH_TEXT_SIZE_ORDER: CoachTextSize[] = ["compact", "normal", "large"];
-
-const SPECIALIST_AGENTS: SpecialistAgent[] = [
-  {
-    id: "grammar_corrector",
-    name: "Corrector de gramática",
-    shortName: "Gramática",
-    description: "Corrige estructura, artículos, preposiciones y naturalidad.",
-    defaultPromptId: "agents.grammarCorrector.default",
-  },
-  {
-    id: "speaking_partner",
-    name: "Compañero de speaking",
-    shortName: "Speaking",
-    description: "Practica conversación, fluidez y respuestas profesionales.",
-    defaultPromptId: "agents.speakingPartner.default",
-  },
-  {
-    id: "english_evaluator",
-    name: "Evaluador B1/B2",
-    shortName: "Evaluar",
-    description: "Evalúa CEFR, precisión, vocabulario y próximos pasos.",
-    defaultPromptId: "agents.englishEvaluator.default",
-  },
-];
-
-const SPECIALIST_AGENT_CONTRACTS = toCoachAgentClientContracts(SPECIALIST_AGENTS);
-
-async function buildStartTodayClassPrompt(unit: string, lesson: string) {
-  const unitNumber = extractUnitNumber(unit);
-  return renderClientPrompt("coach.startCurrentClass", {
-    startRequest: unitNumber
-      ? `Empecemos la clase actual de la unidad ${unitNumber}. Usa el contrato real de English OS; si no hay número de clase activo confiable, no inventes Class 1 y pide confirmación breve.`
-      : "Empecemos mi clase actual. Usa el contrato real de English OS; si no hay número de clase activo confiable, no inventes Class 1 y pide confirmación breve.",
-    lessonContext: lesson ? `Contexto guardado de lección o foco: ${lesson}` : "",
-  });
-}
-
-async function buildHintPrompt(unit: string, lesson: string) {
-  return renderClientPrompt("coach.hint", {
-    unit: unitLabel(unit),
-    lessonContext: lesson ? `Clase: ${lesson}` : "",
-  });
-}
-
-async function buildUnitGrammarPrompt(unit: string) {
-  const number = extractUnitNumber(unit);
-  return renderClientPrompt("coach.unitGrammarGuide", {
-    requestLine: number ? `Dame una guía de gramática de la unidad ${number}.` : "Dame una guía de gramática de mi unidad actual.",
-  });
-}
-
-async function buildUnitVocabularyPrompt(unit: string) {
-  const number = extractUnitNumber(unit);
-  return renderClientPrompt("coach.unitVocabularyGuide", {
-    requestLine: number ? `Dame una guía de vocabulario de la unidad ${number}.` : "Dame una guía de vocabulario de mi unidad actual.",
-  });
-}
-
-function initialCoachMessages(): Message[] {
-  return buildInitialCoachMessages({
-    e2eDemo: E2E_DEMO,
-    demoUnit: DEMO_UNIT,
-    demoLesson: DEMO_LESSON,
-    demoLearnerName: "Pedro",
-  });
-}
-
-function studyModeLabel(mode: StudyMode) {
-  if (mode === "review") return "Repaso";
-  if (mode === "guide") return "Guía";
-  if (mode === "class") return "Clase";
-  return "Actual";
-}
-
-function nextCoachTextSize(current: CoachTextSize, direction: -1 | 1) {
-  const currentIndex = COACH_TEXT_SIZE_ORDER.indexOf(current);
-  const nextIndex = Math.min(Math.max(currentIndex + direction, 0), COACH_TEXT_SIZE_ORDER.length - 1);
-  return COACH_TEXT_SIZE_ORDER[nextIndex] || "normal";
-}
 
 export default function CoachPage() {
-  const { isLoaded, isSignedIn, user } = useUser();
-  const [authTimedOut, setAuthTimedOut] = useState(false);
-  const authReady = isLoaded || authTimedOut || E2E_DEMO;
-  const signedIn = isSignedIn || E2E_DEMO || authTimedOut;
-  const email = user?.primaryEmailAddress?.emailAddress || (E2E_DEMO ? "demo@english-os.local" : "");
-  const learnerName = getLearnerDisplayName(user) || (E2E_DEMO ? "Pedro" : "");
+  const coach = useCoachPageController();
+  const { auth, state, refs, models, actions } = coach;
 
-  const [messages, setMessages] = useState<Message[]>(initialCoachMessages);
-  const [input, setInput] = useState("");
-  const [selectedImage, setSelectedImage] = useState<{ dataUrl: string; name?: string; mimeType?: string } | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [agentLoading, setAgentLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [agentError, setAgentError] = useState("");
-  const [activeAgentId, setActiveAgentId] = useState<AgentId>("grammar_corrector");
-  const [currentUnit, setCurrentUnit] = useState(E2E_DEMO ? DEMO_UNIT : "");
-  const [currentLesson, setCurrentLesson] = useState(E2E_DEMO ? DEMO_LESSON : "");
-  const [studyUnit, setStudyUnit] = useState(E2E_DEMO ? DEMO_UNIT : "");
-  const [studyMode, setStudyMode] = useState<StudyMode>("current");
-  const [studyClassNumber, setStudyClassNumber] = useState<number | null>(null);
-  const [coachSession, setCoachSession] = useState<CoachSessionState>(() =>
-    createCoachSessionContract({
-      mode: "current",
-      savedUnit: E2E_DEMO ? DEMO_UNIT : null,
-      savedLesson: E2E_DEMO ? DEMO_LESSON : null,
-      activeUnit: E2E_DEMO ? DEMO_UNIT : null,
-      lessonTitle: E2E_DEMO ? DEMO_LESSON : null,
-      resourcesUnit: E2E_DEMO ? DEMO_UNIT : null,
-      source: E2E_DEMO ? "fallback" : "english_os",
-    }),
-  );
-  const [learningPulse, setLearningPulse] = useState<CoachLearningPulse>(() => buildLearningPulse({}));
-  const [theme, setTheme] = useState<CoachTheme>("paper");
-  const [textSize, setTextSize] = useState<CoachTextSize>("compact");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
-  const [messageFeedback, setMessageFeedback] = useState<Record<number, "like" | "dislike">>({});
-  const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
-  const [speechPaused, setSpeechPaused] = useState(false);
-  const [listening, setListening] = useState(false);
-  const [contextLoading, setContextLoading] = useState(false);
-  const [contextError, setContextError] = useState("");
-  const [resources, setResources] = useState<DriveUnitResource[]>([]);
-  const [resourcesLoading, setResourcesLoading] = useState(false);
-  const [resourcesError, setResourcesError] = useState("");
-  const [resourcesNotice, setResourcesNotice] = useState("");
-  const [expandedResourceId, setExpandedResourceId] = useState<string | null>(null);
-  const [grammarWorkbook, setGrammarWorkbook] = useState<Workbook | null>(null);
-  const [grammarWorkbookLoading, setGrammarWorkbookLoading] = useState(false);
-  const [grammarWorkbookError, setGrammarWorkbookError] = useState("");
-  const [vocabularyWorkbook, setVocabularyWorkbook] = useState<Workbook | null>(null);
-  const [vocabularyWorkbookLoading, setVocabularyWorkbookLoading] = useState(false);
-  const [vocabularyWorkbookError, setVocabularyWorkbookError] = useState("");
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
-  const recognitionRef = useRef<any>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const recordedAudioChunksRef = useRef<Blob[]>([]);
-  const coachAbortRef = useRef<AbortController | null>(null);
-  const agentAbortRef = useRef<AbortController | null>(null);
-  const coachApi = createCoachApiClient();
-
-  const activeAgent = SPECIALIST_AGENT_CONTRACTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENT_CONTRACTS[0];
-  const activeAgentMetadata = SPECIALIST_AGENTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENTS[0];
-  const uiSession = createCoachSessionContract({
-    mode: coachModeFromStudyMode(studyMode),
-    savedUnit: currentUnit || coachSession.savedUnit,
-    savedLesson: currentLesson || coachSession.savedLesson,
-    activeUnit: studyUnit || coachSession.activeUnit || currentUnit,
-    activeClassNumber: studyClassNumber || coachSession.activeClassNumber,
-    lessonTitle: coachSession.lessonTitle || currentLesson,
-    resourcesUnit: coachSession.resourcesUnit || studyUnit || currentUnit,
-    source: coachSession.source,
-  });
-  const activeStudyUnit = uiSession.resourcesUnit || uiSession.activeUnit || currentUnit;
-  const activeStudyUnitLabel = unitLabel(activeStudyUnit);
-  const activeLocationLabel = [activeStudyUnitLabel, studyClassNumber ? `Class ${studyClassNumber}` : ""].filter(Boolean).join(" · ");
-  const learningPulseLabel = learningPulseDetail(learningPulse);
-  const topBarModel = toCoachTopBarModel(uiSession, learningPulseLabel);
-  const studyPanelModel = toCoachStudyPanelModel({
-    session: uiSession,
-    currentUnitLabel: unitLabel(currentUnit),
-    contextLoading,
-    studyUnitValue: studyUnit,
-    loading,
-  });
-  const learningPulsePanelModel = toCoachLearningPulsePanelModel({
-    level: learningPulse.level,
-    evidenceLabel: learningPulseLabel,
-    practiceCount: learningPulse.practiceCount,
-    focus: learningPulse.focus,
-    nextStep: learningPulse.nextStep,
-  });
-  const guidesPanelModel = toCoachGuidesPanelModel({
-    unitLabel: activeStudyUnitLabel,
-    canUseWorkbookActions: Boolean(activeStudyUnit) && !E2E_DEMO,
-    chatActionsDisabled: loading || !activeStudyUnit,
-    grammarWorkbookLoading,
-    vocabularyWorkbookLoading,
-    grammarWorkbookError,
-    vocabularyWorkbookError,
-    grammarWorkbook,
-    vocabularyWorkbook,
-  });
-  const quickHelpPanelModel = toCoachQuickHelpPanelModel({
-    agents: SPECIALIST_AGENT_CONTRACTS,
-    activeAgentId,
-    activeAgentDescription: activeAgent.description,
-    loading: agentLoading,
-    error: agentError,
-  });
-  const classMaterialsPanelModel = toCoachClassMaterialsPanelModel({
-    unitLabel: activeStudyUnitLabel,
-    resources,
-    resourcesLoading,
-    resourcesNotice,
-    resourcesError,
-    expandedResourceId,
-    practiceDisabled: loading,
-  });
-  const chatMessageItems = messages.map((message) => ({
-    role: message.role,
-    content: message.content,
-    image: message.image ? { dataUrl: message.image.dataUrl, name: message.image.name } : undefined,
-  }));
-  const messageListModel = toCoachMessageListModel({
-    messages: chatMessageItems,
-    loading,
-    agentLoading,
-    activeAgentName: activeAgent.name,
-    copiedMessageIndex,
-    messageFeedback,
-    speakingMessageIndex,
-    speechPaused,
-  });
-  const composerImage = selectedImage ? { dataUrl: selectedImage.dataUrl, name: selectedImage.name } : null;
-  const composerModel = toCoachComposerModel({
-    input,
-    selectedImage: composerImage,
-    hydrated,
-    loading,
-    listening,
-  });
-  const conversationStorageKey = getCoachConversationStorageKey(email);
-
-  useEffect(() => {
-    setHydrated(true);
-    const preferences = loadCoachPreferences(window.localStorage, {
-      isSmallViewport: window.matchMedia("(max-width: 640px)").matches,
-    });
-    if (preferences.theme) setTheme(preferences.theme);
-    if (preferences.textSize && COACH_TEXT_SIZE_ORDER.includes(preferences.textSize)) setTextSize(preferences.textSize);
-    if (typeof preferences.sidebarOpen === "boolean") setSidebarOpen(preferences.sidebarOpen);
-  }, []);
-
-  useEffect(() => {
-    if (isLoaded || E2E_DEMO) return;
-    const timer = window.setTimeout(() => setAuthTimedOut(true), 3500);
-    return () => window.clearTimeout(timer);
-  }, [isLoaded]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    saveCoachPreferences(window.localStorage, { theme, textSize, sidebarOpen });
-  }, [hydrated, theme, textSize, sidebarOpen]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    if (conversationStorageKey && messages.length > 0 && !E2E_DEMO) {
-      saveCoachConversation(window.localStorage, conversationStorageKey, messages, { maxMessages: 40 });
-    }
-  }, [messages, loading, agentLoading, conversationStorageKey]);
-
-  useEffect(() => {
-    if (E2E_DEMO) return;
-    if (!authReady || !signedIn) return;
-
-    const savedMessages = loadCoachConversation(window.localStorage, conversationStorageKey);
-    if (savedMessages.length > 0) setMessages(savedMessages);
-
-    loadUserContext();
-  }, [authReady, signedIn, conversationStorageKey, learnerName]);
-
-  useEffect(() => {
-    if (!activeStudyUnit || E2E_DEMO) return;
-    loadDriveUnitResources(activeStudyUnit);
-  }, [activeStudyUnit]);
-
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`;
-  }, [input]);
-
-  async function handleImageSelected(file?: File) {
-    if (!file) return;
-    setError("");
-    try {
-      setSelectedImage(await prepareImageForVocabulary(file));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No pude cargar la imagen.");
-    } finally {
-      if (imageInputRef.current) imageInputRef.current.value = "";
-    }
-  }
-
-  async function loadUserContext() {
-    setContextLoading(true);
-    setContextError("");
-    try {
-      const data = await coachApi.getContext();
-
-      const { unit, lesson } = getSavedPosition(data);
-      const resolvedUnit = unit ? normalizeUnitValue(unit) : "";
-      const progressSnapshot = buildProgressSnapshot(data);
-      setCoachSession(createCoachSessionContract({
-        mode: "current",
-        savedUnit: resolvedUnit || null,
-        savedLesson: lesson || null,
-        activeUnit: resolvedUnit || null,
-        lessonTitle: lesson || null,
-        resourcesUnit: resolvedUnit || null,
-        source: "english_os",
-      }));
-
-      if (resolvedUnit) {
-        setCurrentUnit(resolvedUnit);
-        setStudyUnit((current) => current || resolvedUnit);
-      }
-      if (lesson) setCurrentLesson(lesson);
-      setLearningPulse(buildLearningPulse(data));
-
-      setMessages((current) => {
-        const shouldReplace = current.length === 1 && current[0]?.content.includes("Loading your English OS class plan");
-        return shouldReplace ? [{ role: "coach", content: buildInitialCoachMessage(resolvedUnit || "tu posición actual", lesson, progressSnapshot, learnerName) }] : current;
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown context error";
-      setContextError(message);
-      setCurrentUnit((current) => current || "");
-      setStudyUnit((current) => current || "");
-      setMessages((current) => {
-        const shouldReplace = current.length === 1 && current[0]?.content.includes("Loading your English OS class plan");
-        if (!shouldReplace) return current;
-        return [
-          {
-            role: "coach",
-            content:
-              "No pude cargar tu English plan todavía, pero no voy a dejar la clase bloqueada.\n\nPuedes pedir una clase, un repaso o practicar una unidad. Cuando la conexión con English OS vuelva a responder, recuperaré tu posición guardada automáticamente.",
-          },
-        ];
-      });
-    } finally {
-      setContextLoading(false);
-    }
-  }
-
-  async function loadDriveUnitResources(unit: string) {
-    setResourcesLoading(true);
-    setResourcesError("");
-    setResourcesNotice("");
-    try {
-      const data = await coachApi.getDriveUnitResources(unit);
-      setResources(Array.isArray(data.resources) ? data.resources : []);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown resources error";
-      if (/Missing English OS environment variables/i.test(message)) {
-        setResourcesNotice(
-          "Los materiales conectados no están configurados en este entorno local. Para cargarlos aquí hacen falta ENGLISH_OS_BASE_URL y ENGLISH_OS_TOKEN en .env.local."
-        );
-        setResources([]);
-      } else {
-        setResourcesError(message);
-      }
-    } finally {
-      setResourcesLoading(false);
-    }
-  }
-
-  async function createWorkbook(kind: "grammar" | "vocabulary") {
-    const isGrammar = kind === "grammar";
-    const unit = activeStudyUnit;
-    if (!unit || E2E_DEMO) return;
-
-    if (isGrammar) {
-      if (grammarWorkbookLoading) return;
-      setGrammarWorkbookLoading(true);
-      setGrammarWorkbookError("");
-    } else {
-      if (vocabularyWorkbookLoading) return;
-      setVocabularyWorkbookLoading(true);
-      setVocabularyWorkbookError("");
-    }
-
-    setError("");
-    try {
-      const data = await coachApi.createWorkbook({
-        kind,
-        unit,
-        lesson: studyMode === "current" ? currentLesson : "",
-      });
-
-      const workbook = data.workbook as Workbook | undefined;
-      if (!workbook?.fileUrl && !workbook?.exportUrl) {
-        throw new Error(`Invalid ${kind} workbook contract.`);
-      }
-
-      if (isGrammar) setGrammarWorkbook(workbook);
-      else setVocabularyWorkbook(workbook);
-
-      window.open(workbook.exportUrl || workbook.fileUrl, "_blank", "noopener,noreferrer");
-      setMessages((current) => [
-        ...current,
-        {
-          role: "coach",
-          content: [
-            `Listo. Generé la guía de ${isGrammar ? "gramática" : "vocabulario"} para ${unitLabel(unit)}.`,
-            "",
-            workbook.exportUrl ? `- [Descargar XLSX](${workbook.exportUrl})` : "",
-            workbook.fileUrl ? `- [Abrir en Sheets](${workbook.fileUrl})` : "",
-          ]
-            .filter(Boolean)
-            .join("\n"),
-        },
-      ]);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown workbook error";
-      if (isGrammar) setGrammarWorkbookError(message);
-      else setVocabularyWorkbookError(message);
-      setError(message);
-    } finally {
-      if (isGrammar) setGrammarWorkbookLoading(false);
-      else setVocabularyWorkbookLoading(false);
-    }
-  }
-
-  async function sendAgentMessage(customMessage?: string, agentIdOverride: AgentId = activeAgentId) {
-    const targetAgent = SPECIALIST_AGENT_CONTRACTS.find((agent) => agent.id === agentIdOverride) || activeAgent;
-    const targetAgentMetadata = SPECIALIST_AGENTS.find((agent) => agent.id === agentIdOverride) || activeAgentMetadata;
-    const defaultPrompt = customMessage || input ? "" : await renderClientPrompt(targetAgentMetadata.defaultPromptId);
-    const prepared = prepareAgentMessageTurn({
-      customMessage,
-      input,
-      defaultPrompt,
-      agent: targetAgent,
-      agentLoading,
-    });
-    if (!prepared) return;
-
-    if (E2E_DEMO) {
-      setMessages((current) => [...current, ...createDemoAgentTurn(targetAgent, prepared)]);
-      return;
-    }
-
-    setError("");
-    setAgentError("");
-    setInput("");
-    setAgentLoading(true);
-    setMessages((current) => [...current, prepared.userMessage]);
-    const controller = new AbortController();
-    agentAbortRef.current = controller;
-
-    try {
-      const data = await coachApi.sendAgentMessage({
-        body: prepared.requestBody,
-        signal: controller.signal,
-      });
-      setMessages((current) => [...current, createAgentCoachMessage(targetAgent, data)]);
-    } catch (err) {
-      if (isAbortError(err)) return;
-      const message = err instanceof Error ? err.message : "Unknown agent error";
-      setAgentError(message);
-      setError(message);
-    } finally {
-      if (agentAbortRef.current === controller) agentAbortRef.current = null;
-      setAgentLoading(false);
-    }
-  }
-
-  async function sendMessage(customMessage?: string) {
-    const prepared = prepareCoachMessageTurn({
-      customMessage,
-      input,
-      selectedImage,
-      messages,
-      loading,
-    });
-    if (!prepared) return;
-
-    if (E2E_DEMO) {
-      setInput("");
-      setSelectedImage(null);
-      setMessages((current) => [...current, ...createDemoCoachTurn(prepared)]);
-      return;
-    }
-
-    setError("");
-    setInput("");
-    setSelectedImage(null);
-    setLoading(true);
-    setMessages((current) => [...current, prepared.userMessage]);
-    const controller = new AbortController();
-    coachAbortRef.current = controller;
-
-    try {
-      const data = await coachApi.sendCoachMessage({
-        body: prepared.requestBody,
-        signal: controller.signal,
-      });
-
-      const next = resolveCoachResponseState({
-        requestMessage: prepared.message,
-        data,
-        currentUnit,
-        currentLesson,
-        getSavedPosition,
-      });
-
-      setStudyMode(next.studyMode);
-      setCoachSession(next.session);
-      if (next.studyUnit) {
-        setStudyUnit(normalizeUnitValue(next.studyUnit));
-      }
-      setStudyClassNumber(next.studyClassNumber);
-      if (next.currentLesson) setCurrentLesson(next.currentLesson);
-
-      setMessages((current) => [...current, next.coachMessage]);
-    } catch (err) {
-      if (isAbortError(err)) return;
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      setError(errorMessage);
-      setMessages((current) => [
-        ...current,
-        createCoachErrorMessage(errorMessage),
-      ]);
-    } finally {
-      if (coachAbortRef.current === controller) coachAbortRef.current = null;
-      setLoading(false);
-    }
-  }
-
-  function stopThinking() {
-    stopCoachThinkingRuntime({
-      coachAbortRef,
-      agentAbortRef,
-      setLoading,
-      setAgentLoading,
-    });
-  }
-
-  async function startTodayClass() {
-    sendMessage(await buildStartTodayClassPrompt(activeStudyUnit, studyMode === "current" ? currentLesson : ""));
-  }
-
-  async function requestUnitGrammar() {
-    sendMessage(await buildUnitGrammarPrompt(activeStudyUnit));
-  }
-
-  async function requestUnitVocabulary() {
-    sendMessage(await buildUnitVocabularyPrompt(activeStudyUnit));
-  }
-
-  async function requestHint() {
-    sendMessage(await buildHintPrompt(activeStudyUnit, studyMode === "current" ? currentLesson : ""));
-  }
-
-  function requestResourcePractice(resourceId: string) {
-    const resource = resources.find((item) => item.id === resourceId);
-    if (!resource) return;
-    sendMessage(buildCoachResourcePracticeMessage({ activeStudyUnitLabel, resource }));
-  }
-
-  async function copyMessage(content: string, index: number) {
-    const copied = await copyCoachText(content, { clipboard: navigator.clipboard, document });
-    if (!copied) return;
-
-    setCopiedMessageIndex(index);
-    window.setTimeout(() => setCopiedMessageIndex(null), 1200);
-  }
-
-  function reportMessage(content: string, index: number) {
-    window.location.href = buildCoachReportMailto({
-      content,
-      index,
-      activeLocationLabel,
-      email,
-      studyModeLabel: studyModeLabel(studyMode),
-      href: window.location.href,
-      nowIso: new Date().toISOString(),
-    });
-  }
-
-  function toggleMessageFeedback(index: number, value: "like" | "dislike") {
-    setMessageFeedback((current) => toggleCoachMessageFeedback(current, index, value));
-  }
-
-  function speakMessage(content: string, index: number) {
-    return speakCoachMessageRuntime({
-      content,
-      index,
-      windowObj: window,
-      setError,
-      setSpeakingMessageIndex,
-      setSpeechPaused,
-    });
-  }
-
-  function toggleSpeech(content: string, index: number) {
-    toggleCoachSpeechRuntime({
-      content,
-      index,
-      speakingMessageIndex,
-      speechPaused,
-      windowObj: window,
-      setError,
-      setSpeakingMessageIndex,
-      setSpeechPaused,
-      speakMessage,
-    });
-  }
-
-  function stopSpeech() {
-    stopCoachSpeechRuntime({
-      windowObj: window,
-      setSpeakingMessageIndex,
-      setSpeechPaused,
-    });
-  }
-
-  function insertDictationText(transcript: string) {
-    return insertDictationTranscript({
-      transcript,
-      setInput,
-      textareaRef,
-    });
-  }
-
-  async function transcribeRecordedAudio(audioBlob: Blob) {
-    if (isDictationAudioTooShort(audioBlob)) {
-      setError("No escuché suficiente audio. Intenta hablar un poco más cerca del micrófono.");
-      return;
-    }
-
-    const formData = createDictationFormData(audioBlob);
-
-    try {
-      const data = await coachApi.transcribeAudio(formData);
-      if (!insertDictationText(String(data.text))) {
-        setError("No pude convertir el audio en texto útil. Intenta hablar más claro y con menos ruido de fondo.");
-      }
-    } catch {
-      setError("No pude transcribir el audio. Puedes escribir tu respuesta o intentar de nuevo.");
-    }
-  }
-
-  function stopMediaDictation() {
-    stopMediaDictationRuntime({
-      mediaRecorderRef,
-      mediaStreamRef,
-      textareaRef,
-      setListening,
-    });
-  }
-
-  async function startMediaDictation() {
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      return false;
-    }
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-    });
-    const preferredType = chooseMediaRecorderMimeType((type) => MediaRecorder.isTypeSupported(type));
-    const recorder = preferredType ? new MediaRecorder(stream, { mimeType: preferredType }) : new MediaRecorder(stream);
-    recordedAudioChunksRef.current = [];
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) recordedAudioChunksRef.current.push(event.data);
-    };
-    recorder.onstop = () => {
-      const chunks = recordedAudioChunksRef.current;
-      recordedAudioChunksRef.current = [];
-      stream.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-      mediaRecorderRef.current = null;
-      setListening(false);
-      focusTextareaSoon(textareaRef);
-      if (chunks.length) {
-        const audioBlob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
-        void transcribeRecordedAudio(audioBlob);
-      }
-    };
-    mediaStreamRef.current = stream;
-    mediaRecorderRef.current = recorder;
-    setListening(true);
-    recorder.start();
-    focusTextareaSoon(textareaRef);
-    return true;
-  }
-
-  async function startDictation() {
-    if (mediaRecorderRef.current) {
-      stopMediaDictation();
-      return;
-    }
-
-    try {
-      if (await startMediaDictation()) return;
-    } catch {
-      setError("No pude abrir el micrófono para grabar. Intentaré con el dictado básico del navegador.");
-    }
-
-    startBrowserDictation();
-  }
-
-  function startBrowserDictation() {
-    startBrowserDictationRuntime({
-      windowObj: window,
-      recognitionRef,
-      textareaRef,
-      setListening,
-      setError,
-      insertDictationText,
-    });
-  }
-  if (!authReady && !E2E_DEMO) {
+  if (!auth.authReady && !auth.e2eDemo) {
     return (
       <main className="flex min-h-[100dvh] items-center justify-center bg-slate-950 p-6 text-white">
         <p>Loading English OS...</p>
@@ -865,7 +26,7 @@ export default function CoachPage() {
     );
   }
 
-  if (!signedIn) {
+  if (!auth.signedIn) {
     return (
       <main className="flex min-h-[100dvh] items-center justify-center bg-slate-950 p-4 text-white">
         <div className="w-full max-w-sm rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
@@ -880,7 +41,7 @@ export default function CoachPage() {
   }
 
   return (
-    <main className="coach-shell h-[100dvh] max-w-full overflow-hidden" data-theme={theme} data-text-size={textSize}>
+    <main className="coach-shell h-[100dvh] max-w-full overflow-hidden" data-theme={state.theme} data-text-size={state.textSize}>
       <div className="mx-auto flex h-[100dvh] min-w-0 flex-col overflow-hidden p-2">
         <header className="hidden">
           <div className="flex items-start justify-between gap-3">
@@ -888,22 +49,22 @@ export default function CoachPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-blue-300">English OS</p>
               <h1 className="mt-1 text-2xl font-bold sm:text-3xl">English OS Coach</h1>
               <p className="mt-1 text-sm text-slate-300">Profesor IA para clase guiada, práctica y evaluación.</p>
-              <p className="mt-1 truncate text-xs text-slate-500 sm:text-sm">{email}</p>
+              <p className="mt-1 truncate text-xs text-slate-500 sm:text-sm">{state.email}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className="hidden rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-200 sm:inline-flex">Clase guiada</span>
-              {!E2E_DEMO && isLoaded && isSignedIn && <UserButton />}
+              {!auth.e2eDemo && auth.isLoaded && auth.isSignedIn && <UserButton />}
             </div>
           </div>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1.4fr_1fr]">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
               <p className="text-[10px] uppercase tracking-wide text-slate-400">Unidad actual</p>
-              <p className="mt-1 truncate text-sm font-semibold text-white">{contextLoading ? "Loading..." : activeStudyUnitLabel}</p>
+              <p className="mt-1 truncate text-sm font-semibold text-white">{state.contextLoading ? "Loading..." : state.activeStudyUnitLabel}</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
               <p className="text-[10px] uppercase tracking-wide text-slate-400">Clase de hoy</p>
-              <p className="mt-1 truncate text-sm font-semibold text-white">{currentLesson || "Guided class"}</p>
+              <p className="mt-1 truncate text-sm font-semibold text-white">{state.currentLesson || "Guided class"}</p>
             </div>
             <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3">
               <p className="text-[10px] uppercase tracking-wide text-amber-200/80">Progreso de clase</p>
@@ -912,144 +73,103 @@ export default function CoachPage() {
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-            <button type="button" onClick={startTodayClass} disabled={loading || !activeStudyUnit} className="rounded-2xl bg-blue-600 px-3 py-3 text-xs font-bold text-white hover:bg-blue-500 disabled:opacity-50">
+            <button type="button" onClick={actions.startTodayClass} disabled={state.loading || !state.activeStudyUnit} className="rounded-2xl bg-blue-600 px-3 py-3 text-xs font-bold text-white hover:bg-blue-500 disabled:opacity-50">
               Empezar explicación
             </button>
-            <button type="button" onClick={requestHint} disabled={loading || !activeStudyUnit} className="rounded-2xl border border-yellow-500/50 bg-yellow-500/10 px-3 py-3 text-xs font-bold text-yellow-100 hover:bg-yellow-500/20 disabled:opacity-50">
+            <button type="button" onClick={actions.requestHint} disabled={state.loading || !state.activeStudyUnit} className="rounded-2xl border border-yellow-500/50 bg-yellow-500/10 px-3 py-3 text-xs font-bold text-yellow-100 hover:bg-yellow-500/20 disabled:opacity-50">
               Dame una pista
             </button>
-            <button type="button" onClick={requestUnitGrammar} disabled={loading || !activeStudyUnit} className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100 hover:bg-emerald-500/20 disabled:opacity-50">
+            <button type="button" onClick={actions.requestUnitGrammar} disabled={state.loading || !state.activeStudyUnit} className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-3 text-xs font-bold text-emerald-100 hover:bg-emerald-500/20 disabled:opacity-50">
               Gramática
             </button>
-            <button type="button" onClick={requestUnitVocabulary} disabled={loading || !activeStudyUnit} className="rounded-2xl border border-cyan-500/40 bg-cyan-500/10 px-3 py-3 text-xs font-bold text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-50">
+            <button type="button" onClick={actions.requestUnitVocabulary} disabled={state.loading || !state.activeStudyUnit} className="rounded-2xl border border-cyan-500/40 bg-cyan-500/10 px-3 py-3 text-xs font-bold text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-50">
               Vocabulario
             </button>
           </div>
-          {contextError && <div className="mt-3 rounded-2xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">{contextError}</div>}
+          {state.contextError && <div className="mt-3 rounded-2xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">{state.contextError}</div>}
         </header>
 
         <CoachTopBar
-          model={topBarModel}
-          sidebarOpen={sidebarOpen}
-          theme={theme}
-          textSize={textSize}
-          hydrated={hydrated}
-          panelIcon={<CoachIcon name={sidebarOpen ? "panelOpen" : "panel"} />}
-          userMenu={!E2E_DEMO && isLoaded && isSignedIn ? <UserButton /> : null}
-          onToggleSidebar={() => setSidebarOpen((open) => !open)}
-          onThemeChange={setTheme}
-          onDecreaseText={() => setTextSize((size) => nextCoachTextSize(size, -1))}
-          onIncreaseText={() => setTextSize((size) => nextCoachTextSize(size, 1))}
+          model={models.topBarModel}
+          sidebarOpen={state.sidebarOpen}
+          theme={state.theme}
+          textSize={state.textSize}
+          hydrated={state.hydrated}
+          panelIcon={<CoachIcon name={state.sidebarOpen ? "panelOpen" : "panel"} />}
+          userMenu={!auth.e2eDemo && auth.isLoaded && auth.isSignedIn ? <UserButton /> : null}
+          onToggleSidebar={() => actions.setSidebarOpen((open) => !open)}
+          onThemeChange={actions.setTheme}
+          onDecreaseText={actions.decreaseTextSize}
+          onIncreaseText={actions.increaseTextSize}
         />
 
-        {error && <div className="mb-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">{error}</div>}
+        {state.error && <div className="mb-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">{state.error}</div>}
 
-        <div className={`coach-layout grid min-h-0 min-w-0 max-w-full flex-1 gap-2 ${sidebarOpen ? "coach-layout-open" : "coach-layout-closed"}`}>
+        <div className={`coach-layout grid min-h-0 min-w-0 max-w-full flex-1 gap-2 ${state.sidebarOpen ? "coach-layout-open" : "coach-layout-closed"}`}>
           <section className="coach-chat order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border">
             <div className="coach-messages min-h-0 flex-1 overflow-y-auto px-4 py-2 sm:px-5">
               <CoachMessageList
-                model={messageListModel}
+                model={models.messageListModel}
                 actions={{
-                  onToggleSpeech: toggleSpeech,
-                  onStopOrRestartSpeech: (content, index) => (speakingMessageIndex === index ? stopSpeech() : speakMessage(content, index)),
-                  onToggleFeedback: toggleMessageFeedback,
-                  onReportMessage: reportMessage,
-                  onCopyMessage: copyMessage,
-                  onStopThinking: stopThinking,
+                  onToggleSpeech: actions.toggleSpeech,
+                  onStopOrRestartSpeech: (content, index) => (state.speakingMessageIndex === index ? actions.stopSpeech() : actions.speakMessage(content, index)),
+                  onToggleFeedback: actions.toggleMessageFeedback,
+                  onReportMessage: actions.reportMessage,
+                  onCopyMessage: actions.copyMessage,
+                  onStopThinking: actions.stopThinking,
                 }}
               />
-              <div ref={bottomRef} />
+              <div ref={refs.bottomRef} />
             </div>
 
             <CoachComposer
-              model={composerModel}
+              model={models.composerModel}
               refs={{
-                imageInputRef,
-                textareaRef,
+                imageInputRef: refs.imageInputRef,
+                textareaRef: refs.textareaRef,
               }}
               actions={{
-                onImageSelected: handleImageSelected,
-                onClearImage: () => setSelectedImage(null),
-                onInputChange: setInput,
-                onStartDictation: startDictation,
-                onSendMessage: sendMessage,
-                onStopThinking: stopThinking,
+                onImageSelected: actions.handleImageSelected,
+                onClearImage: actions.clearImage,
+                onInputChange: actions.setInput,
+                onStartDictation: actions.startDictation,
+                onSendMessage: actions.sendMessage,
+                onStopThinking: actions.stopThinking,
               }}
             />
           </section>
 
-          {sidebarOpen && <aside id="coach-sidebar" className="coach-sidebar order-1 min-w-0 max-w-full space-y-2 overflow-x-hidden">
+          {state.sidebarOpen && <aside id="coach-sidebar" className="coach-sidebar order-1 min-w-0 max-w-full space-y-2 overflow-x-hidden">
             <CoachStudyPanel
-              model={studyPanelModel}
-              onStudyUnitChange={(unit) => {
-                setStudyUnit(unit);
-                setStudyMode("class");
-                setCoachSession(createCoachSessionContract({
-                  mode: "class",
-                  savedUnit: currentUnit,
-                  savedLesson: currentLesson,
-                  activeUnit: unit,
-                  activeClassNumber: null,
-                  lessonTitle: currentLesson,
-                  resourcesUnit: unit,
-                  source: "request",
-                }));
-              }}
-              onStudyUnitBlur={(unit) => {
-                const normalizedUnit = normalizeUnitValue(unit);
-                setStudyUnit(normalizedUnit);
-                setCoachSession(createCoachSessionContract({
-                  mode: "class",
-                  savedUnit: currentUnit,
-                  savedLesson: currentLesson,
-                  activeUnit: normalizedUnit,
-                  activeClassNumber: null,
-                  lessonTitle: currentLesson,
-                  resourcesUnit: normalizedUnit,
-                  source: "request",
-                }));
-              }}
-              onUseSavedPosition={() => {
-                setStudyUnit(normalizeUnitValue(currentUnit));
-                setStudyMode("current");
-                setCoachSession(createCoachSessionContract({
-                  mode: "current",
-                  savedUnit: currentUnit,
-                  savedLesson: currentLesson,
-                  activeUnit: currentUnit,
-                  lessonTitle: currentLesson,
-                  resourcesUnit: currentUnit,
-                  source: "english_os",
-                }));
-              }}
-              onStartClass={startTodayClass}
+              model={models.studyPanelModel}
+              onStudyUnitChange={actions.handleStudyUnitChange}
+              onStudyUnitBlur={actions.handleStudyUnitBlur}
+              onUseSavedPosition={actions.handleUseSavedPosition}
+              onStartClass={actions.startTodayClass}
             />
 
             <CoachLearningPulsePanel
-              model={learningPulsePanelModel}
+              model={models.learningPulsePanelModel}
             />
 
             <CoachGuidesPanel
-              model={guidesPanelModel}
-              onCreateGrammarWorkbook={() => createWorkbook("grammar")}
-              onCreateVocabularyWorkbook={() => createWorkbook("vocabulary")}
-              onRequestGrammarGuide={requestUnitGrammar}
-              onRequestVocabularyGuide={requestUnitVocabulary}
+              model={models.guidesPanelModel}
+              onCreateGrammarWorkbook={actions.createGrammarWorkbook}
+              onCreateVocabularyWorkbook={actions.createVocabularyWorkbook}
+              onRequestGrammarGuide={actions.requestUnitGrammar}
+              onRequestVocabularyGuide={actions.requestUnitVocabulary}
             />
 
-              <CoachQuickHelpPanel
-                model={quickHelpPanelModel}
-                onSelectAgent={(agentId) => setActiveAgentId(agentId as AgentId)}
-                onRunAgent={(agentId) => {
-                  setActiveAgentId(agentId as AgentId);
-                  sendAgentMessage(undefined, agentId as AgentId);
-                }}
-              />
+            <CoachQuickHelpPanel
+              model={models.quickHelpPanelModel}
+              onSelectAgent={actions.setActiveAgentId}
+              onRunAgent={actions.handleRunAgent}
+            />
 
             <CoachClassMaterialsPanel
-              model={classMaterialsPanelModel}
-              onToggleResource={(resourceId) => setExpandedResourceId((current) => current === resourceId ? null : resourceId)}
-              onPracticeResource={requestResourcePractice}
+              model={models.classMaterialsPanelModel}
+              onToggleResource={actions.toggleResource}
+              onPracticeResource={actions.requestResourcePractice}
             />
           </aside>}
         </div>

@@ -106,6 +106,7 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
 
 test("coach UI follows the explicitly requested unit for materials", async () => {
   const source = readFile("src/app/coach/page.tsx");
+  const pageController = readFile("src/modules/coach-page/useCoachPageController.ts");
   const sessionContract = readFile("src/modules/coach-session/contract.ts");
   const viewModels = readFile("src/modules/coach-session/viewModels.ts");
   const topBar = readFile("src/modules/coach-layout/CoachTopBar.tsx");
@@ -119,22 +120,22 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   const coachController = readFile("src/modules/coach-controller/coachController.ts");
   const apiClient = readFile("src/modules/coach-api/coachApiClient.ts");
 
-  expect(source).toContain("const [coachSession, setCoachSession]");
-  expect(source).toContain("const uiSession = createCoachSessionContract");
-  expect(source).toContain("const topBarModel = toCoachTopBarModel(uiSession, learningPulseLabel)");
-  expect(source).toContain("const studyPanelModel = toCoachStudyPanelModel");
-  expect(source).toContain("const learningPulsePanelModel = toCoachLearningPulsePanelModel");
-  expect(source).toContain("const guidesPanelModel = toCoachGuidesPanelModel");
-  expect(source).toContain("const quickHelpPanelModel = toCoachQuickHelpPanelModel");
-  expect(source).toContain("const classMaterialsPanelModel = toCoachClassMaterialsPanelModel");
-  expect(source).toContain("const chatMessageItems = messages.map");
-  expect(source).toContain("const composerImage = selectedImage");
-  expect(source).toContain("model={topBarModel}");
-  expect(source).toContain("model={studyPanelModel}");
-  expect(source).toContain("model={learningPulsePanelModel}");
-  expect(source).toContain("model={guidesPanelModel}");
-  expect(source).toContain("model={quickHelpPanelModel}");
-  expect(source).toContain("model={classMaterialsPanelModel}");
+  expect(pageController).toContain("const [coachSession, setCoachSession]");
+  expect(pageController).toContain("const uiSession = createCoachSessionContract");
+  expect(pageController).toContain("const topBarModel = toCoachTopBarModel(uiSession, learningPulseLabel)");
+  expect(pageController).toContain("const studyPanelModel = toCoachStudyPanelModel");
+  expect(pageController).toContain("const learningPulsePanelModel = toCoachLearningPulsePanelModel");
+  expect(pageController).toContain("const guidesPanelModel = toCoachGuidesPanelModel");
+  expect(pageController).toContain("const quickHelpPanelModel = toCoachQuickHelpPanelModel");
+  expect(pageController).toContain("const classMaterialsPanelModel = toCoachClassMaterialsPanelModel");
+  expect(pageController).toContain("const chatMessageItems = messages.map");
+  expect(pageController).toContain("const composerImage = selectedImage");
+  expect(source).toContain("model={models.topBarModel}");
+  expect(source).toContain("model={models.studyPanelModel}");
+  expect(source).toContain("model={models.learningPulsePanelModel}");
+  expect(source).toContain("model={models.guidesPanelModel}");
+  expect(source).toContain("model={models.quickHelpPanelModel}");
+  expect(source).toContain("model={models.classMaterialsPanelModel}");
   expect(source).toContain("<CoachMessageList");
   expect(source).toContain("<CoachComposer");
   expect(source).toContain("<CoachLearningPulsePanel");
@@ -171,25 +172,26 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(composer).not.toContain("mimeType");
   expect(sessionContract).toContain("resourcesUnit");
 
-  expect(source).toContain("resolveCoachResponseState");
-  expect(source).toContain("const next = resolveCoachResponseState");
+  expect(pageController).toContain("resolveCoachResponseState");
+  expect(pageController).toContain("const next = resolveCoachResponseState");
   expect(coachController).toContain("function inferCoordinatesFromReply");
   expect(coachController).toContain("const inferredCoordinates = inferCoordinatesFromReply(reply)");
   expect(coachController).toContain("const activeUnit = params.data.activeUnit || inferredCoordinates.unit");
-  expect(source).toContain("normalizeUnitValue");
-  expect(source).toContain("setStudyUnit(normalizeUnitValue(next.studyUnit))");
-  expect(source).not.toContain("setCurrentUnit(unit);\n        setStudyUnit(unit)");
+  expect(pageController).toContain("normalizeUnitValue");
+  expect(pageController).toContain("setStudyUnit(normalizeUnitValue(next.studyUnit))");
+  expect(pageController).not.toContain("setCurrentUnit(unit);\n        setStudyUnit(unit)");
   expect(coachController).toContain("const studyMode: CoachStudyMode = isReviewRequest(params.requestMessage) ? \"review\" : isGuideRequest(params.requestMessage) ? \"guide\" : \"class\"");
-  expect(source).toContain("setStudyMode(next.studyMode)");
-  expect(source).toContain("setStudyClassNumber(next.studyClassNumber)");
+  expect(pageController).toContain("setStudyMode(next.studyMode)");
+  expect(pageController).toContain("setStudyClassNumber(next.studyClassNumber)");
   expect(studyPanel).toContain("Posición guardada:");
   expect(coachController).toContain("No pude completar la respuesta esta vez");
-  expect(source).toContain("no inventes Class 1");
+  expect(pageController).toContain("no inventes Class 1");
   expect(readFile("public/prompts/coach/start-current-class.md")).toContain("apertura estratégica por etapas");
   expect(source).not.toContain("finish with an evaluation gate before progress can advance");
-  expect(source).toContain("createCoachApiClient");
+  expect(pageController).toContain("createCoachApiClient");
   expect(source).not.toContain("readJsonResponse(response)");
   expect(source).not.toContain("fetch(");
+  expect(pageController).not.toContain("fetch(");
   expect(apiClient).toContain("readJsonResponse(response)");
   expect(apiClient).toContain("El servidor no devolvió contenido");
 });
@@ -213,6 +215,7 @@ test("mobile coach header keeps mode and unit/class visible", async () => {
 
 test("coach shows an evidence-based learning pulse without inventing progress", async () => {
   const source = readFile("src/app/coach/page.tsx");
+  const pageController = readFile("src/modules/coach-page/useCoachPageController.ts");
   const contextController = readFile("src/modules/coach-context/coachContext.ts");
   const topBar = readFile("src/modules/coach-layout/CoachTopBar.tsx");
   const learningPulsePanel = readFile("src/modules/coach-resources/CoachLearningPulsePanel.tsx");
@@ -227,8 +230,8 @@ test("coach shows an evidence-based learning pulse without inventing progress", 
   expect(contextController).toContain("function learningPulseDetail");
   expect(contextController).toContain("Sin nivel confirmado");
   expect(contextController).toContain("sin evidencias");
-  expect(source).toContain("buildLearningPulse");
-  expect(source).toContain("learningPulseDetail");
+  expect(pageController).toContain("buildLearningPulse");
+  expect(pageController).toContain("learningPulseDetail");
   expect(topBar).toContain("coach-status-pulse");
   expect(source).toContain("<CoachLearningPulsePanel");
   expect(learningPulsePanel).toContain("coach-learning-pulse");
@@ -259,6 +262,7 @@ test("mobile sidebar keeps class resources visible after the learning pulse", as
 test("unit grammar and vocabulary guides use verified unit contracts", async () => {
   const handler = readFile("src/lib/coachRouteHandler.ts");
   const source = readFile("src/app/coach/page.tsx");
+  const pageController = readFile("src/modules/coach-page/useCoachPageController.ts");
   const grammarGuidePrompt = readFile("public/prompts/coach/unit-grammar-guide.md");
 
   expect(handler).toContain("function unitGuideKind");
@@ -269,7 +273,8 @@ test("unit grammar and vocabulary guides use verified unit contracts", async () 
   expect(readFile("public/prompts/coach-route/unit-guide-system.md")).toContain("Do not ask the learner for the class index");
   expect(readFile("public/prompts/coach-route/unit-guide-system.md")).toContain("Do not mention Passages");
   expect(handler).toContain("renderUnitGuideReply");
-  expect(source).toContain("coach.unitGrammarGuide");
+  expect(source).toContain("onRequestGrammarGuide={actions.requestUnitGrammar}");
+  expect(pageController).toContain("coach.unitGrammarGuide");
   expect(grammarGuidePrompt).toContain("No menciones Passages ni pidas el índice.");
 });
 

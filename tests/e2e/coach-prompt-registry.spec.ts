@@ -11,13 +11,14 @@ function read(relativePath: string) {
 
 test("coach prompt templates live outside page source", async () => {
   const source = read("src/app/coach/page.tsx");
+  const pageController = read("src/modules/coach-page/useCoachPageController.ts");
   const grammarGuide = read("public/prompts/coach/unit-grammar-guide.md");
   const startClass = read("public/prompts/coach/start-current-class.md");
 
   expect(grammarGuide).toContain("No menciones Passages");
   expect(startClass).toContain("No hagas cierre");
-  expect(source).toContain("renderClientPrompt");
-  expect(source).toContain("coach.startCurrentClass");
+  expect(pageController).toContain("renderClientPrompt");
+  expect(pageController).toContain("coach.startCurrentClass");
   expect(source).not.toContain("Haz solo una apertura estratégica por etapas: objetivo, por qué importa");
   expect(source).not.toContain("Hazla como una guía compacta por prioridades");
 });

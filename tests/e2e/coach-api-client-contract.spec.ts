@@ -52,10 +52,12 @@ test("coach api client turns invalid responses into user-safe errors", async () 
 test("coach page consumes the api client instead of hardcoding endpoint fetches", async () => {
   const fs = await import("node:fs/promises");
   const pageSource = await fs.readFile("src/app/coach/page.tsx", "utf8");
+  const pageController = await fs.readFile("src/modules/coach-page/useCoachPageController.ts", "utf8");
   const apiClient = await fs.readFile("src/modules/coach-api/coachApiClient.ts", "utf8");
 
-  expect(pageSource).toContain("createCoachApiClient");
+  expect(pageController).toContain("createCoachApiClient");
   expect(pageSource).not.toContain("fetch(");
+  expect(pageController).not.toContain("fetch(");
   expect(pageSource).not.toContain("/api/english-os/coach");
   expect(pageSource).not.toContain("/api/english-os/agents");
   expect(pageSource).not.toContain("/api/english-os/context");

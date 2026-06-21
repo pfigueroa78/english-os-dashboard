@@ -8,6 +8,7 @@ import {
   toCoachStudyPanelModel,
   toCoachTopBarModel,
 } from "../../src/modules/coach-session/viewModels";
+import { toCoachAgentClientContracts } from "../../src/modules/coach-integrations/agentsContract";
 
 test("coach session view models expose only component-specific display data", async () => {
   const session = createCoachSessionContract({
@@ -137,6 +138,35 @@ test("coach resource view models expose render-only contracts", async () => {
     loading: false,
     error: "",
   });
+  const agentContracts = toCoachAgentClientContracts([
+    {
+      id: "grammar_corrector",
+      name: "Grammar Corrector",
+      shortName: "Gramática",
+      description: "Corrects grammar",
+      activity: "Specialist grammar correction",
+      defaultPrompt: "hidden default prompt",
+      systemPrompt: "server-only system prompt",
+      logNotes: "server-only log notes",
+    },
+  ]);
+  expect(agentContracts).toEqual([{
+    id: "grammar_corrector",
+    name: "Grammar Corrector",
+    shortName: "Gramática",
+    description: "Corrects grammar",
+    activity: "Specialist grammar correction",
+    defaultPrompt: "hidden default prompt",
+  }]);
+  expect(JSON.stringify(agentContracts)).not.toContain("systemPrompt");
+  expect(JSON.stringify(agentContracts)).not.toContain("logNotes");
+  expect(JSON.stringify(toCoachQuickHelpPanelModel({
+    agents: agentContracts,
+    activeAgentId: "grammar_corrector",
+    activeAgentDescription: agentContracts[0].description,
+    loading: false,
+    error: "",
+  }))).not.toContain("defaultPrompt");
 
   const materialsPanel = toCoachClassMaterialsPanelModel({
     unitLabel: "Unit 4",

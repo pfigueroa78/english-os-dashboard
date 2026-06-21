@@ -11,6 +11,7 @@ import { CoachGuidesPanel } from "@/modules/coach-resources/CoachGuidesPanel";
 import { CoachLearningPulsePanel } from "@/modules/coach-resources/CoachLearningPulsePanel";
 import { CoachQuickHelpPanel } from "@/modules/coach-resources/CoachQuickHelpPanel";
 import { CoachStudyPanel } from "@/modules/coach-resources/CoachStudyPanel";
+import { toCoachAgentClientContracts } from "@/modules/coach-integrations/agentsContract";
 import { createCoachSessionContract } from "@/modules/coach-session/contract";
 import type { CoachSessionState } from "@/modules/coach-session/types";
 import {
@@ -121,6 +122,8 @@ const SPECIALIST_AGENTS: SpecialistAgent[] = [
       "Please evaluate my English objectively using CEFR criteria. Give me a score, weaknesses, recurring patterns, and targeted exercises.",
   },
 ];
+
+const SPECIALIST_AGENT_CONTRACTS = toCoachAgentClientContracts(SPECIALIST_AGENTS);
 
 function getLearnerDisplayName(user: ReturnType<typeof useUser>["user"]) {
   const candidate = user?.firstName || user?.fullName || user?.username || "";
@@ -493,7 +496,7 @@ export default function CoachPage() {
   const coachAbortRef = useRef<AbortController | null>(null);
   const agentAbortRef = useRef<AbortController | null>(null);
 
-  const activeAgent = SPECIALIST_AGENTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENTS[0];
+  const activeAgent = SPECIALIST_AGENT_CONTRACTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENT_CONTRACTS[0];
   const uiSession = createCoachSessionContract({
     mode: coachModeFromStudyMode(studyMode),
     savedUnit: currentUnit || coachSession.savedUnit,
@@ -535,7 +538,7 @@ export default function CoachPage() {
     vocabularyWorkbook,
   });
   const quickHelpPanelModel = toCoachQuickHelpPanelModel({
-    agents: SPECIALIST_AGENTS,
+    agents: SPECIALIST_AGENT_CONTRACTS,
     activeAgentId,
     activeAgentDescription: activeAgent.description,
     loading: agentLoading,
@@ -1434,7 +1437,7 @@ export default function CoachPage() {
               model={quickHelpPanelModel}
               onSelectAgent={(agentId) => setActiveAgentId(agentId as AgentId)}
               onRunAgent={(agentId) => {
-                const agent = SPECIALIST_AGENTS.find((item) => item.id === agentId) || activeAgent;
+                const agent = SPECIALIST_AGENT_CONTRACTS.find((item) => item.id === agentId) || activeAgent;
                 setActiveAgentId(agentId as AgentId);
                 sendAgentMessage(agent.defaultPrompt);
               }}

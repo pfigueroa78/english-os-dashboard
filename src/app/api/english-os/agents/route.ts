@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { toCoachAgentClientContracts } from "@/modules/coach-integrations/agentsContract";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
@@ -23,6 +24,9 @@ type AgentRequest = {
 type AgentConfig = {
   id: AgentId;
   name: string;
+  shortName: string;
+  description: string;
+  defaultPrompt: string;
   systemPrompt: string;
   skill: string;
   activity: string;
@@ -33,6 +37,10 @@ const AGENTS: Record<AgentId, AgentConfig> = {
   grammar_corrector: {
     id: "grammar_corrector",
     name: "Grammar Corrector",
+    shortName: "Gramática",
+    description: "Corrige estructura, artículos, preposiciones y naturalidad.",
+    defaultPrompt:
+      "Please correct my English. Focus on grammar, sentence structure, articles, prepositions, fluency, and natural professional phrasing.",
     skill: "Grammar",
     activity: "Specialist grammar correction",
     logNotes: "Grammar Corrector agent interaction",
@@ -61,6 +69,10 @@ Keep the answer practical for a B1+/B2 learner.
   speaking_partner: {
     id: "speaking_partner",
     name: "Speaking Partner",
+    shortName: "Speaking",
+    description: "Practica conversación, fluidez y respuestas profesionales.",
+    defaultPrompt:
+      "Let's practice speaking in a business context. Ask me one realistic question and correct important mistakes after my answer.",
     skill: "Speaking",
     activity: "Specialist speaking practice",
     logNotes: "Speaking Partner agent interaction",
@@ -88,6 +100,10 @@ Keep the tone conversational and motivating.
   english_evaluator: {
     id: "english_evaluator",
     name: "English Evaluator",
+    shortName: "Evaluar",
+    description: "Evalúa CEFR, precisión, vocabulario y próximos pasos.",
+    defaultPrompt:
+      "Please evaluate my English objectively using CEFR criteria. Give me a score, weaknesses, recurring patterns, and targeted exercises.",
     skill: "Evaluation",
     activity: "Specialist English evaluation",
     logNotes: "English Evaluator agent interaction",
@@ -318,12 +334,7 @@ ${message}
 export async function GET() {
   return NextResponse.json({
     ok: true,
-    agents: Object.values(AGENTS).map((agent) => ({
-      id: agent.id,
-      name: agent.name,
-      skill: agent.skill,
-      activity: agent.activity,
-    })),
+    agents: toCoachAgentClientContracts(Object.values(AGENTS)),
   });
 }
 

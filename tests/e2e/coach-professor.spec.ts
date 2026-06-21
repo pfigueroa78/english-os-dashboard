@@ -248,6 +248,7 @@ test("resource players are width-contained and load on demand", async () => {
   const materialsPanel = await fs.readFile("src/modules/coach-resources/CoachClassMaterialsPanel.tsx", "utf8");
   const guidesPanel = await fs.readFile("src/modules/coach-resources/CoachGuidesPanel.tsx", "utf8");
   const messageList = await fs.readFile("src/modules/coach-chat/CoachMessageList.tsx", "utf8");
+  const messageListViewModel = await fs.readFile("src/modules/coach-chat/messageListViewModel.ts", "utf8");
   const composer = await fs.readFile("src/modules/coach-chat/CoachComposer.tsx", "utf8");
   const topBar = await fs.readFile("src/modules/coach-layout/CoachTopBar.tsx", "utf8");
   const persistence = await fs.readFile("src/modules/coach-persistence/coachPersistence.ts", "utf8");
@@ -272,7 +273,7 @@ test("resource players are width-contained and load on demand", async () => {
   expect(styles).toContain(".coach-user-message-label");
   expect(styles).toContain(".coach-user-message-content");
   expect(messageList).toContain("coach-user-message-line");
-  expect(messageList).toContain("Tú —");
+  expect(messageListViewModel).toContain("Tú —");
   expect(styles).toContain(".coach-message-user .coach-message-label p::after");
   expect(styles).toContain('.coach-message-user .coach-message-label p { display: inline; margin: 0; }');
   expect(styles).toContain('.coach-message-user .prose p { display: inline; margin: 0; }');
@@ -308,11 +309,11 @@ test("resource players are width-contained and load on demand", async () => {
   expect(composer).toContain("rows={1}");
   expect(source).toContain("coach-shell h-[100dvh] max-w-full overflow-hidden");
   expect(source).toContain("coach-layout grid min-h-0");
-  expect(messageList).toContain('CoachIcon name="thumbsUp"');
-  expect(messageList).toContain('CoachIcon name="thumbsDown"');
-  expect(messageList).toContain('CoachIcon name="flag"');
+  expect(messageListViewModel).toContain('icon: "thumbsUp"');
+  expect(messageListViewModel).toContain('icon: "thumbsDown"');
+  expect(messageListViewModel).toContain('icon: "flag"');
   expect(source).toContain("reportMessage");
-  expect(messageList).toContain("Reportar error en esta respuesta");
+  expect(messageListViewModel).toContain("Reportar error en esta respuesta");
   expect(source).toContain("mailto:info@citizen-life.com");
   expect(source).toContain("buildProgressSnapshot");
   expect(source).toContain("Avance:");
@@ -321,8 +322,9 @@ test("resource players are width-contained and load on demand", async () => {
   expect(source).toContain("createSpeechPayload");
   expect(source).toContain("utterance.voice = speech.voice");
   expect(media).toContain("pitch: 1.02");
-  expect(messageList).toContain("aria-pressed={messageFeedback[index] === \"like\"}");
-  expect(messageList).toContain("aria-pressed={messageFeedback[index] === \"dislike\"}");
+  expect(messageList).toContain("aria-pressed={message.likeAction.pressed}");
+  expect(messageList).toContain("aria-pressed={message.dislikeAction.pressed}");
+  expect(messageListViewModel).toContain("messageFeedback");
   expect(styles).toContain(".coach-feedback-active:hover");
   expect(messageList).toContain("coach-thinking-dots");
   expect(source).toContain("AbortController");

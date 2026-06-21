@@ -5,6 +5,7 @@ import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { CoachIcon } from "@/components/CoachIcon";
 import { CoachComposer } from "@/modules/coach-chat/CoachComposer";
 import { CoachMessageList } from "@/modules/coach-chat/CoachMessageList";
+import { toCoachMessageListModel } from "@/modules/coach-chat/messageListViewModel";
 import { CoachTopBar } from "@/modules/coach-layout/CoachTopBar";
 import { CoachClassMaterialsPanel } from "@/modules/coach-resources/CoachClassMaterialsPanel";
 import { CoachGuidesPanel } from "@/modules/coach-resources/CoachGuidesPanel";
@@ -519,6 +520,16 @@ export default function CoachPage() {
     content: message.content,
     image: message.image ? { dataUrl: message.image.dataUrl, name: message.image.name } : undefined,
   }));
+  const messageListModel = toCoachMessageListModel({
+    messages: chatMessageItems,
+    loading,
+    agentLoading,
+    activeAgentName: activeAgent.name,
+    copiedMessageIndex,
+    messageFeedback,
+    speakingMessageIndex,
+    speechPaused,
+  });
   const composerImage = selectedImage ? { dataUrl: selectedImage.dataUrl, name: selectedImage.name } : null;
   const conversationStorageKey = getCoachConversationStorageKey(email);
 
@@ -1221,20 +1232,15 @@ export default function CoachPage() {
           <section className="coach-chat order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border">
             <div className="coach-messages min-h-0 flex-1 overflow-y-auto px-4 py-2 sm:px-5">
               <CoachMessageList
-                messages={chatMessageItems}
-                loading={loading}
-                agentLoading={agentLoading}
-                activeAgentName={activeAgent.name}
-                copiedMessageIndex={copiedMessageIndex}
-                messageFeedback={messageFeedback}
-                speakingMessageIndex={speakingMessageIndex}
-                speechPaused={speechPaused}
-                onToggleSpeech={toggleSpeech}
-                onStopOrRestartSpeech={(content, index) => (speakingMessageIndex === index ? stopSpeech() : speakMessage(content, index))}
-                onToggleFeedback={toggleMessageFeedback}
-                onReportMessage={reportMessage}
-                onCopyMessage={copyMessage}
-                onStopThinking={stopThinking}
+                model={messageListModel}
+                actions={{
+                  onToggleSpeech: toggleSpeech,
+                  onStopOrRestartSpeech: (content, index) => (speakingMessageIndex === index ? stopSpeech() : speakMessage(content, index)),
+                  onToggleFeedback: toggleMessageFeedback,
+                  onReportMessage: reportMessage,
+                  onCopyMessage: copyMessage,
+                  onStopThinking: stopThinking,
+                }}
               />
               <div ref={bottomRef} />
             </div>

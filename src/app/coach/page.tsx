@@ -8,6 +8,7 @@ import { CoachTopBar } from "@/modules/coach-layout/CoachTopBar";
 import { CoachStudyPanel } from "@/modules/coach-resources/CoachStudyPanel";
 import { createCoachSessionContract } from "@/modules/coach-session/contract";
 import type { CoachSessionState } from "@/modules/coach-session/types";
+import { toCoachStudyPanelModel, toCoachTopBarModel } from "@/modules/coach-session/viewModels";
 
 type Message = {
   role: "user" | "coach";
@@ -513,6 +514,14 @@ export default function CoachPage() {
   const activeStudyUnitLabel = unitLabel(activeStudyUnit);
   const activeLocationLabel = [activeStudyUnitLabel, studyClassNumber ? `Class ${studyClassNumber}` : ""].filter(Boolean).join(" · ");
   const learningPulseLabel = learningPulseDetail(learningPulse);
+  const topBarModel = toCoachTopBarModel(uiSession, learningPulseLabel);
+  const studyPanelModel = toCoachStudyPanelModel({
+    session: uiSession,
+    currentUnitLabel: unitLabel(currentUnit),
+    contextLoading,
+    studyUnitValue: studyUnit,
+    loading,
+  });
   const conversationStorageKey = email ? `english-os-coach:${email}` : "";
 
   useEffect(() => {
@@ -1294,11 +1303,10 @@ export default function CoachPage() {
         </header>
 
         <CoachTopBar
-          session={uiSession}
+          model={topBarModel}
           sidebarOpen={sidebarOpen}
           theme={theme}
           textSize={textSize}
-          learningPulseLabel={learningPulseLabel}
           panelIcon={<SvgIcon name={sidebarOpen ? "panelOpen" : "panel"} />}
           userMenu={!E2E_DEMO && isLoaded && isSignedIn ? <UserButton /> : null}
           onToggleSidebar={() => setSidebarOpen((open) => !open)}
@@ -1468,11 +1476,7 @@ export default function CoachPage() {
 
           {sidebarOpen && <aside id="coach-sidebar" className="coach-sidebar order-1 min-w-0 max-w-full space-y-2 overflow-x-hidden">
             <CoachStudyPanel
-              session={uiSession}
-              contextLoading={contextLoading}
-              studyUnit={studyUnit}
-              currentUnit={unitLabel(currentUnit)}
-              loading={loading}
+              model={studyPanelModel}
               onStudyUnitChange={(unit) => {
                 setStudyUnit(unit);
                 setStudyMode("class");

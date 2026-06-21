@@ -104,15 +104,24 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
 test("coach UI follows the explicitly requested unit for materials", async () => {
   const source = readFile("src/app/coach/page.tsx");
   const sessionContract = readFile("src/modules/coach-session/contract.ts");
+  const viewModels = readFile("src/modules/coach-session/viewModels.ts");
   const topBar = readFile("src/modules/coach-layout/CoachTopBar.tsx");
   const studyPanel = readFile("src/modules/coach-resources/CoachStudyPanel.tsx");
 
   expect(source).toContain("const [coachSession, setCoachSession]");
   expect(source).toContain("const uiSession = createCoachSessionContract");
-  expect(source).toContain("session={uiSession}");
-  expect(topBar).toContain("sessionHeaderDetail(session)");
-  expect(topBar).toContain("sessionLocationLabel(session)");
-  expect(studyPanel).toContain("sessionResourcesLabel(session)");
+  expect(source).toContain("const topBarModel = toCoachTopBarModel(uiSession, learningPulseLabel)");
+  expect(source).toContain("const studyPanelModel = toCoachStudyPanelModel");
+  expect(source).toContain("model={topBarModel}");
+  expect(source).toContain("model={studyPanelModel}");
+  expect(viewModels).toContain("sessionHeaderDetail(session)");
+  expect(viewModels).toContain("sessionLocationLabel(session)");
+  expect(viewModels).toContain("sessionResourcesLabel(session)");
+  expect(topBar).not.toContain("CoachSessionState");
+  expect(topBar).not.toContain("sessionHeaderDetail");
+  expect(topBar).not.toContain("sessionLocationLabel");
+  expect(studyPanel).not.toContain("CoachSessionState");
+  expect(studyPanel).not.toContain("sessionResourcesLabel");
   expect(sessionContract).toContain("resourcesUnit");
 
   expect(source).toContain("function inferCoordinatesFromReply");
@@ -136,12 +145,14 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
 test("mobile coach header keeps mode and unit/class visible", async () => {
   const source = readFile("src/app/coach/page.tsx");
   const topBar = readFile("src/modules/coach-layout/CoachTopBar.tsx");
+  const viewModels = readFile("src/modules/coach-session/viewModels.ts");
   const globals = readFile("src/app/globals.css");
   const overrides = readFile("src/app/coach-qa-overrides.css");
 
   expect(source).toContain("<CoachTopBar");
   expect(topBar).toContain("coach-status-detail");
-  expect(topBar).toContain("sessionHeaderDetail(session)");
+  expect(topBar).toContain("model.detailLabel");
+  expect(viewModels).toContain("sessionHeaderDetail(session)");
   expect(globals).toContain(".coach-status-detail");
   expect(overrides).toContain(".coach-status-detail");
   expect(globals).not.toContain("span:not(.coach-status-brand)");

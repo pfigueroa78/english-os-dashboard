@@ -2,18 +2,16 @@
 
 import { type ReactNode } from "react";
 import { EnglishOsLogo } from "@/components/EnglishOsLogo";
-import type { CoachSessionState } from "@/modules/coach-session/types";
-import { sessionHeaderDetail, sessionLocationLabel, sessionModeLabel } from "@/modules/coach-session/selectors";
+import type { CoachTopBarModel } from "@/modules/coach-session/viewModels";
 
 type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue";
 type CoachTextSize = "compact" | "normal" | "large";
 
 type CoachTopBarProps = {
-  session: CoachSessionState;
+  model: CoachTopBarModel;
   sidebarOpen: boolean;
   theme: CoachTheme;
   textSize: CoachTextSize;
-  learningPulseLabel: string;
   panelIcon: ReactNode;
   userMenu?: ReactNode;
   onToggleSidebar: () => void;
@@ -23,11 +21,10 @@ type CoachTopBarProps = {
 };
 
 export function CoachTopBar({
-  session,
+  model,
   sidebarOpen,
   theme,
   textSize,
-  learningPulseLabel,
   panelIcon,
   userMenu,
   onToggleSidebar,
@@ -88,12 +85,12 @@ export function CoachTopBar({
         <EnglishOsLogo size="sm" showText={false} markClassName="coach-status-logo" />
         <span className="coach-status-brand">English OS</span>
         <span className="coach-status-separator">—</span>
-        <span className="coach-status-mode">{sessionModeLabel(session.mode)}</span>
+        <span className="coach-status-mode">{model.modeLabel}</span>
         <span className="coach-status-separator">—</span>
-        <span className="coach-status-location">{sessionLocationLabel(session)}</span>
+        <span className="coach-status-location">{model.locationLabel}</span>
         <span className="coach-status-separator">—</span>
-        <span className="coach-status-pulse">{learningPulseLabel}</span>
-        <span className="coach-status-detail">{sessionHeaderDetail(session)}</span>
+        <span className="coach-status-pulse">{model.progressLabel}</span>
+        <span className="coach-status-detail">{model.detailLabel}</span>
       </span>
       {userMenu}
     </div>

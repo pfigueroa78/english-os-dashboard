@@ -20,10 +20,16 @@ import {
   prepareAgentMessageTurn,
   prepareCoachMessageTurn,
   resolveCoachResponseState,
-  stripEphemeralImages,
   type CoachStudyMode,
 } from "@/modules/coach-controller/coachController";
 import { toCoachAgentClientContracts } from "@/modules/coach-integrations/agentsContract";
+import {
+  getCoachConversationStorageKey,
+  loadCoachConversation,
+  loadCoachPreferences,
+  saveCoachConversation,
+  saveCoachPreferences,
+} from "@/modules/coach-persistence/coachPersistence";
 import { renderClientPrompt, type ClientPromptId } from "@/modules/coach-prompts/clientPromptRegistry";
 import { createCoachSessionContract } from "@/modules/coach-session/contract";
 import type { CoachSessionState } from "@/modules/coach-session/types";
@@ -534,22 +540,16 @@ export default function CoachPage() {
     image: message.image ? { dataUrl: message.image.dataUrl, name: message.image.name } : undefined,
   }));
   const composerImage = selectedImage ? { dataUrl: selectedImage.dataUrl, name: selectedImage.name } : null;
-  const conversationStorageKey = email ? `english-os-coach:${email}` : "";
+  const conversationStorageKey = getCoachConversationStorageKey(email);
 
   useEffect(() => {
     setHydrated(true);
-    const storedTheme = window.localStorage.getItem("english-os-coach-theme") as CoachTheme | null;
-    const storedTextSize = window.localStorage.getItem("english-os-coach-text-size") as CoachTextSize | null;
-    const storedSidebar = window.localStorage.getItem("english-os-coach-sidebar");
-    if (storedTheme && ["slate", "paper", "sage", "sand", "blue"].includes(storedTheme)) setTheme(storedTheme);
-    if (storedTextSize && COACH_TEXT_SIZE_ORDER.includes(storedTextSize)) setTextSize(storedTextSize);
-    if (storedSidebar === "closed") {
-      setSidebarOpen(false);
-    } else if (storedSidebar === "open") {
-      setSidebarOpen(true);
-    } else if (window.matchMedia("(max-width: 640px)").matches) {
-      setSidebarOpen(false);
-    }
+    const preferences = loadCoachPreferences(window.localStorage, {
+      isSmallViewport: window.matchMedia("(max-width: 640px)").matches,
+    });
+    if (preferences.theme) setTheme(preferences.theme);
+    if (preferences.textSize && COACH_TEXT_SIZE_ORDER.includes(preferences.textSize)) setTextSize(preferences.textSize);
+    if (typeof preferences.sidebarOpen === "boolean") setSidebarOpen(preferences.sidebarOpen);
   }, []);
 
   useEffect(() => {
@@ -560,15 +560,13 @@ export default function CoachPage() {
 
   useEffect(() => {
     if (!hydrated) return;
-    window.localStorage.setItem("english-os-coach-theme", theme);
-    window.localStorage.setItem("english-os-coach-text-size", textSize);
-    window.localStorage.setItem("english-os-coach-sidebar", sidebarOpen ? "open" : "closed");
+    saveCoachPreferences(window.localStorage, { theme, textSize, sidebarOpen });
   }, [hydrated, theme, textSize, sidebarOpen]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     if (conversationStorageKey && messages.length > 0 && !E2E_DEMO) {
-      window.localStorage.setItem(conversationStorageKey, JSON.stringify(stripEphemeralImages(messages.slice(-40))));
+      saveCoachConversation(window.localStorage, conversationStorageKey, messages, { maxMessages: 40 });
     }
   }, [messages, loading, agentLoading, conversationStorageKey]);
 
@@ -576,17 +574,8 @@ export default function CoachPage() {
     if (E2E_DEMO) return;
     if (!authReady || !signedIn) return;
 
-    if (conversationStorageKey) {
-      const saved = window.localStorage.getItem(conversationStorageKey);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved) as Message[];
-          if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);
-        } catch {
-          window.localStorage.removeItem(conversationStorageKey);
-        }
-      }
-    }
+    const savedMessages = loadCoachConversation(window.localStorage, conversationStorageKey);
+    if (savedMessages.length > 0) setMessages(savedMessages);
 
     loadUserContext();
   }, [authReady, signedIn, conversationStorageKey, learnerName]);

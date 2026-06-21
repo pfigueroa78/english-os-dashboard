@@ -4,7 +4,13 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { EnglishOsLogo } from "@/components/EnglishOsLogo";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
+import { CoachComposer } from "@/modules/coach-chat/CoachComposer";
+import { CoachMessageList } from "@/modules/coach-chat/CoachMessageList";
 import { CoachTopBar } from "@/modules/coach-layout/CoachTopBar";
+import { CoachClassMaterialsPanel } from "@/modules/coach-resources/CoachClassMaterialsPanel";
+import { CoachGuidesPanel } from "@/modules/coach-resources/CoachGuidesPanel";
+import { CoachLearningPulsePanel } from "@/modules/coach-resources/CoachLearningPulsePanel";
+import { CoachQuickHelpPanel } from "@/modules/coach-resources/CoachQuickHelpPanel";
 import { CoachStudyPanel } from "@/modules/coach-resources/CoachStudyPanel";
 import { createCoachSessionContract } from "@/modules/coach-session/contract";
 import type { CoachSessionState } from "@/modules/coach-session/types";
@@ -1356,7 +1362,23 @@ export default function CoachPage() {
         <div className={`coach-layout grid min-h-0 min-w-0 max-w-full flex-1 gap-2 ${sidebarOpen ? "coach-layout-open" : "coach-layout-closed"}`}>
           <section className="coach-chat order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border">
             <div className="coach-messages min-h-0 flex-1 overflow-y-auto px-4 py-2 sm:px-5">
-              {messages.map((message, index) => (
+              <CoachMessageList
+                messages={messages}
+                loading={loading}
+                agentLoading={agentLoading}
+                activeAgentName={activeAgent.name}
+                copiedMessageIndex={copiedMessageIndex}
+                messageFeedback={messageFeedback}
+                speakingMessageIndex={speakingMessageIndex}
+                speechPaused={speechPaused}
+                onToggleSpeech={toggleSpeech}
+                onStopOrRestartSpeech={(content, index) => (speakingMessageIndex === index ? stopSpeech() : speakMessage(content, index))}
+                onToggleFeedback={toggleMessageFeedback}
+                onReportMessage={reportMessage}
+                onCopyMessage={copyMessage}
+                onStopThinking={stopThinking}
+              />
+              {false && messages.map((message, index) => (
                 <article key={index} className={`coach-message ${message.role === "user" ? "coach-message-user" : "coach-message-teacher"}`}>
                   {message.role === "user" ? (
                     <>
@@ -1414,7 +1436,7 @@ export default function CoachPage() {
                   )}
                 </article>
               ))}
-              {(loading || agentLoading) && (
+              {false && (loading || agentLoading) && (
                 <div className="coach-thinking text-sm" aria-live="polite">
                   <span>{agentLoading ? `${activeAgent.name} está pensando` : "El profesor está pensando"}</span>
                   <span className="coach-thinking-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>
@@ -1426,11 +1448,27 @@ export default function CoachPage() {
               <div ref={bottomRef} />
             </div>
 
-            <footer className="coach-composer sticky bottom-0 z-10 border-t px-3 py-1.5 backdrop-blur">
+            <CoachComposer
+              input={input}
+              selectedImage={selectedImage}
+              hydrated={hydrated}
+              loading={loading}
+              listening={listening}
+              imageInputRef={imageInputRef}
+              textareaRef={textareaRef}
+              onImageSelected={handleImageSelected}
+              onClearImage={() => setSelectedImage(null)}
+              onInputChange={setInput}
+              onStartDictation={startDictation}
+              onSendMessage={sendMessage}
+              onStopThinking={stopThinking}
+            />
+
+            {false && <footer className="coach-composer sticky bottom-0 z-10 border-t px-3 py-1.5 backdrop-blur">
               {selectedImage && (
                 <div className="coach-image-preview">
-                  <img src={selectedImage.dataUrl} alt={selectedImage.name || "Imagen seleccionada"} />
-                  <span className="truncate">{selectedImage.name || "Imagen para vocabulario"}</span>
+                  <img src={selectedImage?.dataUrl || ""} alt={selectedImage?.name || "Imagen seleccionada"} />
+                  <span className="truncate">{selectedImage?.name || "Imagen para vocabulario"}</span>
                   <button type="button" onClick={() => setSelectedImage(null)} aria-label="Quitar imagen" title="Quitar imagen">
                     ×
                   </button>
@@ -1471,7 +1509,7 @@ export default function CoachPage() {
                   <SvgIcon name={loading ? "stop" : "send"} />
                 </button>
               </div>
-            </footer>
+            </footer>}
           </section>
 
           {sidebarOpen && <aside id="coach-sidebar" className="coach-sidebar order-1 min-w-0 max-w-full space-y-2 overflow-x-hidden">
@@ -1538,7 +1576,56 @@ export default function CoachPage() {
               </div>
             </section>)}
 
-            <section className="coach-panel coach-learning-pulse min-w-0 max-w-full overflow-hidden rounded-xl border p-3">
+            <CoachLearningPulsePanel
+              level={learningPulse.level}
+              evidenceLabel={learningPulseLabel}
+              practiceCount={learningPulse.practiceCount}
+              focus={learningPulse.focus}
+              nextStep={learningPulse.nextStep}
+            />
+
+            <CoachGuidesPanel
+              unitLabel={activeStudyUnitLabel}
+              canUseWorkbookActions={Boolean(activeStudyUnit) && !E2E_DEMO}
+              chatActionsDisabled={loading || !activeStudyUnit}
+              grammarWorkbookLoading={grammarWorkbookLoading}
+              vocabularyWorkbookLoading={vocabularyWorkbookLoading}
+              grammarWorkbookError={grammarWorkbookError}
+              vocabularyWorkbookError={vocabularyWorkbookError}
+              grammarWorkbook={grammarWorkbook}
+              vocabularyWorkbook={vocabularyWorkbook}
+              onCreateGrammarWorkbook={() => createWorkbook("grammar")}
+              onCreateVocabularyWorkbook={() => createWorkbook("vocabulary")}
+              onRequestGrammarGuide={requestUnitGrammar}
+              onRequestVocabularyGuide={requestUnitVocabulary}
+            />
+
+            <CoachQuickHelpPanel
+              agents={SPECIALIST_AGENTS}
+              activeAgentId={activeAgentId}
+              activeAgentDescription={activeAgent.description}
+              agentLoading={agentLoading}
+              agentError={agentError}
+              onSelectAgent={(agentId) => setActiveAgentId(agentId as AgentId)}
+              onRunAgent={(agentId, prompt) => {
+                setActiveAgentId(agentId as AgentId);
+                sendAgentMessage(prompt);
+              }}
+            />
+
+            <CoachClassMaterialsPanel
+              unitLabel={activeStudyUnitLabel}
+              resources={resources}
+              resourcesLoading={resourcesLoading}
+              resourcesNotice={resourcesNotice}
+              resourcesError={resourcesError}
+              expandedResourceId={expandedResourceId}
+              practiceDisabled={loading}
+              onToggleResource={(resourceId) => setExpandedResourceId((current) => current === resourceId ? null : resourceId)}
+              onPracticeResource={requestResourcePractice}
+            />
+
+            {false && <section className="coach-panel coach-learning-pulse min-w-0 max-w-full overflow-hidden rounded-xl border p-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide opacity-60">Tu avance</p>
               <div className="coach-learning-pulse-grid mt-2">
                 <div className="coach-learning-pulse-metric">
@@ -1553,9 +1640,9 @@ export default function CoachPage() {
               <p className="mt-2 text-xs opacity-75">Prácticas recientes: {learningPulse.practiceCount}</p>
               <p className="mt-1 text-xs opacity-75">Foco: {learningPulse.focus}</p>
               <p className="mt-1 text-xs opacity-75">Siguiente: {learningPulse.nextStep}</p>
-            </section>
+            </section>}
 
-            <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
+            {false && <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
               <p className="text-xs uppercase tracking-wide text-blue-300">Guías de estudio</p>
               <p className="mt-1 text-sm text-slate-400">Material descargable para {activeStudyUnitLabel}.</p>
               <div className="mt-3 grid gap-2">
@@ -1578,9 +1665,9 @@ export default function CoachPage() {
                 {renderWorkbookCard("grammar", grammarWorkbook)}
                 {renderWorkbookCard("vocabulary", vocabularyWorkbook)}
               </div>
-            </section>
+            </section>}
 
-            <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
+            {false && <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
               <p className="text-xs uppercase tracking-wide text-blue-300">Ayudas rápidas</p>
               <p className="mt-1 text-sm text-slate-400">{activeAgent.description}</p>
               <select value={activeAgentId} onChange={(event) => setActiveAgentId(event.target.value as AgentId)} style={{ colorScheme: "dark" }} className="mt-3 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-white outline-none focus:border-blue-500">
@@ -1607,9 +1694,9 @@ export default function CoachPage() {
                 ))}
               </div>
               {agentError && <div className="mt-3 rounded-2xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">{agentError}</div>}
-            </section>
+            </section>}
 
-            <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
+            {false && <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
               <h3 className="text-sm font-bold text-slate-100">Materiales de clase</h3>
               <p className="mt-1 text-xs text-slate-400">Audios, videos y documentos para {activeStudyUnitLabel}.</p>
               {resourcesLoading && <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">Loading resources...</div>}
@@ -1655,7 +1742,7 @@ export default function CoachPage() {
                   </div>
                 ))}
               </div>
-            </section>
+            </section>}
           </aside>}
         </div>
       </div>

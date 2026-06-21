@@ -107,6 +107,12 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   const viewModels = readFile("src/modules/coach-session/viewModels.ts");
   const topBar = readFile("src/modules/coach-layout/CoachTopBar.tsx");
   const studyPanel = readFile("src/modules/coach-resources/CoachStudyPanel.tsx");
+  const learningPulsePanel = readFile("src/modules/coach-resources/CoachLearningPulsePanel.tsx");
+  const guidesPanel = readFile("src/modules/coach-resources/CoachGuidesPanel.tsx");
+  const quickHelpPanel = readFile("src/modules/coach-resources/CoachQuickHelpPanel.tsx");
+  const materialsPanel = readFile("src/modules/coach-resources/CoachClassMaterialsPanel.tsx");
+  const messageList = readFile("src/modules/coach-chat/CoachMessageList.tsx");
+  const composer = readFile("src/modules/coach-chat/CoachComposer.tsx");
 
   expect(source).toContain("const [coachSession, setCoachSession]");
   expect(source).toContain("const uiSession = createCoachSessionContract");
@@ -114,6 +120,12 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(source).toContain("const studyPanelModel = toCoachStudyPanelModel");
   expect(source).toContain("model={topBarModel}");
   expect(source).toContain("model={studyPanelModel}");
+  expect(source).toContain("<CoachMessageList");
+  expect(source).toContain("<CoachComposer");
+  expect(source).toContain("<CoachLearningPulsePanel");
+  expect(source).toContain("<CoachGuidesPanel");
+  expect(source).toContain("<CoachQuickHelpPanel");
+  expect(source).toContain("<CoachClassMaterialsPanel");
   expect(viewModels).toContain("sessionHeaderDetail(session)");
   expect(viewModels).toContain("sessionLocationLabel(session)");
   expect(viewModels).toContain("sessionResourcesLabel(session)");
@@ -124,6 +136,17 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(studyPanel).not.toContain("CoachSessionState");
   expect(studyPanel).not.toContain("sessionResourcesLabel");
   expect(studyPanel).not.toContain("fetch(");
+  expect(messageList).not.toContain("CoachSessionState");
+  expect(messageList).not.toContain("createCoachSessionContract");
+  expect(messageList).not.toContain("fetch(");
+  expect(composer).not.toContain("CoachSessionState");
+  expect(composer).not.toContain("createCoachSessionContract");
+  expect(composer).not.toContain("fetch(");
+  for (const component of [learningPulsePanel, guidesPanel, quickHelpPanel, materialsPanel]) {
+    expect(component).not.toContain("CoachSessionState");
+    expect(component).not.toContain("createCoachSessionContract");
+    expect(component).not.toContain("fetch(");
+  }
   expect(sessionContract).toContain("resourcesUnit");
 
   expect(source).toContain("function inferCoordinatesFromReply");

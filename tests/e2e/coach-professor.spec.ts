@@ -37,6 +37,16 @@ test("loads coach or sign in", async ({ page }) => {
       .first(),
   ).toBeVisible();
 });
+
+test("auth timeout never counts as a signed-in learner", async () => {
+  const fs = await import("node:fs/promises");
+  const pageController = await fs.readFile("src/modules/coach-page/useCoachPageController.ts", "utf8");
+
+  expect(pageController).toContain("const authReady = isLoaded || authTimedOut || E2E_DEMO");
+  expect(pageController).toContain("const signedIn = isSignedIn || E2E_DEMO");
+  expect(pageController).not.toContain("const signedIn = isSignedIn || E2E_DEMO || authTimedOut");
+});
+
 test("shows simplified two-column shell", async ({ page }) => {
   test.skip(page.viewportSize()?.width ? page.viewportSize()!.width < 700 : false, "Desktop shell is verified on desktop.");
   await openCoach(page);

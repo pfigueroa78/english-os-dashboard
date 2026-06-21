@@ -217,7 +217,7 @@ export function useCoachPageController() {
   const { isLoaded, isSignedIn, user } = useUser();
   const [authTimedOut, setAuthTimedOut] = useState(false);
   const authReady = isLoaded || authTimedOut || E2E_DEMO;
-  const signedIn = isSignedIn || E2E_DEMO || authTimedOut;
+  const signedIn = isSignedIn || E2E_DEMO;
   const email = user?.primaryEmailAddress?.emailAddress || (E2E_DEMO ? "demo@english-os.local" : "");
   const learnerName = getLearnerDisplayName(user) || (E2E_DEMO ? "Pedro" : "");
 

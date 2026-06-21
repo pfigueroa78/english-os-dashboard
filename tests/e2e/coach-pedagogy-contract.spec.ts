@@ -52,21 +52,25 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   const publicRoute = readFile("src/app/api/english-os/coach/route.ts");
   const route = readFile("src/app/api/english-os/coach-pedagogy/route.ts");
   const handler = readFile("src/lib/coachRouteHandler.ts");
+  const classSystemPrompt = readFile("public/prompts/coach-route/class-system.md");
+  const reviewSystemPrompt = readFile("public/prompts/coach-route/review-system.md");
+  const generalSystemPrompt = readFile("public/prompts/coach-route/general-system.md");
 
   expect(publicRoute).toContain('export { coachPostSafe as POST } from "@/lib/coachRouteHandler"');
   expect(publicRoute).toContain("export const maxDuration = 120");
   expect(route).toContain("coachPostSafe");
   expect(handler).toContain("loadClassPack");
   expect(handler).toContain("Local Class Pack + Pedagogy Prompt");
-  expect(handler).toContain("Never answer a class request with a metadata table");
+  expect(handler).toContain("coachRoute.class.system");
+  expect(classSystemPrompt).toContain("Never answer a class request with a metadata table");
   expect(handler).toContain("Unsafe class reply contains metadata marker");
   expect(handler).toContain("loadUnitTeachingContracts");
   expect(handler).toContain("Seven Local Teaching Contracts + Review Pedagogy Prompt");
   expect(handler).toContain("activeUnit: unit");
-  expect(handler).toContain("Do not use the class-mode metadata header");
+  expect(reviewSystemPrompt).toContain("Do not use the class-mode metadata header");
   expect(handler).toContain("sanitizeLearnerFacingReply");
-  expect(handler).toContain("never expose course-brand/source labels");
-  expect(handler).toContain("finish with exactly four numbered checkpoint items");
+  expect(generalSystemPrompt).toContain("never expose course-brand/source labels");
+  expect(reviewSystemPrompt).toContain("finish with exactly four numbered checkpoint items");
   expect(handler).toContain("deterministicIdentity: true");
   expect(handler).toContain("renderClassReply");
   expect(handler).toContain("renderReviewReply");
@@ -82,11 +86,11 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain('process.env.NODE_ENV === "development"');
   expect(handler).toContain("limitToOpeningClassTurn");
   expect(handler).toContain("stripPrematureClassClosure");
-  expect(handler).toContain("This response is the opening turn of a teacher-led class");
-  expect(handler).toContain("Keep this opening turn under 280 words");
-  expect(handler).toContain("strategic opening architecture");
+  expect(classSystemPrompt).toContain("This response is the opening turn of a teacher-led class");
+  expect(classSystemPrompt).toContain("Keep this opening turn under 280 words");
+  expect(classSystemPrompt).toContain("strategic opening architecture");
   expect(handler).toContain('replace(/\\bviewing_current_class\\b/gi, "clase activa")');
-  expect(handler).toContain('Never write "en modo ..." or any app-mode wording');
+  expect(classSystemPrompt).toContain('Never write "en modo ..." or any app-mode wording');
   expect(handler).toContain("no inventar **Class 1**");
   expect(handler).toContain("openingSectionInstruction");
   expect(handler).toContain("Activate the topic only");
@@ -177,7 +181,7 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(studyPanel).toContain("Posición guardada:");
   expect(source).toContain("No pude completar la respuesta esta vez");
   expect(source).toContain("no inventes Class 1");
-  expect(source).toContain("apertura estratégica por etapas");
+  expect(readFile("public/prompts/coach/start-current-class.md")).toContain("apertura estratégica por etapas");
   expect(source).not.toContain("finish with an evaluation gate before progress can advance");
   expect(source).toContain("readJsonResponse(response)");
   expect(source).toContain("El servidor no devolvió contenido");
@@ -245,14 +249,18 @@ test("mobile sidebar keeps class resources visible after the learning pulse", as
 test("unit grammar and vocabulary guides use verified unit contracts", async () => {
   const handler = readFile("src/lib/coachRouteHandler.ts");
   const source = readFile("src/app/coach/page.tsx");
+  const grammarGuidePrompt = readFile("public/prompts/coach/unit-grammar-guide.md");
 
   expect(handler).toContain("function unitGuideKind");
   expect(handler).toContain("buildUnitGuideInput");
-  expect(handler).toContain("VERIFIED TEACHING CONTRACTS FOR ALL SEVEN CLASSES");
-  expect(handler).toContain("Do not ask the learner for the class index");
-  expect(handler).toContain("Do not mention Passages");
+  expect(handler).toContain("coachRoute.unitGuide.user");
+  expect(handler).toContain("coachRoute.unitGuide.system");
+  expect(readFile("public/prompts/coach-route/unit-guide-user.md")).toContain("VERIFIED TEACHING CONTRACTS FOR ALL SEVEN CLASSES");
+  expect(readFile("public/prompts/coach-route/unit-guide-system.md")).toContain("Do not ask the learner for the class index");
+  expect(readFile("public/prompts/coach-route/unit-guide-system.md")).toContain("Do not mention Passages");
   expect(handler).toContain("renderUnitGuideReply");
-  expect(source).toContain("No menciones Passages ni pidas el índice.");
+  expect(source).toContain("coach.unitGrammarGuide");
+  expect(grammarGuidePrompt).toContain("No menciones Passages ni pidas el índice.");
 });
 
 test("explicit unit and class switches always use class delivery", async () => {
@@ -444,12 +452,12 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(renderer).not.toContain("PDF ${");
   expect(handler).toContain("not grammar-centered");
   expect(handler).toContain("Book pages:|PDF pages:");
-  expect(handler).toContain("The application renders learner position and lesson identity");
+  expect(readFile("public/prompts/coach-route/class-system.md")).toContain("The application renders learner position and lesson identity");
   expect(handler).toContain("encontré tu clase activa en English OS");
   expect(handler).toContain("Trabajaremos con **${target}**.");
-  expect(handler).toContain("Explicit class request wins");
+  expect(handler).toContain("const explicitClassRule");
   expect(handler).toContain("Teach the requested unit and class even if the saved English OS position is different");
-  expect(handler).toContain('do not offer "continue my current class" alternatives');
+  expect(handler).toContain('do not offer \\"continue my current class\\" alternatives');
   expect(handler).toContain("stripClassConfirmationDetours");
   expect(handler).toContain("current english os position is different");
   expect(handler).toContain("without your confirmation");
@@ -476,15 +484,16 @@ test("all classes display the canonical curriculum unit name", async () => {
 test("class opening cannot invent evaluation or logging results", async () => {
   const handler = readFile("src/lib/coachRouteHandler.ts");
   const behavior = readFile("src/lib/englishOsCoachPrompt.ts");
+  const classSystemPrompt = readFile("public/prompts/coach-route/class-system.md");
 
   expect(handler).toContain("PREMATURE_CLASS_CLOSURE");
-  expect(handler).toContain("Do not include the evaluation gate, recap, achievement, weakness");
+  expect(classSystemPrompt).toContain("Do not include the evaluation gate, recap, achievement, weakness");
   expect(behavior).toContain("SESSION CLOSING — ONLY AFTER LEARNER EVIDENCE");
   expect(behavior).toContain("Never claim that a session was logged unless");
   expect(behavior).toContain("only after confirmed success");
   expect(behavior).toContain("Teacher reaction");
   expect(behavior).toContain("Use 👍 when the answer is clearly correct or strong");
-  expect(handler).toContain("Cambridge-style correction");
+  expect(readFile("public/prompts/coach-route/general-system.md")).toContain("Cambridge-style correction");
 });
 
 test("UTF-8 integrity is enforced before every build", async () => {
@@ -514,12 +523,14 @@ test("UTF-8 integrity is enforced before every build", async () => {
 test("visual vocabulary image analysis is ephemeral and learner-safe", async () => {
   const fs = await import("node:fs/promises");
   const source = await fs.readFile("src/lib/coachRouteHandler.ts", "utf8");
+  const visualVocabularyPrompt = await fs.readFile("public/prompts/coach-route/visual-vocabulary-system.md", "utf8");
 
   expect(source).toContain("type CoachImageAttachment");
   expect(source).toContain("buildVisualVocabularyInput");
   expect(source).toContain("Ephemeral Visual Vocabulary Analysis");
-  expect(source).toContain("Do not claim the image was stored");
-  expect(source).toContain("Do not log progress");
+  expect(source).toContain("coachRoute.visualVocabulary.system");
+  expect(visualVocabularyPrompt).toContain("Do not claim the image was stored");
+  expect(visualVocabularyPrompt).toContain("Do not log progress");
   expect(source).toContain("input_image");
   expect(source).toContain("Unsupported image format");
 });

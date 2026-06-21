@@ -1,0 +1,14 @@
+USER REQUEST:
+{{message}}
+
+ACTIVE GUIDE UNIT: {{unit}}
+GUIDE TYPE: {{guideKind}}
+
+VERIFIED TEACHING CONTRACTS FOR ALL SEVEN CLASSES:
+{{contracts}}
+
+ENGLISH OS LEARNER CONTEXT:
+{{learnerContext}}
+
+RECENT CONVERSATION:
+{{conversationHistory}}

@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { toCoachAgentClientContracts } from "@/modules/coach-integrations/agentsContract";
+import { renderServerPrompt, type ServerPromptId } from "@/modules/coach-prompts/serverPromptRegistry";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
@@ -26,8 +27,8 @@ type AgentConfig = {
   name: string;
   shortName: string;
   description: string;
-  defaultPrompt: string;
-  systemPrompt: string;
+  defaultPromptId: ServerPromptId;
+  systemPromptId: ServerPromptId;
   skill: string;
   activity: string;
   logNotes: string;
@@ -39,31 +40,11 @@ const AGENTS: Record<AgentId, AgentConfig> = {
     name: "Grammar Corrector",
     shortName: "Gramática",
     description: "Corrige estructura, artículos, preposiciones y naturalidad.",
-    defaultPrompt:
-      "Please correct my English. Focus on grammar, sentence structure, articles, prepositions, fluency, and natural professional phrasing.",
+    defaultPromptId: "agents.grammarCorrector.default",
+    systemPromptId: "agents.grammarCorrector.system",
     skill: "Grammar",
     activity: "Specialist grammar correction",
     logNotes: "Grammar Corrector agent interaction",
-    systemPrompt: `
-You are the English OS Grammar Corrector.
-
-Your job:
-- Detect grammar, structure, article, preposition and verb-pattern mistakes.
-- Rewrite the learner's sentence naturally and professionally.
-- Explain the rule in simple Spanish.
-- Give two extra examples.
-- Extract recurring mistakes when relevant.
-
-Response format:
-1. Original
-2. Corrected version
-3. Why
-4. Grammar rule
-5. Two examples
-6. One short practice sentence for the learner
-
-Keep the answer practical for a B1+/B2 learner.
-    `.trim(),
   },
 
   speaking_partner: {
@@ -71,30 +52,11 @@ Keep the answer practical for a B1+/B2 learner.
     name: "Speaking Partner",
     shortName: "Speaking",
     description: "Practica conversación, fluidez y respuestas profesionales.",
-    defaultPrompt:
-      "Let's practice speaking in a business context. Ask me one realistic question and correct important mistakes after my answer.",
+    defaultPromptId: "agents.speakingPartner.default",
+    systemPromptId: "agents.speakingPartner.system",
     skill: "Speaking",
     activity: "Specialist speaking practice",
     logNotes: "Speaking Partner agent interaction",
-    systemPrompt: `
-You are the English OS Speaking Partner.
-
-Your job:
-- Simulate realistic spoken conversations.
-- Prioritize fluency, natural phrasing and professional communication.
-- Ask one follow-up question at a time.
-- Correct only important mistakes that block clarity or repeated patterns.
-- Encourage longer answers.
-- Use topics such as consulting, enterprise architecture, AI, business meetings, travel and daily life.
-
-Response format:
-1. Short feedback on the learner's message
-2. One improved natural version
-3. One pronunciation or fluency note if relevant
-4. One follow-up question
-
-Keep the tone conversational and motivating.
-    `.trim(),
   },
 
   english_evaluator: {
@@ -102,31 +64,11 @@ Keep the tone conversational and motivating.
     name: "English Evaluator",
     shortName: "Evaluar",
     description: "Evalúa CEFR, precisión, vocabulario y próximos pasos.",
-    defaultPrompt:
-      "Please evaluate my English objectively using CEFR criteria. Give me a score, weaknesses, recurring patterns, and targeted exercises.",
+    defaultPromptId: "agents.englishEvaluator.default",
+    systemPromptId: "agents.englishEvaluator.system",
     skill: "Evaluation",
     activity: "Specialist English evaluation",
     logNotes: "English Evaluator agent interaction",
-    systemPrompt: `
-You are the English OS English Evaluator.
-
-Your job:
-- Evaluate the learner objectively using CEFR criteria.
-- Estimate level across grammar, vocabulary, fluency, coherence and professional effectiveness.
-- Identify recurring patterns and weaknesses.
-- Recommend specific next steps and exercises.
-
-Response format:
-1. Overall score /100
-2. Estimated CEFR level
-3. Strengths
-4. Weaknesses
-5. Recurring patterns
-6. Corrected or upgraded version when applicable
-7. Targeted next exercises
-
-Be rigorous but supportive. Use Spanish explanations when useful.
-    `.trim(),
   },
 };
 
@@ -291,7 +233,7 @@ async function logDailySession(params: {
   });
 }
 
-function buildAgentPrompt(agent: AgentConfig, context: any, message: string) {
+async function buildAgentPrompt(agent: AgentConfig, context: any, message: string) {
   const user = context?.user || {};
   const missionControl = context?.missionControl?.missionControl || context?.missionControl || {};
 
@@ -299,42 +241,39 @@ function buildAgentPrompt(agent: AgentConfig, context: any, message: string) {
   const currentLesson = user["Current Lesson"] || missionControl?.currentLesson || "Not defined";
   const currentCEFR = user["Current CEFR"] || missionControl?.currentCEFR || "B1+";
   const learnerName = user["Name"] || "the learner";
+  const systemPrompt = await renderServerPrompt(agent.systemPromptId);
+  const contextPrompt = await renderServerPrompt("agents.contextMessage", {
+    learnerName,
+    currentCEFR,
+    currentUnit,
+    currentLesson,
+    recentDailyLogs: JSON.stringify(context?.recentDailyLogs || []).slice(0, 2500),
+    recurringMistakes: JSON.stringify(context?.recentMistakes || context?.mistakes || []).slice(0, 2500),
+    activeVocabulary: JSON.stringify(context?.activeVocabulary || context?.vocabulary || []).slice(0, 2500),
+    message,
+  });
 
   return [
     {
       role: "system",
-      content: agent.systemPrompt,
+      content: systemPrompt,
     },
     {
       role: "user",
-      content: `
-ENGLISH OS CONTEXT
-
-Learner: ${learnerName}
-Current CEFR: ${currentCEFR}
-Current Unit: ${currentUnit}
-Current Lesson: ${currentLesson}
-
-Recent Daily Logs:
-${JSON.stringify(context?.recentDailyLogs || []).slice(0, 2500)}
-
-Recurring Mistakes:
-${JSON.stringify(context?.recentMistakes || context?.mistakes || []).slice(0, 2500)}
-
-Active Vocabulary:
-${JSON.stringify(context?.activeVocabulary || context?.vocabulary || []).slice(0, 2500)}
-
-USER MESSAGE:
-${message}
-      `.trim(),
+      content: contextPrompt,
     },
   ];
 }
 
 export async function GET() {
+  const agentContracts = await Promise.all(Object.values(AGENTS).map(async (agent) => ({
+    ...agent,
+    defaultPrompt: await renderServerPrompt(agent.defaultPromptId),
+  })));
+
   return NextResponse.json({
     ok: true,
-    agents: toCoachAgentClientContracts(Object.values(AGENTS)),
+    agents: toCoachAgentClientContracts(agentContracts),
   });
 }
 
@@ -383,7 +322,7 @@ export async function POST(request: Request) {
     const currentCEFR = user["Current CEFR"] || context?.currentCEFR || "B1";
     const learnerId = user["Learner ID"] || context?.learnerId || email;
 
-    const input = buildAgentPrompt(agent, context, message);
+    const input = await buildAgentPrompt(agent, context, message);
 
     const openaiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",

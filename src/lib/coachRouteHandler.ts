@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
+import { renderServerPrompt } from "@/modules/coach-prompts/serverPromptRegistry";
 import {
   hasExplicitClassCoordinates,
   isGiveClassQuestion,
@@ -447,7 +448,7 @@ async function getLearnerContext(email: string) {
   return data;
 }
 
-function buildClassInput(params: {
+async function buildClassInput(params: {
   message: string;
   learnerContext: any;
   classContent: any;
@@ -457,103 +458,60 @@ function buildClassInput(params: {
 }) {
   const identity = classIdentity(params.classPack);
   const explicitCoordinates = hasExplicitClassCoordinates(params.message);
+  const explicitClassRule = explicitCoordinates
+    ? [
+        "Explicit class request wins:",
+        "- The learner explicitly asked for a unit and class number. That request is authoritative for this turn.",
+        "- Teach the requested unit and class even if the saved English OS position is different.",
+        "- Use the saved position only as background context, not as a permission gate.",
+        "- Do not ask for confirmation, do not offer \"continue my current class\" alternatives, and do not switch back to the saved/current class.",
+      ].join("\n")
+    : "";
   return [
     {
       role: "system",
-      content: `
-${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}
-
-${PASSAGES_TEACHER_STYLE_GUIDANCE}
-
-Hard rule for class delivery:
-- Never answer a class request with a metadata table.
-- Never expose internal modes such as viewing_current_class.
-- Never write "en modo ..." or any app-mode wording. If needed, say only "clase activa".
-- Never expose placeholders such as Extract exact or Extract vocabulary.
-- Use the class pack and lesson context as teacher planning input.
-- This response is the opening turn of a teacher-led class, not the entire class transcript.
-- Use this strategic opening architecture: current target -> why this matters -> first micro-step -> one learner task.
-- Give the learning objective in one short sentence, the communication mission in one short sentence, and only the first active teaching section. Explain briefly, give no more than two examples, ask one compact learner task, and stop for the learner's answer.
-- Do not teach the second or later active section yet. Do not include the evaluation gate, recap, achievement, weakness, correction priority, next action, approval, or session-log language in this opening turn.
-- Continue with the next active section only after the learner answers. Present the evaluation gate only after the learner has practised the active sections.
-- If the source is incomplete, say what is missing instead of inventing.
-- Build one continuous teaching sequence. Each active section must reuse language or learner output from the previous section.
-- Distinguish the complete lesson title from activity/subsection headings.
-- Do not invent or attribute an audio transcript or answer key to people named in the source.
-- The application renders learner position and lesson identity. Do not write the learner-position paragraph, Unit/Class header, Global Class, lesson title, pages, class sections, main focus, language support, or vocabulary-focus metadata.
-- Start with the learning objective, then the communication mission, then the exact active teaching sections.
-- Keep this opening turn under 280 words and avoid nested generic wrappers.
-- Teach interactively: explain briefly, model, ask the learner to produce, and make the final instruction unmistakable.
-- Every grammar form and vocabulary item taught must be supported by the active teaching contract or visible source. Do not broaden the lesson with adjacent language systems.
-- Use English for teaching. Use brief Spanish support only for a genuinely difficult B1/B2 concept or a known transfer error.
-${explicitCoordinates ? `
-
-Explicit class request wins:
-- The learner explicitly asked for a unit and class number. That request is authoritative for this turn.
-- Teach the requested unit and class even if the saved English OS position is different.
-- Use the saved position only as background context, not as a permission gate.
-- Do not ask for confirmation, do not offer "continue my current class" alternatives, and do not switch back to the saved/current class.
-` : ""}
-
-${openingSectionInstruction(identity.sections)}
-      `.trim(),
+      content: await renderServerPrompt("coachRoute.class.system", {
+        baseBehaviorPrompt: ENGLISH_OS_COACH_BEHAVIOR_PROMPT,
+        teacherStylePrompt: PASSAGES_TEACHER_STYLE_GUIDANCE,
+        explicitClassRule,
+        openingSectionInstruction: openingSectionInstruction(identity.sections),
+      }),
     },
     {
       role: "user",
-      content: `
-USER REQUEST:
-${params.message}
-
-LOCAL CLASS PACK FILE:
-${params.filename}
-
-CLASS PACK SOURCE:
-${params.classPack.slice(0, 18000)}
-
-ENGLISH OS LEARNER CONTEXT:
-${JSON.stringify(params.learnerContext).slice(0, 5000)}
-
-ENGLISH OS CLASS CONTENT RESPONSE:
-${JSON.stringify(params.classContent).slice(0, 5000)}
-
-RECENT CONVERSATION:
-${JSON.stringify(params.conversationHistory).slice(0, 2500)}
-      `.trim(),
+      content: await renderServerPrompt("coachRoute.class.user", {
+        message: params.message,
+        filename: params.filename,
+        classPack: params.classPack.slice(0, 18000),
+        learnerContext: JSON.stringify(params.learnerContext).slice(0, 5000),
+        classContent: JSON.stringify(params.classContent).slice(0, 5000),
+        conversationHistory: JSON.stringify(params.conversationHistory).slice(0, 2500),
+      }),
     },
   ];
 }
 
-function buildGeneralInput(context: any, message: string, conversationHistory: CoachMessage[]) {
+async function buildGeneralInput(context: any, message: string, conversationHistory: CoachMessage[]) {
   return [
     {
       role: "system",
-      content: `
-${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}
-
-${PASSAGES_TEACHER_STYLE_GUIDANCE}
-
-Answer as English OS Coach. If the learner is in review mode, use summary + mini-checkpoint. If correcting answers, use Cambridge-style correction.
-If recent conversation shows a class in progress, continue with only the next pedagogical step, ask one compact task, and wait. Do not repeat the class header or claim evaluation, approval, progress, or logging without learner evidence and a successful write action.
-Learner-facing wording rule: never expose course-brand/source labels from the saved position. If the saved position contains a course-level source prefix before the unit, show only the unit. You may use the unit title, lesson, class, and mode only.
-      `.trim(),
+      content: await renderServerPrompt("coachRoute.general.system", {
+        baseBehaviorPrompt: ENGLISH_OS_COACH_BEHAVIOR_PROMPT,
+        teacherStylePrompt: PASSAGES_TEACHER_STYLE_GUIDANCE,
+      }),
     },
     {
       role: "user",
-      content: `
-LEARNER CONTEXT:
-${JSON.stringify(context).slice(0, 7000)}
-
-RECENT CONVERSATION:
-${JSON.stringify(conversationHistory).slice(0, 2500)}
-
-USER MESSAGE:
-${message}
-      `.trim(),
+      content: await renderServerPrompt("coachRoute.general.user", {
+        learnerContext: JSON.stringify(context).slice(0, 7000),
+        conversationHistory: JSON.stringify(conversationHistory).slice(0, 2500),
+        message,
+      }),
     },
   ];
 }
 
-function buildReviewInput(params: {
+async function buildReviewInput(params: {
   message: string;
   learnerContext: any;
   unit: number;
@@ -563,90 +521,44 @@ function buildReviewInput(params: {
   return [
     {
       role: "system",
-      content: `
-${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}
-
-${PASSAGES_TEACHER_STYLE_GUIDANCE}
-
-Hard rule for unit review:
-- Build the review from the seven supplied class teaching contracts, not from generic course knowledge.
-- Synthesize the unit strategically; do not dump seven full classes.
-- Include grammar review, vocabulary/useful expressions, speaking themes, model B1/B2 answers, and a mini-checkpoint.
-- Explain and model target language before asking the learner to produce it.
-- Do not expose filenames, class packs, retrieval details, or internal metadata.
-- Do not use the class-mode metadata header. Never show Global Class numbers, book/PDF pages, or a combined list of every section.
-- Use one realistic communication scenario as the thread connecting grammar, vocabulary, models, and checkpoint.
-- Select at most two language priorities and 5-7 chunks. Include one B1 model and one stronger B2 model for the same prompt.
-- Keep the complete review concise and finish with exactly four numbered checkpoint items.
-- The application renders learner position and the review title. Do not repeat either one.
-- Keep the review under 900 words and end by waiting for the learner's answers.
-      `.trim(),
+      content: await renderServerPrompt("coachRoute.review.system", {
+        baseBehaviorPrompt: ENGLISH_OS_COACH_BEHAVIOR_PROMPT,
+        teacherStylePrompt: PASSAGES_TEACHER_STYLE_GUIDANCE,
+      }),
     },
     {
       role: "user",
-      content: `
-USER REQUEST:
-${params.message}
-
-ACTIVE REVIEW UNIT: ${params.unit}
-
-VERIFIED TEACHING CONTRACTS FOR ALL SEVEN CLASSES:
-${params.contracts.map((item) => `CLASS ${item.localClass}\n${item.contract}`).join("\n\n")}
-
-ENGLISH OS LEARNER CONTEXT:
-${JSON.stringify(params.learnerContext).slice(0, 5000)}
-
-RECENT CONVERSATION:
-${JSON.stringify(params.conversationHistory).slice(0, 2500)}
-      `.trim(),
+      content: await renderServerPrompt("coachRoute.review.user", {
+        message: params.message,
+        unit: params.unit,
+        contracts: params.contracts.map((item) => `CLASS ${item.localClass}\n${item.contract}`).join("\n\n"),
+        learnerContext: JSON.stringify(params.learnerContext).slice(0, 5000),
+        conversationHistory: JSON.stringify(params.conversationHistory).slice(0, 2500),
+      }),
     },
   ];
 }
 
-function buildVisualVocabularyInput(context: any, message: string, image: CoachImageAttachment, conversationHistory: CoachMessage[]) {
+async function buildVisualVocabularyInput(context: any, message: string, image: CoachImageAttachment, conversationHistory: CoachMessage[]) {
   return [
     {
       role: "system",
-      content: `
-${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}
-
-You are helping an English learner expand vocabulary from a photo.
-
-Rules:
-- Analyze only the image supplied in this request.
-- Do not claim the image was stored, uploaded to Drive, or added to English OS history.
-- Do not log progress or say "Session logged".
-- Identify visible objects, people, places, actions, colors, materials, and useful everyday/professional chunks.
-- Teach mostly in English, with brief Spanish support only for meaning.
-- Be concise, useful, and interactive.
-- If uncertain about an object, say "It looks like..." instead of asserting.
-- End with a short speaking task using 5 selected words from the image.
-
-Output format:
-1. Quick image description
-2. Vocabulary from the photo: English word/chunk — Spanish meaning — example sentence
-3. Useful pronunciation or collocation notes
-4. Your turn: ask the learner to describe the image in 3–4 sentences
-      `.trim(),
+      content: await renderServerPrompt("coachRoute.visualVocabulary.system", {
+        baseBehaviorPrompt: ENGLISH_OS_COACH_BEHAVIOR_PROMPT,
+      }),
     },
     {
       role: "user",
       content: [
         {
           type: "input_text",
-          text: `
-Learner request:
-${message || "Analyze this image and help me learn vocabulary from it."}
-
-Learner context:
-${JSON.stringify(context).slice(0, 3500)}
-
-Recent conversation:
-${JSON.stringify(conversationHistory).slice(0, 1600)}
-
-Image name: ${image.name || "learner-photo"}
-Image MIME type: ${image.mimeType || "image/jpeg"}
-          `.trim(),
+          text: await renderServerPrompt("coachRoute.visualVocabulary.user", {
+            message: message || "Analyze this image and help me learn vocabulary from it.",
+            learnerContext: JSON.stringify(context).slice(0, 3500),
+            conversationHistory: JSON.stringify(conversationHistory).slice(0, 1600),
+            imageName: image.name || "learner-photo",
+            imageMimeType: image.mimeType || "image/jpeg",
+          }),
         },
         {
           type: "input_image",
@@ -656,8 +568,7 @@ Image MIME type: ${image.mimeType || "image/jpeg"}
     },
   ];
 }
-
-function buildUnitGuideInput(params: {
+async function buildUnitGuideInput(params: {
   message: string;
   learnerContext: any;
   unit: number;
@@ -673,41 +584,23 @@ function buildUnitGuideInput(params: {
   return [
     {
       role: "system",
-      content: `
-${ENGLISH_OS_COACH_BEHAVIOR_PROMPT}
-
-${PASSAGES_TEACHER_STYLE_GUIDANCE}
-
-Hard rule for unit ${params.kind} guide:
-- Build the guide from the seven supplied class teaching contracts, not from generic course knowledge.
-- Do not ask the learner for the class index; it is supplied below.
-- Do not mention Passages, Student Book, class packs, filenames, retrieval, metadata, or internal source limitations.
-- Do not produce a long exhaustive dump. Prioritize what the learner can actually practise now.
-- Organize the guide by 3-5 practical priorities across the unit, not by dumping all seven classes.
-- Include ${guideFocus}.
-- Keep the guide under 850 words and stop with a compact 4-item practice task.
-- If a class has no relevant ${params.kind} item, skip it silently instead of saying it is missing.
-- Use English for the guide with concise Spanish support for rules/meanings.
-      `.trim(),
+      content: await renderServerPrompt("coachRoute.unitGuide.system", {
+        baseBehaviorPrompt: ENGLISH_OS_COACH_BEHAVIOR_PROMPT,
+        teacherStylePrompt: PASSAGES_TEACHER_STYLE_GUIDANCE,
+        guideKind: params.kind,
+        guideFocus,
+      }),
     },
     {
       role: "user",
-      content: `
-USER REQUEST:
-${params.message}
-
-ACTIVE GUIDE UNIT: ${params.unit}
-GUIDE TYPE: ${params.kind}
-
-VERIFIED TEACHING CONTRACTS FOR ALL SEVEN CLASSES:
-${params.contracts.map((item) => `CLASS ${item.localClass}\n${item.contract}`).join("\n\n")}
-
-ENGLISH OS LEARNER CONTEXT:
-${JSON.stringify(params.learnerContext).slice(0, 5000)}
-
-RECENT CONVERSATION:
-${JSON.stringify(params.conversationHistory).slice(0, 2500)}
-      `.trim(),
+      content: await renderServerPrompt("coachRoute.unitGuide.user", {
+        message: params.message,
+        unit: params.unit,
+        guideKind: params.kind,
+        contracts: params.contracts.map((item) => `CLASS ${item.localClass}\n${item.contract}`).join("\n\n"),
+        learnerContext: JSON.stringify(params.learnerContext).slice(0, 5000),
+        conversationHistory: JSON.stringify(params.conversationHistory).slice(0, 2500),
+      }),
     },
   ];
 }
@@ -776,7 +669,7 @@ export async function coachPost(request: Request) {
     }
 
     const openaiData = await callCoachModel(
-      buildVisualVocabularyInput(context, message || "Analyze this image for English vocabulary.", image, conversationHistory),
+      await buildVisualVocabularyInput(context, message || "Analyze this image for English vocabulary.", image, conversationHistory),
       2200
     );
     const reply = sanitizeLearnerFacingReply(getOutputText(openaiData));
@@ -837,7 +730,7 @@ export async function coachPost(request: Request) {
     }
 
     const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
-      buildClassInput({ message, learnerContext: context, classContent, classPack: content, filename, conversationHistory })
+      await buildClassInput({ message, learnerContext: context, classContent, classPack: content, filename, conversationHistory })
     );
     assertNoMetadataFallback(modelBody);
     const identity = classIdentity(content);
@@ -885,7 +778,7 @@ export async function coachPost(request: Request) {
     }
 
     const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
-      buildReviewInput({ message, learnerContext: context, unit, contracts, conversationHistory })
+      await buildReviewInput({ message, learnerContext: context, unit, contracts, conversationHistory })
     );
     assertNoMetadataFallback(modelBody);
     const position = learnerPositionLine({
@@ -924,7 +817,7 @@ export async function coachPost(request: Request) {
     }
 
     const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
-      buildUnitGuideInput({ message, learnerContext: context, unit, kind: guideKind, contracts, conversationHistory })
+      await buildUnitGuideInput({ message, learnerContext: context, unit, kind: guideKind, contracts, conversationHistory })
     );
     assertNoMetadataFallback(modelBody);
     const position = learnerPositionLine({
@@ -948,7 +841,7 @@ export async function coachPost(request: Request) {
     });
   }
 
-  const openaiData = await callCoachModel(buildGeneralInput(context, message, conversationHistory));
+  const openaiData = await callCoachModel(await buildGeneralInput(context, message, conversationHistory));
   const reply = sanitizeLearnerFacingReply(getOutputText(openaiData));
   const u = usage(openaiData);
   const session = sessionFor({ mode: "conversation", activeUnit: currentUnit, resourcesUnit: currentUnit });

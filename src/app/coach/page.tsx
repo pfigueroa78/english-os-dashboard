@@ -12,6 +12,7 @@ import { CoachLearningPulsePanel } from "@/modules/coach-resources/CoachLearning
 import { CoachQuickHelpPanel } from "@/modules/coach-resources/CoachQuickHelpPanel";
 import { CoachStudyPanel } from "@/modules/coach-resources/CoachStudyPanel";
 import { toCoachAgentClientContracts } from "@/modules/coach-integrations/agentsContract";
+import { renderClientPrompt, type ClientPromptId } from "@/modules/coach-prompts/clientPromptRegistry";
 import { createCoachSessionContract } from "@/modules/coach-session/contract";
 import type { CoachSessionState } from "@/modules/coach-session/types";
 import {
@@ -86,7 +87,7 @@ type SpecialistAgent = {
   name: string;
   shortName: string;
   description: string;
-  defaultPrompt: string;
+  defaultPromptId: ClientPromptId;
 };
 
 const E2E_DEMO = process.env.NEXT_PUBLIC_E2E_DEMO === "1";
@@ -102,24 +103,21 @@ const SPECIALIST_AGENTS: SpecialistAgent[] = [
     name: "Corrector de gramática",
     shortName: "Gramática",
     description: "Corrige estructura, artículos, preposiciones y naturalidad.",
-    defaultPrompt:
-      "Please correct my English. Focus on grammar, sentence structure, articles, prepositions, fluency, and natural professional phrasing.",
+    defaultPromptId: "agents.grammarCorrector.default",
   },
   {
     id: "speaking_partner",
     name: "Compañero de speaking",
     shortName: "Speaking",
     description: "Practica conversación, fluidez y respuestas profesionales.",
-    defaultPrompt:
-      "Let's practice speaking in a business context. Ask me one realistic question and correct important mistakes after my answer.",
+    defaultPromptId: "agents.speakingPartner.default",
   },
   {
     id: "english_evaluator",
     name: "Evaluador B1/B2",
     shortName: "Evaluar",
     description: "Evalúa CEFR, precisión, vocabulario y próximos pasos.",
-    defaultPrompt:
-      "Please evaluate my English objectively using CEFR criteria. Give me a score, weaknesses, recurring patterns, and targeted exercises.",
+    defaultPromptId: "agents.englishEvaluator.default",
   },
 ];
 
@@ -164,46 +162,35 @@ function buildInitialCoachMessage(unit: string, lesson: string, progressSnapshot
   ].filter((line, index, lines) => line || lines[index - 1]).join("\n");
 }
 
-function buildStartTodayClassPrompt(unit: string, lesson: string) {
+async function buildStartTodayClassPrompt(unit: string, lesson: string) {
   const unitNumber = extractUnitNumber(unit);
-  return [
-    unitNumber
+  return renderClientPrompt("coach.startCurrentClass", {
+    startRequest: unitNumber
       ? `Empecemos la clase actual de la unidad ${unitNumber}. Usa el contrato real de English OS; si no hay número de clase activo confiable, no inventes Class 1 y pide confirmación breve.`
       : "Empecemos mi clase actual. Usa el contrato real de English OS; si no hay número de clase activo confiable, no inventes Class 1 y pide confirmación breve.",
-    lesson ? `Contexto guardado de lección o foco: ${lesson}` : "",
-    "Haz solo una apertura estratégica por etapas: objetivo, por qué importa, primer micro-paso y una sola tarea. No hagas cierre, evaluación, logros ni Session logged todavía.",
-  ]
-    .filter(Boolean)
-    .join("\n");
+    lessonContext: lesson ? `Contexto guardado de lección o foco: ${lesson}` : "",
+  });
 }
 
-function buildHintPrompt(unit: string, lesson: string) {
-  return [
-    "Dame una pista corta, no la respuesta completa.",
-    `Unidad: ${unitLabel(unit)}`,
-    lesson ? `Clase: ${lesson}` : "",
-    "La pista debe ayudarme a responder la evaluación en inglés.",
-  ]
-    .filter(Boolean)
-    .join("\n");
+async function buildHintPrompt(unit: string, lesson: string) {
+  return renderClientPrompt("coach.hint", {
+    unit: unitLabel(unit),
+    lessonContext: lesson ? `Clase: ${lesson}` : "",
+  });
 }
 
-function buildUnitGrammarPrompt(unit: string) {
+async function buildUnitGrammarPrompt(unit: string) {
   const number = extractUnitNumber(unit);
-  return [
-    number ? `Dame una guía de gramática de la unidad ${number}.` : "Dame una guía de gramática de mi unidad actual.",
-    "Usa los contratos reales de la unidad en English OS.",
-    "Hazla como una guía compacta por prioridades, no como una clase completa. No menciones Passages ni pidas el índice.",
-  ].join(" ");
+  return renderClientPrompt("coach.unitGrammarGuide", {
+    requestLine: number ? `Dame una guía de gramática de la unidad ${number}.` : "Dame una guía de gramática de mi unidad actual.",
+  });
 }
 
-function buildUnitVocabularyPrompt(unit: string) {
+async function buildUnitVocabularyPrompt(unit: string) {
   const number = extractUnitNumber(unit);
-  return [
-    number ? `Dame una guía de vocabulario de la unidad ${number}.` : "Dame una guía de vocabulario de mi unidad actual.",
-    "Usa los contratos reales de la unidad en English OS.",
-    "Hazla como una guía compacta por prioridades, no como una clase completa. No menciones Passages ni pidas el índice.",
-  ].join(" ");
+  return renderClientPrompt("coach.unitVocabularyGuide", {
+    requestLine: number ? `Dame una guía de vocabulario de la unidad ${number}.` : "Dame una guía de vocabulario de mi unidad actual.",
+  });
 }
 
 function initialCoachMessages(): Message[] {
@@ -497,6 +484,7 @@ export default function CoachPage() {
   const agentAbortRef = useRef<AbortController | null>(null);
 
   const activeAgent = SPECIALIST_AGENT_CONTRACTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENT_CONTRACTS[0];
+  const activeAgentMetadata = SPECIALIST_AGENTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENTS[0];
   const uiSession = createCoachSessionContract({
     mode: coachModeFromStudyMode(studyMode),
     savedUnit: currentUnit || coachSession.savedUnit,
@@ -805,15 +793,18 @@ export default function CoachPage() {
     }
   }
 
-  async function sendAgentMessage(customMessage?: string) {
-    const message = (customMessage || input || activeAgent.defaultPrompt).trim();
+  async function sendAgentMessage(customMessage?: string, agentIdOverride: AgentId = activeAgentId) {
+    const targetAgent = SPECIALIST_AGENT_CONTRACTS.find((agent) => agent.id === agentIdOverride) || activeAgent;
+    const targetAgentMetadata = SPECIALIST_AGENTS.find((agent) => agent.id === agentIdOverride) || activeAgentMetadata;
+    const defaultPrompt = customMessage || input ? "" : await renderClientPrompt(targetAgentMetadata.defaultPromptId);
+    const message = (customMessage || input || defaultPrompt).trim();
     if (!message || agentLoading) return;
 
     if (E2E_DEMO) {
       setMessages((current) => [
         ...current,
-        { role: "user", content: `[${activeAgent.name}] ${message}` },
-        { role: "coach", content: `${activeAgent.name}\n\nModo demo: aquí aparecería la retroalimentación especializada.` },
+        { role: "user", content: `[${targetAgent.name}] ${message}` },
+        { role: "coach", content: `${targetAgent.name}\n\nModo demo: aquí aparecería la retroalimentación especializada.` },
       ]);
       return;
     }
@@ -822,7 +813,7 @@ export default function CoachPage() {
     setAgentError("");
     setInput("");
     setAgentLoading(true);
-    setMessages((current) => [...current, { role: "user", content: `[${activeAgent.name}] ${message}` }]);
+    setMessages((current) => [...current, { role: "user", content: `[${targetAgent.name}] ${message}` }]);
     const controller = new AbortController();
     agentAbortRef.current = controller;
 
@@ -831,7 +822,7 @@ export default function CoachPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({ agentId: activeAgent.id, message }),
+        body: JSON.stringify({ agentId: targetAgent.id, message }),
       });
       const data = await readJsonResponse(response);
       if (!response.ok || !data.ok) throw new Error(data.error || "Specialist agent request failed.");
@@ -839,7 +830,7 @@ export default function CoachPage() {
         ...current,
         {
           role: "coach",
-          content: `${data.agent?.name || activeAgent.name}\n\n${data.reply || "No response returned."}`,
+          content: `${data.agent?.name || targetAgent.name}\n\n${data.reply || "No response returned."}`,
           usage: data.usage,
         },
       ]);
@@ -951,20 +942,20 @@ export default function CoachPage() {
     setAgentLoading(false);
   }
 
-  function startTodayClass() {
-    sendMessage(buildStartTodayClassPrompt(activeStudyUnit, studyMode === "current" ? currentLesson : ""));
+  async function startTodayClass() {
+    sendMessage(await buildStartTodayClassPrompt(activeStudyUnit, studyMode === "current" ? currentLesson : ""));
   }
 
-  function requestUnitGrammar() {
-    sendMessage(buildUnitGrammarPrompt(activeStudyUnit));
+  async function requestUnitGrammar() {
+    sendMessage(await buildUnitGrammarPrompt(activeStudyUnit));
   }
 
-  function requestUnitVocabulary() {
-    sendMessage(buildUnitVocabularyPrompt(activeStudyUnit));
+  async function requestUnitVocabulary() {
+    sendMessage(await buildUnitVocabularyPrompt(activeStudyUnit));
   }
 
-  function requestHint() {
-    sendMessage(buildHintPrompt(activeStudyUnit, studyMode === "current" ? currentLesson : ""));
+  async function requestHint() {
+    sendMessage(await buildHintPrompt(activeStudyUnit, studyMode === "current" ? currentLesson : ""));
   }
 
   function requestResourcePractice(resourceId: string) {
@@ -1433,15 +1424,14 @@ export default function CoachPage() {
               onRequestVocabularyGuide={requestUnitVocabulary}
             />
 
-            <CoachQuickHelpPanel
-              model={quickHelpPanelModel}
-              onSelectAgent={(agentId) => setActiveAgentId(agentId as AgentId)}
-              onRunAgent={(agentId) => {
-                const agent = SPECIALIST_AGENT_CONTRACTS.find((item) => item.id === agentId) || activeAgent;
-                setActiveAgentId(agentId as AgentId);
-                sendAgentMessage(agent.defaultPrompt);
-              }}
-            />
+              <CoachQuickHelpPanel
+                model={quickHelpPanelModel}
+                onSelectAgent={(agentId) => setActiveAgentId(agentId as AgentId)}
+                onRunAgent={(agentId) => {
+                  setActiveAgentId(agentId as AgentId);
+                  sendAgentMessage(undefined, agentId as AgentId);
+                }}
+              />
 
             <CoachClassMaterialsPanel
               model={classMaterialsPanelModel}

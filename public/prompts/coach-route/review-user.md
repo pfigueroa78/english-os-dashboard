@@ -1,0 +1,13 @@
+USER REQUEST:
+{{message}}
+
+ACTIVE REVIEW UNIT: {{unit}}
+
+VERIFIED TEACHING CONTRACTS FOR ALL SEVEN CLASSES:
+{{contracts}}
+
+ENGLISH OS LEARNER CONTEXT:
+{{learnerContext}}
+
+RECENT CONVERSATION:
+{{conversationHistory}}

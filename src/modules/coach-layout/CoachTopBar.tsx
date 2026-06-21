@@ -70,6 +70,7 @@ export function CoachTopBar({
       <label className="flex items-center gap-2 text-xs font-medium">
         <span className="hidden sm:inline">Tema</span>
         <select
+          aria-label="Tema"
           value={theme}
           onChange={(event) => onThemeChange(event.target.value as CoachTheme)}
           className="coach-theme-select rounded-lg border px-2 py-1.5"

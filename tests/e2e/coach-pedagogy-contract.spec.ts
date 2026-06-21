@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+﻿import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 import { classifyCoachIntent, isGiveClassQuestion } from "../../src/lib/coachIntent";
@@ -48,7 +48,6 @@ test("teacher prompt keeps the general pedagogy workflow", async () => {
   expect(source).toContain("Start with one short teacher reaction");
   expect(source).toContain("Almost there — keep going");
 });
-
 test("coach API routes class requests to the pedagogy-first handler", async () => {
   const publicRoute = readFile("src/app/api/english-os/coach/route.ts");
   const route = readFile("src/app/api/english-os/coach-pedagogy/route.ts");
@@ -158,7 +157,7 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(source).toContain("const nextMode: StudyMode = isReviewRequest(message) ? \"review\" : isGuideRequest(message) ? \"guide\" : \"class\"");
   expect(source).toContain("setStudyMode(nextMode)");
   expect(source).toContain("setStudyClassNumber(nextSession.activeClassNumber && nextMode === \"class\" ? Number(nextSession.activeClassNumber) : null)");
-  expect(source).toContain("Posición guardada:");
+  expect(studyPanel).toContain("Posición guardada:");
   expect(source).toContain("No pude completar la respuesta esta vez");
   expect(source).toContain("no inventes Class 1");
   expect(source).toContain("apertura estratégica por etapas");
@@ -186,6 +185,8 @@ test("mobile coach header keeps mode and unit/class visible", async () => {
 
 test("coach shows an evidence-based learning pulse without inventing progress", async () => {
   const source = readFile("src/app/coach/page.tsx");
+  const topBar = readFile("src/modules/coach-layout/CoachTopBar.tsx");
+  const learningPulsePanel = readFile("src/modules/coach-resources/CoachLearningPulsePanel.tsx");
   const globals = readFile("src/app/globals.css");
 
   expect(source).toContain("type LearningPulse");
@@ -197,10 +198,11 @@ test("coach shows an evidence-based learning pulse without inventing progress", 
   expect(source).toContain("function learningPulseDetail");
   expect(source).toContain("Sin nivel confirmado");
   expect(source).toContain("sin evidencias");
-  expect(source).toContain("coach-status-pulse");
-  expect(source).toContain("coach-learning-pulse");
-  expect(source).toContain("Tu avance");
-  expect(source).toContain("learningPulse.practiceCount");
+  expect(topBar).toContain("coach-status-pulse");
+  expect(source).toContain("<CoachLearningPulsePanel");
+  expect(learningPulsePanel).toContain("coach-learning-pulse");
+  expect(learningPulsePanel).toContain("Tu avance");
+  expect(learningPulsePanel).toContain("practiceCount");
   expect(source).not.toContain("2/4");
   expect(globals).toContain(".coach-learning-pulse-grid");
   expect(globals).toContain(".coach-status-pulse");
@@ -208,11 +210,15 @@ test("coach shows an evidence-based learning pulse without inventing progress", 
 
 test("mobile sidebar keeps class resources visible after the learning pulse", async () => {
   const source = readFile("src/app/coach/page.tsx");
+  const learningPulsePanel = readFile("src/modules/coach-resources/CoachLearningPulsePanel.tsx");
+  const materialsPanel = readFile("src/modules/coach-resources/CoachClassMaterialsPanel.tsx");
   const globals = readFile("src/app/globals.css");
   const overrides = readFile("src/app/coach-qa-overrides.css");
 
-  expect(source).toContain("Tu avance");
-  expect(source).toContain("Materiales de clase");
+  expect(source).toContain("<CoachLearningPulsePanel");
+  expect(source).toContain("<CoachClassMaterialsPanel");
+  expect(learningPulsePanel).toContain("Tu avance");
+  expect(materialsPanel).toContain("Materiales de clase");
   expect(globals).toContain("#coach-sidebar > section:nth-of-type(4)");
   expect(overrides).toContain("#coach-sidebar > section:nth-of-type(4)");
   expect(globals).not.toContain("#coach-sidebar > section:nth-of-type(n + 3)");

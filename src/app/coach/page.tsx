@@ -1,9 +1,8 @@
-"use client";
+﻿"use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
-import { EnglishOsLogo } from "@/components/EnglishOsLogo";
-import { MarkdownMessage } from "@/components/MarkdownMessage";
+import { CoachIcon } from "@/components/CoachIcon";
 import { CoachComposer } from "@/modules/coach-chat/CoachComposer";
 import { CoachMessageList } from "@/modules/coach-chat/CoachMessageList";
 import { CoachTopBar } from "@/modules/coach-layout/CoachTopBar";
@@ -241,27 +240,6 @@ function nextCoachTextSize(current: CoachTextSize, direction: -1 | 1) {
 function stripEphemeralImages(messages: Message[]) {
   return messages.map((message) => (message.image ? { ...message, image: undefined } : message));
 }
-
-function SvgIcon({ name }: { name: "panel" | "panelOpen" | "play" | "pause" | "stop" | "restart" | "copy" | "check" | "mic" | "send" | "thumbsUp" | "thumbsDown" | "flag" }) {
-  const common = { fill: "none", stroke: "currentColor", strokeLinecap: "round" as const, strokeLinejoin: "round" as const, strokeWidth: 2 };
-  const paths: Record<typeof name, ReactNode> = {
-    panel: <><rect x="3" y="4" width="18" height="16" rx="2" {...common} /><path d="M9 4v16M5.5 9h1M5.5 12h1M5.5 15h1" {...common} /></>,
-    panelOpen: <><rect x="3" y="4" width="18" height="16" rx="2" {...common} /><path d="M15 4v16M8 9l-3 3 3 3" {...common} /></>,
-    play: <path d="M8 5v14l11-7z" fill="currentColor" />,
-    pause: <><path d="M8 5v14" {...common} /><path d="M16 5v14" {...common} /></>,
-    stop: <rect x="7" y="7" width="10" height="10" rx="1" fill="currentColor" />,
-    restart: <><path d="M4 12a8 8 0 1 0 2.34-5.66" {...common} /><path d="M4 4v6h6" {...common} /></>,
-    copy: <><rect x="8" y="8" width="11" height="11" rx="2" {...common} /><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" {...common} /></>,
-    check: <path d="M20 6 9 17l-5-5" {...common} />,
-    mic: <><rect x="9" y="3" width="6" height="11" rx="3" {...common} /><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8" {...common} /></>,
-    send: <><path d="M12 19V5" {...common} /><path d="m5 12 7-7 7 7" {...common} /></>,
-    thumbsUp: <><path d="M7 10v10" {...common} /><path d="M11 10V5a3 3 0 0 1 3 3v2h4.2a2 2 0 0 1 1.95 2.45l-1.15 5A2 2 0 0 1 17.05 19H7" {...common} /><path d="M3 10h4v10H3z" {...common} /></>,
-    thumbsDown: <><path d="M7 14V4" {...common} /><path d="M11 14v5a3 3 0 0 0 3-3v-2h4.2a2 2 0 0 0 1.95-2.45l-1.15-5A2 2 0 0 0 17.05 5H7" {...common} /><path d="M3 4h4v10H3z" {...common} /></>,
-    flag: <><path d="M6 21V5" {...common} /><path d="M6 5h10l-1.2 4L16 13H6" {...common} /></>,
-  };
-  return <svg viewBox="0 0 24 24" aria-hidden="true" className="coach-svg-icon">{paths[name]}</svg>;
-}
-
 function plainTextFromMarkdown(content: string) {
   return String(content || "")
     .replace(/```[\s\S]*?```/g, " ")
@@ -1217,26 +1195,6 @@ export default function CoachPage() {
       window.setTimeout(() => textareaRef.current?.focus(), 0);
     }
   }
-
-  function renderWorkbookCard(kind: "grammar" | "vocabulary", workbook: Workbook | null) {
-    if (!workbook) return null;
-    const label = kind === "grammar" ? "gramática" : "vocabulario";
-    return (
-      <div className="coach-workbook-card rounded-2xl border p-3 text-sm">
-        <p className="font-semibold">Guía de {label} generada</p>
-        <p className="mt-1 break-words text-xs">{workbook.title}</p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <a href={workbook.exportUrl} target="_blank" rel="noreferrer" className="coach-workbook-link rounded-xl px-3 py-2 text-center text-xs font-semibold">
-            XLSX
-          </a>
-          <a href={workbook.fileUrl} target="_blank" rel="noreferrer" className="coach-workbook-link rounded-xl px-3 py-2 text-center text-xs font-semibold">
-            Sheets
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   if (!authReady && !E2E_DEMO) {
     return (
       <main className="flex min-h-[100dvh] items-center justify-center bg-slate-950 p-6 text-white">
@@ -1313,49 +1271,13 @@ export default function CoachPage() {
           sidebarOpen={sidebarOpen}
           theme={theme}
           textSize={textSize}
-          panelIcon={<SvgIcon name={sidebarOpen ? "panelOpen" : "panel"} />}
+          panelIcon={<CoachIcon name={sidebarOpen ? "panelOpen" : "panel"} />}
           userMenu={!E2E_DEMO && isLoaded && isSignedIn ? <UserButton /> : null}
           onToggleSidebar={() => setSidebarOpen((open) => !open)}
           onThemeChange={setTheme}
           onDecreaseText={() => setTextSize((size) => nextCoachTextSize(size, -1))}
           onIncreaseText={() => setTextSize((size) => nextCoachTextSize(size, 1))}
         />
-
-        {false && (<>
-          <button type="button" className="coach-icon-button coach-panel-toggle" onClick={() => setSidebarOpen((open) => !open)} aria-expanded={sidebarOpen} aria-controls="coach-sidebar" aria-label={sidebarOpen ? "Ocultar panel" : "Mostrar panel"} title={sidebarOpen ? "Ocultar panel" : "Mostrar panel"}>
-            <SvgIcon name={sidebarOpen ? "panelOpen" : "panel"} />
-          </button>
-          <div className="coach-font-controls" aria-label="Tamaño de texto">
-            <button type="button" className="coach-font-button" onClick={() => setTextSize((size) => nextCoachTextSize(size, -1))} disabled={textSize === "compact"} aria-label="Disminuir tamaño de texto" title="Texto más pequeño">
-              A−
-            </button>
-            <button type="button" className="coach-font-button" onClick={() => setTextSize((size) => nextCoachTextSize(size, 1))} disabled={textSize === "large"} aria-label="Aumentar tamaño de texto" title="Texto más grande">
-              A+
-            </button>
-          </div>
-          <div className="flex items-center gap-2 text-xs font-medium">
-            <span className="hidden sm:inline">Tema</span>
-            <select value={theme} onChange={(event) => setTheme(event.target.value as CoachTheme)} className="coach-theme-select rounded-lg border px-2 py-1.5">
-              <option value="paper">Papel</option>
-              <option value="sage">Salvia</option>
-              <option value="sand">Arena</option>
-              <option value="blue">Azul</option>
-              <option value="slate">Pizarra</option>
-            </select>
-          </div>
-          <span className="coach-status-legacy ml-auto truncate">
-            <EnglishOsLogo size="sm" showText={false} markClassName="coach-status-logo" />
-            <span className="coach-status-brand-legacy">English OS</span>
-            <span className="coach-status-separator">—</span>
-            <span className="coach-status-mode">{studyModeLabel(studyMode)}</span>
-            <span className="coach-status-separator">—</span>
-            <span className="coach-status-location">{activeLocationLabel}</span>
-            <span className="coach-status-separator">—</span>
-            <span className="coach-status-pulse">{learningPulseLabel}</span>
-            <span className="coach-status-detail">{studyModeLabel(studyMode)} · {activeLocationLabel}</span>
-          </span>
-          {!E2E_DEMO && isLoaded && isSignedIn && <UserButton />}
-        </>)}
 
         {error && <div className="mb-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">{error}</div>}
 
@@ -1378,73 +1300,6 @@ export default function CoachPage() {
                 onCopyMessage={copyMessage}
                 onStopThinking={stopThinking}
               />
-              {false && messages.map((message, index) => (
-                <article key={index} className={`coach-message ${message.role === "user" ? "coach-message-user" : "coach-message-teacher"}`}>
-                  {message.role === "user" ? (
-                    <>
-                      <p className="coach-user-message-line">
-                        <span className="coach-user-message-label">Tú —</span>
-                        <span className="coach-user-message-content">{message.content}</span>
-                      </p>
-                      {message.image && (
-                        <figure className="coach-message-image not-prose">
-                          <img src={message.image.dataUrl} alt={message.image.name || "Imagen enviada por el estudiante"} />
-                        </figure>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <div className="coach-message-label">
-                        <p>Profesor dijo:</p>
-                      </div>
-                      <div className="coach-message-actions not-prose">
-                        <button
-                          type="button"
-                          onClick={() => toggleSpeech(message.content, index)}
-                          className={`coach-round-button ${speakingMessageIndex === index ? "coach-speaking-button" : ""}`}
-                          aria-label={speakingMessageIndex === index && !speechPaused ? "Pausar lectura" : speechPaused && speakingMessageIndex === index ? "Continuar lectura" : "Escuchar respuesta del profesor"}
-                          title={speakingMessageIndex === index && !speechPaused ? "Pausar" : speechPaused && speakingMessageIndex === index ? "Continuar" : "Escuchar"}
-                        >
-                          <SvgIcon name={speakingMessageIndex === index && !speechPaused ? "pause" : "play"} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => (speakingMessageIndex === index ? stopSpeech() : speakMessage(message.content, index))}
-                          className="coach-round-button"
-                          aria-label={speakingMessageIndex === index ? "Detener lectura" : "Reiniciar lectura"}
-                          title={speakingMessageIndex === index ? "Detener" : "Reiniciar"}
-                        >
-                          <SvgIcon name={speakingMessageIndex === index ? "stop" : "restart"} />
-                        </button>
-                        <button type="button" onClick={() => toggleMessageFeedback(index, "like")} className={`coach-round-button ${messageFeedback[index] === "like" ? "coach-feedback-active" : ""}`} aria-label={messageFeedback[index] === "like" ? "Quitar me gusta" : "Marcar respuesta como útil"} aria-pressed={messageFeedback[index] === "like"} title={messageFeedback[index] === "like" ? "Quitar me gusta" : "Me gusta"}>
-                          <SvgIcon name="thumbsUp" />
-                        </button>
-                        <button type="button" onClick={() => toggleMessageFeedback(index, "dislike")} className={`coach-round-button ${messageFeedback[index] === "dislike" ? "coach-feedback-active" : ""}`} aria-label={messageFeedback[index] === "dislike" ? "Quitar no me gusta" : "Marcar respuesta como no útil"} aria-pressed={messageFeedback[index] === "dislike"} title={messageFeedback[index] === "dislike" ? "Quitar no me gusta" : "No me gusta"}>
-                          <SvgIcon name="thumbsDown" />
-                        </button>
-                        <button type="button" onClick={() => reportMessage(message.content, index)} className="coach-round-button" aria-label="Reportar error en esta respuesta" title="Reportar error">
-                          <SvgIcon name="flag" />
-                        </button>
-                        <button type="button" onClick={() => copyMessage(message.content, index)} className="coach-round-button" aria-label="Copiar mensaje" title={copiedMessageIndex === index ? "Copiado" : "Copiar"}>
-                          <SvgIcon name={copiedMessageIndex === index ? "check" : "copy"} />
-                        </button>
-                      </div>
-                      <div className="prose max-w-none whitespace-pre-wrap text-sm sm:text-base">
-                        <MarkdownMessage content={message.content} />
-                      </div>
-                    </>
-                  )}
-                </article>
-              ))}
-              {false && (loading || agentLoading) && (
-                <div className="coach-thinking text-sm" aria-live="polite">
-                  <span>{agentLoading ? `${activeAgent.name} está pensando` : "El profesor está pensando"}</span>
-                  <span className="coach-thinking-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>
-                  <button type="button" onClick={stopThinking} className="coach-thinking-stop" aria-label="Parar respuesta del profesor" title="Parar">
-                    <SvgIcon name="stop" />
-                  </button>
-                </div>
-              )}
               <div ref={bottomRef} />
             </div>
 
@@ -1463,53 +1318,6 @@ export default function CoachPage() {
               onSendMessage={sendMessage}
               onStopThinking={stopThinking}
             />
-
-            {false && <footer className="coach-composer sticky bottom-0 z-10 border-t px-3 py-1.5 backdrop-blur">
-              {selectedImage && (
-                <div className="coach-image-preview">
-                  <img src={selectedImage?.dataUrl || ""} alt={selectedImage?.name || "Imagen seleccionada"} />
-                  <span className="truncate">{selectedImage?.name || "Imagen para vocabulario"}</span>
-                  <button type="button" onClick={() => setSelectedImage(null)} aria-label="Quitar imagen" title="Quitar imagen">
-                    ×
-                  </button>
-                </div>
-              )}
-              <div className="coach-input-row flex items-end gap-2">
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(event) => handleImageSelected(event.target.files?.[0])}
-                />
-                <div className="coach-text-input-shell flex-1">
-                  <button type="button" onClick={() => imageInputRef.current?.click()} disabled={!hydrated || loading} className="coach-inline-plus-button" aria-label="Agregar foto para vocabulario" title="Agregar foto">
-                    +
-                  </button>
-                  <textarea
-                    ref={textareaRef}
-                    rows={1}
-                    value={input}
-                    disabled={!hydrated}
-                    onChange={(event) => setInput(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        sendMessage();
-                      }
-                    }}
-                    placeholder="Escribe tu respuesta en inglés o pide una explicación..."
-                    className="coach-textarea block w-full resize-none rounded-xl border py-1.5 pl-11 pr-3 text-base outline-none"
-                  />
-                </div>
-                <button type="button" onPointerDown={(event) => event.preventDefault()} onClick={startDictation} disabled={!hydrated || loading} className={`coach-round-button coach-mic-button ${listening ? "coach-mic-active" : ""}`} aria-label={listening ? "Detener micrófono" : "Dictar con micrófono"} title={listening ? "Detener micrófono" : "Micrófono"}>
-                  <SvgIcon name="mic" />
-                </button>
-                <button onClick={() => (loading ? stopThinking() : sendMessage())} disabled={!hydrated || (!loading && !input.trim() && !selectedImage)} className="coach-send-button disabled:cursor-not-allowed disabled:opacity-40" aria-label={loading ? "Parar respuesta del profesor" : "Enviar respuesta"} title={loading ? "Parar" : "Enviar"}>
-                  <SvgIcon name={loading ? "stop" : "send"} />
-                </button>
-              </div>
-            </footer>}
           </section>
 
           {sidebarOpen && <aside id="coach-sidebar" className="coach-sidebar order-1 min-w-0 max-w-full space-y-2 overflow-x-hidden">
@@ -1558,23 +1366,6 @@ export default function CoachPage() {
               }}
               onStartClass={startTodayClass}
             />
-            {false && (<section>
-              <p className="text-[11px] font-semibold uppercase tracking-wide opacity-60">Objetivo activo</p>
-              <h2 className="mt-1 text-lg font-bold">{activeLocationLabel}</h2>
-              <p className="mt-1 text-xs font-semibold uppercase tracking-wide opacity-60">Modo: {studyModeLabel(studyMode)}</p>
-              <p className="mt-1 text-xs opacity-70">Posición guardada: {contextLoading ? "Cargando…" : unitLabel(currentUnit)}</p>
-              <p className="mt-1 text-sm opacity-75">Los materiales siguen la unidad activa de estudio.</p>
-              <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-500">Unidad de estudio</label>
-              <input value={studyUnit} onChange={(event) => { setStudyUnit(event.target.value); setStudyMode("class"); }} onBlur={(event) => setStudyUnit(normalizeUnitValue(event.target.value))} placeholder={unitLabel(currentUnit)} className="coach-input mt-2 w-full rounded-xl border px-3 py-2 text-sm outline-none" />
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => { setStudyUnit(normalizeUnitValue(currentUnit)); setStudyMode("current"); }} disabled={!currentUnit} className="coach-action rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-50">
-                  Usar posición
-                </button>
-                <button type="button" onClick={startTodayClass} disabled={loading || !activeStudyUnit} className="coach-action-primary rounded-xl px-3 py-2 text-xs font-semibold disabled:opacity-50">
-                  Clase
-                </button>
-              </div>
-            </section>)}
 
             <CoachLearningPulsePanel
               level={learningPulse.level}
@@ -1624,125 +1415,6 @@ export default function CoachPage() {
               onToggleResource={(resourceId) => setExpandedResourceId((current) => current === resourceId ? null : resourceId)}
               onPracticeResource={requestResourcePractice}
             />
-
-            {false && <section className="coach-panel coach-learning-pulse min-w-0 max-w-full overflow-hidden rounded-xl border p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide opacity-60">Tu avance</p>
-              <div className="coach-learning-pulse-grid mt-2">
-                <div className="coach-learning-pulse-metric">
-                  <span>Nivel</span>
-                  <strong>{learningPulse.level}</strong>
-                </div>
-                <div className="coach-learning-pulse-metric">
-                  <span>Evidencia</span>
-                  <strong>{learningPulseLabel}</strong>
-                </div>
-              </div>
-              <p className="mt-2 text-xs opacity-75">Prácticas recientes: {learningPulse.practiceCount}</p>
-              <p className="mt-1 text-xs opacity-75">Foco: {learningPulse.focus}</p>
-              <p className="mt-1 text-xs opacity-75">Siguiente: {learningPulse.nextStep}</p>
-            </section>}
-
-            {false && <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-blue-300">Guías de estudio</p>
-              <p className="mt-1 text-sm text-slate-400">Material descargable para {activeStudyUnitLabel}.</p>
-              <div className="mt-3 grid gap-2">
-                <button type="button" onClick={() => createWorkbook("grammar")} disabled={grammarWorkbookLoading || !activeStudyUnit || E2E_DEMO} className="rounded-2xl bg-emerald-600 px-3 py-3 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
-                  {grammarWorkbookLoading ? "Generando..." : `Guía de gramática · ${activeStudyUnitLabel}`}
-                </button>
-                <button type="button" onClick={() => createWorkbook("vocabulary")} disabled={vocabularyWorkbookLoading || !activeStudyUnit || E2E_DEMO} className="rounded-2xl bg-cyan-600 px-3 py-3 text-sm font-semibold text-white hover:bg-cyan-500 disabled:opacity-50">
-                  {vocabularyWorkbookLoading ? "Generando..." : `Guía de vocabulario · ${activeStudyUnitLabel}`}
-                </button>
-                <button type="button" onClick={requestUnitGrammar} disabled={loading || !activeStudyUnit} className="rounded-2xl border border-emerald-700 px-3 py-3 text-sm font-semibold text-emerald-100 hover:bg-emerald-950 disabled:opacity-50">
-                  Explicar gramática en chat
-                </button>
-                <button type="button" onClick={requestUnitVocabulary} disabled={loading || !activeStudyUnit} className="rounded-2xl border border-cyan-700 px-3 py-3 text-sm font-semibold text-cyan-100 hover:bg-cyan-950 disabled:opacity-50">
-                  Explicar vocabulario en chat
-                </button>
-              </div>
-              <div className="mt-3 space-y-3">
-                {grammarWorkbookError && <div className="rounded-2xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">{grammarWorkbookError}</div>}
-                {vocabularyWorkbookError && <div className="rounded-2xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">{vocabularyWorkbookError}</div>}
-                {renderWorkbookCard("grammar", grammarWorkbook)}
-                {renderWorkbookCard("vocabulary", vocabularyWorkbook)}
-              </div>
-            </section>}
-
-            {false && <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-blue-300">Ayudas rápidas</p>
-              <p className="mt-1 text-sm text-slate-400">{activeAgent.description}</p>
-              <select value={activeAgentId} onChange={(event) => setActiveAgentId(event.target.value as AgentId)} style={{ colorScheme: "dark" }} className="mt-3 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-white outline-none focus:border-blue-500">
-                {SPECIALIST_AGENTS.map((agent) => (
-                  <option key={agent.id} value={agent.id}>
-                    {agent.name}
-                  </option>
-                ))}
-              </select>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {SPECIALIST_AGENTS.map((agent) => (
-                  <button
-                    key={agent.id}
-                    type="button"
-                    onClick={() => {
-                      setActiveAgentId(agent.id);
-                      sendAgentMessage(agent.defaultPrompt);
-                    }}
-                    disabled={agentLoading}
-                    className="rounded-2xl border border-slate-700 px-2 py-3 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-50"
-                  >
-                    {agent.shortName}
-                  </button>
-                ))}
-              </div>
-              {agentError && <div className="mt-3 rounded-2xl border border-red-800 bg-red-950 p-3 text-sm text-red-100">{agentError}</div>}
-            </section>}
-
-            {false && <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
-              <h3 className="text-sm font-bold text-slate-100">Materiales de clase</h3>
-              <p className="mt-1 text-xs text-slate-400">Audios, videos y documentos para {activeStudyUnitLabel}.</p>
-              {resourcesLoading && <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">Loading resources...</div>}
-              {resourcesNotice && <div className="mt-3 rounded-2xl border border-slate-300 bg-white/70 p-4 text-sm leading-6 text-slate-600">{resourcesNotice}</div>}
-              {resourcesError && <div className="mt-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">{resourcesError}</div>}
-              {!resourcesLoading && !resourcesError && !resourcesNotice && resources.length === 0 && <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">No hay materiales cargados para esta unidad.</div>}
-              <div className="mt-3 min-w-0 max-w-full space-y-3">
-                {resources.map((resource) => (
-                  <div key={resource.resourceId} data-testid="resource-card" className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-4">
-                    <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
-                      <h3 className="min-w-0 flex-1 break-all text-sm font-semibold text-slate-100" title={resource.title}>{resource.title}</h3>
-                      <span className="shrink-0 rounded-full border border-slate-700 px-2 py-1 text-[10px] uppercase text-slate-400">{resource.type}</span>
-                    </div>
-                    <p className="mb-3 break-words text-xs leading-5 text-slate-400">{resource.description}</p>
-                    {resource.embedUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setExpandedResourceId((current) => current === resource.resourceId ? null : resource.resourceId)}
-                        className="mb-3 w-full rounded-2xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800"
-                        aria-expanded={expandedResourceId === resource.resourceId}
-                      >
-                        {expandedResourceId === resource.resourceId ? "Ocultar reproductor" : "Cargar reproductor"}
-                      </button>
-                    )}
-                    {expandedResourceId === resource.resourceId && resource.type === "audio" && resource.embedUrl && (
-                      <div className="mb-3 min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-800 bg-black">
-                        <iframe src={resource.embedUrl} title={resource.title} className="block h-20 w-full min-w-0 max-w-full border-0" allow="autoplay" loading="lazy" />
-                      </div>
-                    )}
-                    {expandedResourceId === resource.resourceId && resource.type === "video" && resource.embedUrl && (
-                      <div className="mb-3 aspect-video min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-800 bg-black">
-                        <iframe src={resource.embedUrl} title={resource.title} className="block h-full w-full min-w-0 max-w-full border-0" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" />
-                      </div>
-                    )}
-                    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
-                      <a href={resource.url} target="_blank" rel="noreferrer" className="rounded-2xl border border-slate-700 px-3 py-2 text-center text-sm font-semibold hover:bg-slate-800">
-                        Abrir
-                      </a>
-                      <button type="button" onClick={() => requestResourcePractice(resource)} disabled={loading} className="rounded-2xl bg-blue-600 px-3 py-2 text-sm font-semibold hover:bg-blue-500 disabled:opacity-50">
-                        Practicar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>}
           </aside>}
         </div>
       </div>

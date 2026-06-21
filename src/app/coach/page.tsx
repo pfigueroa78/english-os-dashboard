@@ -3,6 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 import { CoachIcon } from "@/components/CoachIcon";
+import {
+  buildCoachReportMailto,
+  buildCoachResourcePracticeMessage,
+  copyCoachText,
+  toggleCoachMessageFeedback,
+} from "@/modules/coach-actions/coachActions";
 import { CoachComposer } from "@/modules/coach-chat/CoachComposer";
 import { toCoachComposerModel } from "@/modules/coach-chat/composerViewModel";
 import { CoachMessageList } from "@/modules/coach-chat/CoachMessageList";
@@ -879,71 +885,31 @@ export default function CoachPage() {
   function requestResourcePractice(resourceId: string) {
     const resource = resources.find((item) => item.id === resourceId);
     if (!resource) return;
-    const details = [
-      `Title: ${resource.title}`,
-      `Type: ${resource.type}`,
-      resource.section ? `Section: ${resource.section}` : "",
-      resource.page ? `Page: ${resource.page}` : "",
-      resource.exercise ? `Exercise: ${resource.exercise}${resource.exercisePart || ""}` : "",
-      `URL: ${resource.url}`,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    sendMessage(`Vamos a trabajar con este recurso de ${activeStudyUnitLabel}.\n\n${details}\n\nCrea una actividad completa para estudiar este recurso.`);
+    sendMessage(buildCoachResourcePracticeMessage({ activeStudyUnitLabel, resource }));
   }
 
   async function copyMessage(content: string, index: number) {
-    const text = String(content || "").trim();
-    if (!text) return;
-
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.setAttribute("readonly", "true");
-      textarea.style.position = "fixed";
-      textarea.style.left = "-9999px";
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-    }
+    const copied = await copyCoachText(content, { clipboard: navigator.clipboard, document });
+    if (!copied) return;
 
     setCopiedMessageIndex(index);
     window.setTimeout(() => setCopiedMessageIndex(null), 1200);
   }
 
   function reportMessage(content: string, index: number) {
-    const messageText = String(content || "").trim();
-    const subject = `English OS error report · ${activeLocationLabel || "Coach"}`;
-    const body = [
-      "Hola, quiero reportar un posible error en esta respuesta de English OS.",
-      "",
-      `Fecha: ${new Date().toISOString()}`,
-      `Learner: ${email}`,
-      `Modo: ${studyModeLabel(studyMode)}`,
-      `Objetivo activo: ${activeLocationLabel || "No definido"}`,
-      typeof window !== "undefined" ? `URL: ${window.location.href}` : "",
-      `Mensaje #: ${index + 1}`,
-      "",
-      "Texto reportado:",
-      "----------------",
-      messageText,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    const mailto = `mailto:info@citizen-life.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.slice(0, 6000))}`;
-    window.location.href = mailto;
+    window.location.href = buildCoachReportMailto({
+      content,
+      index,
+      activeLocationLabel,
+      email,
+      studyModeLabel: studyModeLabel(studyMode),
+      href: window.location.href,
+      nowIso: new Date().toISOString(),
+    });
   }
 
   function toggleMessageFeedback(index: number, value: "like" | "dislike") {
-    setMessageFeedback((current) => {
-      const next = { ...current };
-      if (next[index] === value) delete next[index];
-      else next[index] = value;
-      return next;
-    });
+    setMessageFeedback((current) => toggleCoachMessageFeedback(current, index, value));
   }
 
   function speakMessage(content: string, index: number) {

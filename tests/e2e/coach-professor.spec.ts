@@ -251,6 +251,7 @@ test("resource players are width-contained and load on demand", async () => {
   const messageListViewModel = await fs.readFile("src/modules/coach-chat/messageListViewModel.ts", "utf8");
   const composer = await fs.readFile("src/modules/coach-chat/CoachComposer.tsx", "utf8");
   const composerViewModel = await fs.readFile("src/modules/coach-chat/composerViewModel.ts", "utf8");
+  const actions = await fs.readFile("src/modules/coach-actions/coachActions.ts", "utf8");
   const topBar = await fs.readFile("src/modules/coach-layout/CoachTopBar.tsx", "utf8");
   const persistence = await fs.readFile("src/modules/coach-persistence/coachPersistence.ts", "utf8");
   const media = await fs.readFile("src/modules/coach-media/coachMedia.ts", "utf8");
@@ -315,7 +316,7 @@ test("resource players are width-contained and load on demand", async () => {
   expect(messageListViewModel).toContain('icon: "flag"');
   expect(source).toContain("reportMessage");
   expect(messageListViewModel).toContain("Reportar error en esta respuesta");
-  expect(source).toContain("mailto:info@citizen-life.com");
+  expect(actions).toContain("mailto:info@citizen-life.com");
   expect(source).toContain("buildProgressSnapshot");
   expect(source).toContain("Avance:");
   expect(source).toContain("toggleMessageFeedback");

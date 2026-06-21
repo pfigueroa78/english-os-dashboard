@@ -116,6 +116,7 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   const materialsPanel = readFile("src/modules/coach-resources/CoachClassMaterialsPanel.tsx");
   const messageList = readFile("src/modules/coach-chat/CoachMessageList.tsx");
   const composer = readFile("src/modules/coach-chat/CoachComposer.tsx");
+  const coachController = readFile("src/modules/coach-controller/coachController.ts");
 
   expect(source).toContain("const [coachSession, setCoachSession]");
   expect(source).toContain("const uiSession = createCoachSessionContract");
@@ -169,17 +170,19 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(composer).not.toContain("mimeType");
   expect(sessionContract).toContain("resourcesUnit");
 
-  expect(source).toContain("function inferCoordinatesFromReply");
-  expect(source).toContain("const inferredCoordinates = inferCoordinatesFromReply(reply)");
-  expect(source).toContain("const activeUnit = data.activeUnit || inferredCoordinates.unit");
+  expect(source).toContain("resolveCoachResponseState");
+  expect(source).toContain("const next = resolveCoachResponseState");
+  expect(coachController).toContain("function inferCoordinatesFromReply");
+  expect(coachController).toContain("const inferredCoordinates = inferCoordinatesFromReply(reply)");
+  expect(coachController).toContain("const activeUnit = params.data.activeUnit || inferredCoordinates.unit");
   expect(source).toContain("normalizeUnitValue");
-  expect(source).toContain("setStudyUnit(normalizeUnitValue(nextSession.activeUnit || unit))");
+  expect(source).toContain("setStudyUnit(normalizeUnitValue(next.studyUnit))");
   expect(source).not.toContain("setCurrentUnit(unit);\n        setStudyUnit(unit)");
-  expect(source).toContain("const nextMode: StudyMode = isReviewRequest(message) ? \"review\" : isGuideRequest(message) ? \"guide\" : \"class\"");
-  expect(source).toContain("setStudyMode(nextMode)");
-  expect(source).toContain("setStudyClassNumber(nextSession.activeClassNumber && nextMode === \"class\" ? Number(nextSession.activeClassNumber) : null)");
+  expect(coachController).toContain("const studyMode: CoachStudyMode = isReviewRequest(params.requestMessage) ? \"review\" : isGuideRequest(params.requestMessage) ? \"guide\" : \"class\"");
+  expect(source).toContain("setStudyMode(next.studyMode)");
+  expect(source).toContain("setStudyClassNumber(next.studyClassNumber)");
   expect(studyPanel).toContain("Posición guardada:");
-  expect(source).toContain("No pude completar la respuesta esta vez");
+  expect(coachController).toContain("No pude completar la respuesta esta vez");
   expect(source).toContain("no inventes Class 1");
   expect(readFile("public/prompts/coach/start-current-class.md")).toContain("apertura estratégica por etapas");
   expect(source).not.toContain("finish with an evaluation gate before progress can advance");

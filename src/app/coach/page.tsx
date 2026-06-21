@@ -11,6 +11,18 @@ import { CoachGuidesPanel } from "@/modules/coach-resources/CoachGuidesPanel";
 import { CoachLearningPulsePanel } from "@/modules/coach-resources/CoachLearningPulsePanel";
 import { CoachQuickHelpPanel } from "@/modules/coach-resources/CoachQuickHelpPanel";
 import { CoachStudyPanel } from "@/modules/coach-resources/CoachStudyPanel";
+import {
+  createAgentCoachMessage,
+  createCoachErrorMessage,
+  createDemoAgentTurn,
+  createDemoCoachTurn,
+  coachModeFromStudyMode,
+  prepareAgentMessageTurn,
+  prepareCoachMessageTurn,
+  resolveCoachResponseState,
+  stripEphemeralImages,
+  type CoachStudyMode,
+} from "@/modules/coach-controller/coachController";
 import { toCoachAgentClientContracts } from "@/modules/coach-integrations/agentsContract";
 import { renderClientPrompt, type ClientPromptId } from "@/modules/coach-prompts/clientPromptRegistry";
 import { createCoachSessionContract } from "@/modules/coach-session/contract";
@@ -71,7 +83,7 @@ type Workbook = {
 type AgentId = "grammar_corrector" | "speaking_partner" | "english_evaluator";
 type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue";
 type CoachTextSize = "compact" | "normal" | "large";
-type StudyMode = "current" | "class" | "review" | "guide";
+type StudyMode = CoachStudyMode;
 
 type LearningPulse = {
   level: string;
@@ -202,33 +214,11 @@ function initialCoachMessages(): Message[] {
   ];
 }
 
-function isReviewRequest(value: string) {
-  return /\b(repas(?:o|ar|emos)|review|reinforcement|checkpoint)\b/i.test(value);
-}
-
-function isGuideRequest(value: string) {
-  return /\b(gu[ií]a|guide)\b/i.test(value) && /\b(gram[aá]tica|grammar|vocabulario|vocabulary)\b/i.test(value);
-}
-
 function studyModeLabel(mode: StudyMode) {
   if (mode === "review") return "Repaso";
   if (mode === "guide") return "Guía";
   if (mode === "class") return "Clase";
   return "Actual";
-}
-
-function coachModeFromStudyMode(mode: StudyMode): CoachSessionState["mode"] {
-  if (mode === "review" || mode === "guide" || mode === "class") return mode;
-  return "current";
-}
-
-function inferCoordinatesFromReply(reply: string) {
-  const text = String(reply || "");
-  const unit = Number(text.match(/\bUnit\s+(\d{1,2})\b/i)?.[1] || 0) || null;
-  const classNumber = Number(
-    text.match(/\bClass\s*(?::|#|-|\s)\s*(\d{1,2})\b/i)?.[1] || 0,
-  ) || null;
-  return { unit, classNumber };
 }
 
 function nextCoachTextSize(current: CoachTextSize, direction: -1 | 1) {
@@ -237,9 +227,6 @@ function nextCoachTextSize(current: CoachTextSize, direction: -1 | 1) {
   return COACH_TEXT_SIZE_ORDER[nextIndex] || "normal";
 }
 
-function stripEphemeralImages(messages: Message[]) {
-  return messages.map((message) => (message.image ? { ...message, image: undefined } : message));
-}
 function plainTextFromMarkdown(content: string) {
   return String(content || "")
     .replace(/```[\s\S]*?```/g, " ")
@@ -797,15 +784,17 @@ export default function CoachPage() {
     const targetAgent = SPECIALIST_AGENT_CONTRACTS.find((agent) => agent.id === agentIdOverride) || activeAgent;
     const targetAgentMetadata = SPECIALIST_AGENTS.find((agent) => agent.id === agentIdOverride) || activeAgentMetadata;
     const defaultPrompt = customMessage || input ? "" : await renderClientPrompt(targetAgentMetadata.defaultPromptId);
-    const message = (customMessage || input || defaultPrompt).trim();
-    if (!message || agentLoading) return;
+    const prepared = prepareAgentMessageTurn({
+      customMessage,
+      input,
+      defaultPrompt,
+      agent: targetAgent,
+      agentLoading,
+    });
+    if (!prepared) return;
 
     if (E2E_DEMO) {
-      setMessages((current) => [
-        ...current,
-        { role: "user", content: `[${targetAgent.name}] ${message}` },
-        { role: "coach", content: `${targetAgent.name}\n\nModo demo: aquí aparecería la retroalimentación especializada.` },
-      ]);
+      setMessages((current) => [...current, ...createDemoAgentTurn(targetAgent, prepared)]);
       return;
     }
 
@@ -813,7 +802,7 @@ export default function CoachPage() {
     setAgentError("");
     setInput("");
     setAgentLoading(true);
-    setMessages((current) => [...current, { role: "user", content: `[${targetAgent.name}] ${message}` }]);
+    setMessages((current) => [...current, prepared.userMessage]);
     const controller = new AbortController();
     agentAbortRef.current = controller;
 
@@ -822,18 +811,11 @@ export default function CoachPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({ agentId: targetAgent.id, message }),
+        body: JSON.stringify(prepared.requestBody),
       });
       const data = await readJsonResponse(response);
       if (!response.ok || !data.ok) throw new Error(data.error || "Specialist agent request failed.");
-      setMessages((current) => [
-        ...current,
-        {
-          role: "coach",
-          content: `${data.agent?.name || targetAgent.name}\n\n${data.reply || "No response returned."}`,
-          usage: data.usage,
-        },
-      ]);
+      setMessages((current) => [...current, createAgentCoachMessage(targetAgent, data)]);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       const message = err instanceof Error ? err.message : "Unknown agent error";
@@ -846,18 +828,19 @@ export default function CoachPage() {
   }
 
   async function sendMessage(customMessage?: string) {
-    const imageToAnalyze = customMessage ? null : selectedImage;
-    const message = (customMessage || input || (imageToAnalyze ? "Analiza esta foto y ayúdame a aprender vocabulario en inglés." : "")).trim();
-    if ((!message && !imageToAnalyze) || loading) return;
+    const prepared = prepareCoachMessageTurn({
+      customMessage,
+      input,
+      selectedImage,
+      messages,
+      loading,
+    });
+    if (!prepared) return;
 
     if (E2E_DEMO) {
       setInput("");
       setSelectedImage(null);
-      setMessages((current) => [
-        ...current,
-        { role: "user", content: message, image: imageToAnalyze ? { dataUrl: imageToAnalyze.dataUrl, name: imageToAnalyze.name } : undefined },
-        { role: "coach", content: "Modo demo: el profesor respondería aquí usando el contexto real de la clase." },
-      ]);
+      setMessages((current) => [...current, ...createDemoCoachTurn(prepared)]);
       return;
     }
 
@@ -865,7 +848,7 @@ export default function CoachPage() {
     setInput("");
     setSelectedImage(null);
     setLoading(true);
-    setMessages((current) => [...current, { role: "user", content: message, image: imageToAnalyze ? { dataUrl: imageToAnalyze.dataUrl, name: imageToAnalyze.name } : undefined }]);
+    setMessages((current) => [...current, prepared.userMessage]);
     const controller = new AbortController();
     coachAbortRef.current = controller;
 
@@ -874,58 +857,35 @@ export default function CoachPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({
-          message,
-          conversationHistory: stripEphemeralImages(messages.slice(-12)),
-          image: imageToAnalyze ? { dataUrl: imageToAnalyze.dataUrl, mimeType: imageToAnalyze.mimeType, name: imageToAnalyze.name } : undefined,
-        }),
+        body: JSON.stringify(prepared.requestBody),
       });
       const data = await readJsonResponse(response);
       if (!response.ok || !data.ok) throw new Error(data.error || "Coach request failed.");
 
-      const savedPosition = getSavedPosition(data);
-      const reply = data.reply || "No response returned.";
-      const inferredCoordinates = inferCoordinatesFromReply(reply);
-      const activeUnit = data.activeUnit || inferredCoordinates.unit;
-      const activeClass = data.activeClass || inferredCoordinates.classNumber;
-      const unit = activeUnit ? `Unit ${activeUnit}` : "";
-      const lesson = savedPosition.lesson;
-      const nextMode: StudyMode = isReviewRequest(message) ? "review" : isGuideRequest(message) ? "guide" : "class";
-      const nextSession = data.session
-        ? data.session as CoachSessionState
-        : createCoachSessionContract({
-          mode: coachModeFromStudyMode(nextMode),
-          savedUnit: savedPosition.unit || currentUnit,
-          savedLesson: lesson || currentLesson,
-          activeUnit: unit || currentUnit,
-          activeClassNumber: activeClass,
-          lessonTitle: lesson || currentLesson,
-          resourcesUnit: unit || currentUnit,
-          source: "english_os",
-        });
+      const next = resolveCoachResponseState({
+        requestMessage: prepared.message,
+        data,
+        currentUnit,
+        currentLesson,
+        getSavedPosition,
+      });
 
-      setStudyMode(nextMode);
-      setCoachSession(nextSession);
-      if (nextSession.activeUnit || unit) {
-        setStudyUnit(normalizeUnitValue(nextSession.activeUnit || unit));
+      setStudyMode(next.studyMode);
+      setCoachSession(next.session);
+      if (next.studyUnit) {
+        setStudyUnit(normalizeUnitValue(next.studyUnit));
       }
-      setStudyClassNumber(nextSession.activeClassNumber && nextMode === "class" ? Number(nextSession.activeClassNumber) : null);
-      if (nextSession.lessonTitle || lesson) setCurrentLesson(nextSession.lessonTitle || lesson);
+      setStudyClassNumber(next.studyClassNumber);
+      if (next.currentLesson) setCurrentLesson(next.currentLesson);
 
-      setMessages((current) => [
-        ...current,
-        { role: "coach", content: reply, usage: data.usage },
-      ]);
+      setMessages((current) => [...current, next.coachMessage]);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
       setError(errorMessage);
       setMessages((current) => [
         ...current,
-        {
-          role: "coach",
-          content: `No pude completar la respuesta esta vez. Puedes volver a enviarla.\n\nDetalle: ${errorMessage}`,
-        },
+        createCoachErrorMessage(errorMessage),
       ]);
     } finally {
       if (coachAbortRef.current === controller) coachAbortRef.current = null;

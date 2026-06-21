@@ -310,7 +310,9 @@ test("resource players are width-contained and load on demand", async () => {
   expect(source).toContain("reportMessage");
   expect(messageList).toContain("Reportar error en esta respuesta");
   expect(source).toContain("mailto:info@citizen-life.com");
-  expect(source).toContain("buildProgressSnapshot");
+  expect(source).toContain("toCoachLearnerContextContract");
+  expect(source).not.toContain("function buildProgressSnapshot");
+  expect(source).not.toContain("function buildLearningPulse");
   expect(source).toContain("Avance:");
   expect(source).toContain("toggleMessageFeedback");
   expect(source).toContain("bestEnglishSpeechVoice");

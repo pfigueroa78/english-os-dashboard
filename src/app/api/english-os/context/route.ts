@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { toCoachLearnerContextContract } from "@/modules/coach-integrations/contextContract";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
@@ -72,11 +73,13 @@ export async function GET() {
       ...data,
       missionControl,
     };
+    const learnerContext = toCoachLearnerContextContract({ ...data, context, missionControl }, userEmail);
 
     return NextResponse.json({
       ok: true,
       userEmail,
-      learnerId: data.learnerId || userEmail,
+      learnerId: learnerContext.learnerId,
+      learnerContext,
       context,
       missionControl,
     });

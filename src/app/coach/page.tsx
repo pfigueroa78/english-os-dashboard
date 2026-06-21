@@ -11,6 +11,11 @@ import { CoachGuidesPanel } from "@/modules/coach-resources/CoachGuidesPanel";
 import { CoachLearningPulsePanel } from "@/modules/coach-resources/CoachLearningPulsePanel";
 import { CoachQuickHelpPanel } from "@/modules/coach-resources/CoachQuickHelpPanel";
 import { CoachStudyPanel } from "@/modules/coach-resources/CoachStudyPanel";
+import {
+  learningPulseDetail,
+  toCoachLearnerContextContract,
+  type CoachLearningPulseContract,
+} from "@/modules/coach-integrations/contextContract";
 import { createCoachSessionContract } from "@/modules/coach-session/contract";
 import type { CoachSessionState } from "@/modules/coach-session/types";
 import {
@@ -70,15 +75,6 @@ type AgentId = "grammar_corrector" | "speaking_partner" | "english_evaluator";
 type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue";
 type CoachTextSize = "compact" | "normal" | "large";
 type StudyMode = "current" | "class" | "review" | "guide";
-
-type LearningPulse = {
-  level: string;
-  practiceCount: number;
-  evidenceCount: number | null;
-  evidenceTotal: number;
-  focus: string;
-  nextStep: string;
-};
 
 type SpecialistAgent = {
   id: AgentId;
@@ -279,143 +275,6 @@ function bestEnglishSpeechVoice() {
     .sort((a, b) => b.score - a.score)[0]?.voice || null;
 }
 
-function getSavedPosition(data: any) {
-  const context = data?.context || {};
-  const user = context?.user || data?.user || {};
-  const recommended = context?.recommendedCurrentPosition || data?.recommendedCurrentPosition || {};
-  const current = context?.currentPosition || data?.currentPosition || {};
-  const missionControl = context?.missionControl || data?.missionControl || context || {};
-  const sources = [
-    {
-      unit: recommended.unit || recommended.currentUnit,
-      lesson: recommended.lesson || recommended.currentLesson,
-    },
-    {
-      unit: current.unit || current.currentUnit,
-      lesson: current.lesson || current.currentLesson,
-    },
-    {
-      unit: user["Current Unit"] || user.CurrentUnit || user.unit || user.currentUnit,
-      lesson: user["Current Lesson"] || user.CurrentLesson || user.lesson || user.currentLesson,
-    },
-    {
-      unit: missionControl.currentUnit || missionControl.CurrentUnit || missionControl.unit,
-      lesson: missionControl.currentLesson || missionControl.CurrentLesson || missionControl.lesson,
-    },
-  ];
-  const pairedSource = sources.find((source) => String(source.unit || "").trim());
-  if (pairedSource) {
-    return {
-      unit: String(pairedSource.unit || "").trim(),
-      lesson: String(pairedSource.lesson || "").trim(),
-    };
-  }
-
-  return {
-    unit: "",
-    lesson: String(sources.find((source) => String(source.lesson || "").trim())?.lesson || "").trim(),
-  };
-}
-
-function readableProgressValue(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return String(value).trim();
-  }
-  if (Array.isArray(value)) {
-    return value.map(readableProgressValue).find(Boolean) || "";
-  }
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const preferredKeys = [
-      "summary",
-      "text",
-      "label",
-      "value",
-      "name",
-      "title",
-      "focus",
-      "weakness",
-      "mistake",
-      "correction",
-      "nextAction",
-      "recommendedAction",
-      "action",
-      "description",
-      "cefrEstimate",
-      "score",
-      "status",
-    ];
-    for (const key of preferredKeys) {
-      const readable = readableProgressValue(record[key]);
-      if (readable) return readable;
-    }
-  }
-  return "";
-}
-
-function firstProgressValue(...values: unknown[]) {
-  return values.map(readableProgressValue).find(Boolean) || "";
-}
-
-function buildProgressSnapshot(data: any) {
-  const context = data?.context || data || {};
-  const missionControl = context?.missionControl?.missionControl || context?.missionControl || data?.missionControl || {};
-  const user = context?.user || data?.user || {};
-  const recentLogs = Array.isArray(context?.recentDailyLogs) ? context.recentDailyLogs : Array.isArray(data?.recentDailyLogs) ? data.recentDailyLogs : [];
-  const recentMistakes = Array.isArray(context?.recentMistakes) ? context.recentMistakes : Array.isArray(data?.recentMistakes) ? data.recentMistakes : [];
-  const recentProgress = Array.isArray(context?.recentProgress) ? context.recentProgress : Array.isArray(data?.recentProgress) ? data.recentProgress : [];
-
-  const cefr = firstProgressValue(user["Current CEFR"], context.currentCEFR, missionControl.currentCEFR, missionControl.cefr);
-  const lastEvaluation = firstProgressValue(missionControl.lastEvaluation, missionControl.lastEvaluationScore, context.lastEvaluation, recentProgress[0]?.cefrEstimate);
-  const topMistake = firstProgressValue(missionControl.topMistake, context.topMistake, recentMistakes[0]?.mistake);
-
-  const parts = [
-    cefr ? `nivel actual ${cefr}` : "",
-    lastEvaluation ? `última evidencia: ${lastEvaluation}` : "",
-    recentLogs.length ? `${recentLogs.length} prácticas recientes` : "",
-    topMistake ? `foco: ${topMistake}` : "",
-  ].filter(Boolean);
-
-  return parts.length ? parts.slice(0, 3).join(" · ") : "sin evaluaciones recientes disponibles";
-}
-
-function buildLearningPulse(data: any): LearningPulse {
-  const context = data?.context || data || {};
-  const missionControl = context?.missionControl?.missionControl || context?.missionControl || data?.missionControl || {};
-  const user = context?.user || data?.user || {};
-  const recentLogs = Array.isArray(context?.recentDailyLogs) ? context.recentDailyLogs : Array.isArray(data?.recentDailyLogs) ? data.recentDailyLogs : [];
-  const recentMistakes = Array.isArray(context?.recentMistakes) ? context.recentMistakes : Array.isArray(data?.recentMistakes) ? data.recentMistakes : [];
-  const recentProgress = Array.isArray(context?.recentProgress) ? context.recentProgress : Array.isArray(data?.recentProgress) ? data.recentProgress : [];
-  const activeVocabulary = Array.isArray(context?.activeVocabulary) ? context.activeVocabulary : Array.isArray(data?.activeVocabulary) ? data.activeVocabulary : [];
-
-  const level = firstProgressValue(user["Current CEFR"], context.currentCEFR, missionControl.currentCEFR, missionControl.cefr, recentProgress[0]?.cefrEstimate);
-  const lastEvaluation = firstProgressValue(missionControl.lastEvaluation, missionControl.lastEvaluationScore, context.lastEvaluation, recentProgress[0]?.cefrEstimate);
-  const topMistake = firstProgressValue(missionControl.topMistake, context.topMistake, recentMistakes[0]?.mistake);
-  const nextAction = firstProgressValue(missionControl.nextAction, context.nextRecommendedAction, context.nextAction, recentLogs[0]?.nextAction);
-
-  const evidenceFlags = [
-    Boolean(lastEvaluation),
-    recentLogs.length > 0,
-    recentProgress.length > 0,
-    activeVocabulary.length > 0 || recentMistakes.length > 0,
-  ];
-  const evidenceCount = evidenceFlags.some(Boolean) ? evidenceFlags.filter(Boolean).length : null;
-
-  return {
-    level: level || "Sin nivel confirmado",
-    practiceCount: recentLogs.length,
-    evidenceCount,
-    evidenceTotal: 4,
-    focus: topMistake || nextAction || "responder con más evidencia",
-    nextStep: nextAction || "producir una respuesta breve y corregible",
-  };
-}
-
-function learningPulseDetail(pulse: LearningPulse) {
-  return pulse.evidenceCount === null ? "sin evidencias" : `${pulse.evidenceCount}/${pulse.evidenceTotal}`;
-}
-
 async function readJsonResponse(response: Response) {
   const text = await response.text();
   if (!text.trim()) {
@@ -461,7 +320,7 @@ export default function CoachPage() {
       source: E2E_DEMO ? "fallback" : "english_os",
     }),
   );
-  const [learningPulse, setLearningPulse] = useState<LearningPulse>(() => buildLearningPulse({}));
+  const [learningPulse, setLearningPulse] = useState<CoachLearningPulseContract>(() => toCoachLearnerContextContract({}).learningPulse);
   const [theme, setTheme] = useState<CoachTheme>("paper");
   const [textSize, setTextSize] = useState<CoachTextSize>("compact");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -675,9 +534,9 @@ export default function CoachPage() {
       const data = await readJsonResponse(response);
       if (!response.ok || !data.ok) throw new Error(data.error || "Failed to load English OS context.");
 
-      const { unit, lesson } = getSavedPosition(data);
+      const learnerContext = data.learnerContext || toCoachLearnerContextContract(data, email);
+      const { unit, lesson } = learnerContext.savedPosition;
       const resolvedUnit = unit ? normalizeUnitValue(unit) : "";
-      const progressSnapshot = buildProgressSnapshot(data);
       setCoachSession(createCoachSessionContract({
         mode: "current",
         savedUnit: resolvedUnit || null,
@@ -693,11 +552,11 @@ export default function CoachPage() {
         setStudyUnit((current) => current || resolvedUnit);
       }
       if (lesson) setCurrentLesson(lesson);
-      setLearningPulse(buildLearningPulse(data));
+      setLearningPulse(learnerContext.learningPulse);
 
       setMessages((current) => {
         const shouldReplace = current.length === 1 && current[0]?.content.includes("Loading your English OS class plan");
-        return shouldReplace ? [{ role: "coach", content: buildInitialCoachMessage(resolvedUnit || "tu posición actual", lesson, progressSnapshot, learnerName) }] : current;
+        return shouldReplace ? [{ role: "coach", content: buildInitialCoachMessage(resolvedUnit || "tu posición actual", lesson, learnerContext.progressSnapshot, learnerName) }] : current;
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown context error";
@@ -889,7 +748,7 @@ export default function CoachPage() {
       const data = await readJsonResponse(response);
       if (!response.ok || !data.ok) throw new Error(data.error || "Coach request failed.");
 
-      const savedPosition = getSavedPosition(data);
+      const savedPosition = (data.learnerContext || toCoachLearnerContextContract(data, email)).savedPosition;
       const reply = data.reply || "No response returned.";
       const inferredCoordinates = inferCoordinatesFromReply(reply);
       const activeUnit = data.activeUnit || inferredCoordinates.unit;

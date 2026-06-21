@@ -202,19 +202,23 @@ test("mobile coach header keeps mode and unit/class visible", async () => {
 
 test("coach shows an evidence-based learning pulse without inventing progress", async () => {
   const source = readFile("src/app/coach/page.tsx");
+  const contextContract = readFile("src/modules/coach-integrations/contextContract.ts");
   const topBar = readFile("src/modules/coach-layout/CoachTopBar.tsx");
   const learningPulsePanel = readFile("src/modules/coach-resources/CoachLearningPulsePanel.tsx");
   const globals = readFile("src/app/globals.css");
 
-  expect(source).toContain("type LearningPulse");
-  expect(source).toContain("function buildLearningPulse");
-  expect(source).toContain("function readableProgressValue");
-  expect(source).toContain("typeof value === \"object\"");
-  expect(source).toContain("\"nextAction\"");
-  expect(source).toContain("\"mistake\"");
-  expect(source).toContain("function learningPulseDetail");
-  expect(source).toContain("Sin nivel confirmado");
-  expect(source).toContain("sin evidencias");
+  expect(source).toContain("type CoachLearningPulseContract");
+  expect(source).toContain("toCoachLearnerContextContract");
+  expect(source).not.toContain("function buildLearningPulse");
+  expect(source).not.toContain("function readableProgressValue");
+  expect(contextContract).toContain("function readableProgressValue");
+  expect(contextContract).toContain("typeof value === \"object\"");
+  expect(contextContract).toContain("\"nextAction\"");
+  expect(contextContract).toContain("\"mistake\"");
+  expect(contextContract).toContain("function learningPulseFromLearnerContext");
+  expect(contextContract).toContain("function learningPulseDetail");
+  expect(contextContract).toContain("Sin nivel confirmado");
+  expect(contextContract).toContain("sin evidencias");
   expect(topBar).toContain("coach-status-pulse");
   expect(source).toContain("<CoachLearningPulsePanel");
   expect(learningPulsePanel).toContain("coach-learning-pulse");
@@ -332,15 +336,15 @@ test("ambiguous active class requests consult English OS current class before cl
 });
 
 test("saved position uses unit and lesson from the same context source", async () => {
-  const source = readFile("src/app/coach/page.tsx");
-  const start = source.indexOf("function getSavedPosition");
-  const end = source.indexOf("function firstProgressValue", start);
+  const source = readFile("src/modules/coach-integrations/contextContract.ts");
+  const start = source.indexOf("function savedPositionFromLearnerContext");
+  const end = source.indexOf("export function progressSnapshotFromLearnerContext", start);
   const getSavedPositionSource = source.slice(start, end);
 
   expect(getSavedPositionSource).toContain("const sources = [");
   expect(getSavedPositionSource).toContain("const pairedSource = sources.find");
-  expect(getSavedPositionSource).toContain("unit: String(pairedSource.unit");
-  expect(getSavedPositionSource).toContain("lesson: String(pairedSource.lesson");
+  expect(getSavedPositionSource).toContain("unit: text(pairedSource.unit");
+  expect(getSavedPositionSource).toContain("lesson: text(pairedSource.lesson");
   expect(getSavedPositionSource).not.toContain("recommended.lesson ||\n      recommended.currentLesson ||\n      current.lesson");
 });
 

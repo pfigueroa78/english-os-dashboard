@@ -117,6 +117,7 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   const messageList = readFile("src/modules/coach-chat/CoachMessageList.tsx");
   const composer = readFile("src/modules/coach-chat/CoachComposer.tsx");
   const coachController = readFile("src/modules/coach-controller/coachController.ts");
+  const apiClient = readFile("src/modules/coach-api/coachApiClient.ts");
 
   expect(source).toContain("const [coachSession, setCoachSession]");
   expect(source).toContain("const uiSession = createCoachSessionContract");
@@ -186,8 +187,11 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(source).toContain("no inventes Class 1");
   expect(readFile("public/prompts/coach/start-current-class.md")).toContain("apertura estratégica por etapas");
   expect(source).not.toContain("finish with an evaluation gate before progress can advance");
-  expect(source).toContain("readJsonResponse(response)");
-  expect(source).toContain("El servidor no devolvió contenido");
+  expect(source).toContain("createCoachApiClient");
+  expect(source).not.toContain("readJsonResponse(response)");
+  expect(source).not.toContain("fetch(");
+  expect(apiClient).toContain("readJsonResponse(response)");
+  expect(apiClient).toContain("El servidor no devolvió contenido");
 });
 
 test("mobile coach header keeps mode and unit/class visible", async () => {

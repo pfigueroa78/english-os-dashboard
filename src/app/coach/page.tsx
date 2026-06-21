@@ -9,6 +9,7 @@ import {
   copyCoachText,
   toggleCoachMessageFeedback,
 } from "@/modules/coach-actions/coachActions";
+import { createCoachApiClient } from "@/modules/coach-api/coachApiClient";
 import {
   buildInitialCoachMessages,
   buildInitialCoachMessage,
@@ -215,18 +216,6 @@ function nextCoachTextSize(current: CoachTextSize, direction: -1 | 1) {
   return COACH_TEXT_SIZE_ORDER[nextIndex] || "normal";
 }
 
-async function readJsonResponse(response: Response) {
-  const text = await response.text();
-  if (!text.trim()) {
-    throw new Error(`El servidor no devolvió contenido (${response.status || "sin estado"}). Intenta nuevamente.`);
-  }
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(`El servidor devolvió una respuesta inválida (${response.status}). Intenta nuevamente.`);
-  }
-}
-
 export default function CoachPage() {
   const { isLoaded, isSignedIn, user } = useUser();
   const [authTimedOut, setAuthTimedOut] = useState(false);
@@ -291,6 +280,7 @@ export default function CoachPage() {
   const recordedAudioChunksRef = useRef<Blob[]>([]);
   const coachAbortRef = useRef<AbortController | null>(null);
   const agentAbortRef = useRef<AbortController | null>(null);
+  const coachApi = createCoachApiClient();
 
   const activeAgent = SPECIALIST_AGENT_CONTRACTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENT_CONTRACTS[0];
   const activeAgentMetadata = SPECIALIST_AGENTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENTS[0];
@@ -441,9 +431,7 @@ export default function CoachPage() {
     setContextLoading(true);
     setContextError("");
     try {
-      const response = await fetch("/api/english-os/context", { method: "GET", cache: "no-store" });
-      const data = await readJsonResponse(response);
-      if (!response.ok || !data.ok) throw new Error(data.error || "Failed to load English OS context.");
+      const data = await coachApi.getContext();
 
       const { unit, lesson } = getSavedPosition(data);
       const resolvedUnit = unit ? normalizeUnitValue(unit) : "";
@@ -495,10 +483,7 @@ export default function CoachPage() {
     setResourcesError("");
     setResourcesNotice("");
     try {
-      const params = new URLSearchParams({ unit });
-      const response = await fetch(`/api/english-os/drive-unit-resources?${params.toString()}`, { method: "GET", cache: "no-store" });
-      const data = await readJsonResponse(response);
-      if (!response.ok || !data.ok) throw new Error(data.error || "Failed to load unit resources.");
+      const data = await coachApi.getDriveUnitResources(unit);
       setResources(Array.isArray(data.resources) ? data.resources : []);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown resources error";
@@ -532,11 +517,11 @@ export default function CoachPage() {
 
     setError("");
     try {
-      const params = new URLSearchParams({ unit, lesson: studyMode === "current" ? currentLesson : "" });
-      const endpoint = isGrammar ? "/api/english-os/grammar-workbook" : "/api/english-os/vocabulary-workbook";
-      const response = await fetch(`${endpoint}?${params.toString()}`, { method: "GET", cache: "no-store" });
-      const data = await readJsonResponse(response);
-      if (!response.ok || !data.ok) throw new Error(data.error || `Failed to create ${kind} workbook.`);
+      const data = await coachApi.createWorkbook({
+        kind,
+        unit,
+        lesson: studyMode === "current" ? currentLesson : "",
+      });
 
       const workbook = data.workbook as Workbook | undefined;
       if (!workbook?.fileUrl && !workbook?.exportUrl) {
@@ -599,14 +584,10 @@ export default function CoachPage() {
     agentAbortRef.current = controller;
 
     try {
-      const response = await fetch("/api/english-os/agents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const data = await coachApi.sendAgentMessage({
+        body: prepared.requestBody,
         signal: controller.signal,
-        body: JSON.stringify(prepared.requestBody),
       });
-      const data = await readJsonResponse(response);
-      if (!response.ok || !data.ok) throw new Error(data.error || "Specialist agent request failed.");
       setMessages((current) => [...current, createAgentCoachMessage(targetAgent, data)]);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -645,14 +626,10 @@ export default function CoachPage() {
     coachAbortRef.current = controller;
 
     try {
-      const response = await fetch("/api/english-os/coach", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const data = await coachApi.sendCoachMessage({
+        body: prepared.requestBody,
         signal: controller.signal,
-        body: JSON.stringify(prepared.requestBody),
       });
-      const data = await readJsonResponse(response);
-      if (!response.ok || !data.ok) throw new Error(data.error || "Coach request failed.");
 
       const next = resolveCoachResponseState({
         requestMessage: prepared.message,
@@ -817,14 +794,7 @@ export default function CoachPage() {
     const formData = createDictationFormData(audioBlob);
 
     try {
-      const response = await fetch("/api/english-os/transcribe", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data?.text) {
-        throw new Error(data?.error || "Transcription failed.");
-      }
+      const data = await coachApi.transcribeAudio(formData);
       if (!insertDictationText(String(data.text))) {
         setError("No pude convertir el audio en texto útil. Intenta hablar más claro y con menos ruido de fondo.");
       }

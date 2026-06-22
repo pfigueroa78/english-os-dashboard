@@ -19,7 +19,7 @@ test("coach context resolves saved unit and lesson from the same source", () => 
     },
   };
 
-  expect(getSavedPosition(data)).toEqual({ unit: "Unit 4", lesson: "Advice with contrast" });
+  expect(getSavedPosition(data)).toEqual({ unit: "Unit 4", lesson: "Advice with contrast", classNumber: null });
   expect(normalizeUnitValue("4")).toBe("Unit 4");
 });
 

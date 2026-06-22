@@ -704,7 +704,13 @@ export function useCoachPageController() {
       setStudyClassNumber(next.studyClassNumber);
       if (next.currentLesson) setCurrentLesson(next.currentLesson);
 
-      setMessages((current) => [...current, next.coachMessage]);
+      const activeInitialMessage = buildInitialCoachMessage(
+        next.session.activeUnit || next.studyUnit || currentUnit || "tu posicion actual",
+        next.session.lessonTitle || next.currentLesson || currentLesson,
+        "",
+        learnerName,
+      );
+      setMessages((current) => [...replaceInitialCoachGreeting(current, activeInitialMessage), next.coachMessage]);
     } catch (err) {
       if (isAbortError(err)) return;
       const errorMessage = err instanceof Error ? err.message : "Unknown error";

@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { classifyCoachIntent, isGiveClassQuestion } from "../../src/lib/coachIntent";
+import { getSavedPosition } from "../../src/modules/coach-context/coachContext";
 
 // Validation scope: UI shell + source contracts + pedagogy-first coach routing.
 const root = process.cwd();
@@ -454,9 +455,9 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(handler).toContain("function ensureTerminalPeriod");
   expect(handler).toContain("Learning objective|Communication mission");
   expect(handler).toContain("?::\\*\\*|\\*\\*:|:");
-  expect(renderer).toContain('Current target: **${reference}**.');
+  expect(renderer).toContain('Hoy trabajaremos **${reference}**.');
   expect(renderer).toContain('Focus: **${formattedSkillFocus}**');
-  expect(renderer).toContain('First micro-step: **${identity.sections.split("+")[0]?.trim() || displayLesson}**.');
+  expect(renderer).toContain('Empezamos con **${identity.sections.split("+")[0]?.trim() || displayLesson}**.');
   expect(renderer).toContain("learnerFriendlyFocus");
   expect(renderer).toContain("ensureMinimumOpeningTask");
   expect(handler).toContain("Let’s start with a short prediction before watching");
@@ -509,6 +510,30 @@ test("class opening cannot invent evaluation or logging results", async () => {
   expect(behavior).toContain("Teacher reaction");
   expect(behavior).toContain("Use 👍 when the answer is clearly correct or strong");
   expect(readFile("public/prompts/coach-route/general-system.md")).toContain("Cambridge-style correction");
+});
+
+test("saved position prefers current class state over stale user unit", async () => {
+  expect(getSavedPosition({
+    context: {
+      user: {
+        "Current Unit": "Unit 1",
+        "Current Lesson": "Old lesson",
+      },
+      learningState: {
+        currentUnit: "Unit 4",
+        currentClass: 28,
+      },
+      currentClassIndex: {
+        unit: "Unit 4",
+        classNumber: 28,
+        lesson: "Business advice speaking practice: expanding advice with contrast",
+      },
+    },
+  })).toEqual({
+    unit: "Unit 4",
+    lesson: "Business advice speaking practice: expanding advice with contrast",
+    classNumber: 28,
+  });
 });
 
 test("UTF-8 integrity is enforced before every build", async () => {

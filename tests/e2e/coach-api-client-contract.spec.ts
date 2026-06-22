@@ -33,7 +33,8 @@ test("coach api client centralizes English OS endpoint calls", async () => {
     "/api/english-os/transcribe",
   ]);
   expect(calls[0].init).toMatchObject({ method: "GET", cache: "no-store" });
-  expect(calls[4].init).toMatchObject({ method: "POST", headers: { "Content-Type": "application/json" } });
+  expect(calls[4].init?.method).toBe("POST");
+  expect(new Headers(calls[4].init?.headers).get("Content-Type")).toBe("application/json");
   expect(calls[5].init?.body).toBe(JSON.stringify({ message: "Dame la clase" }));
   expect(calls[6].init?.method).toBe("POST");
 });

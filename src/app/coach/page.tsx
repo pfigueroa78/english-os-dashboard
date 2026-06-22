@@ -110,7 +110,7 @@ export default function CoachPage() {
         {state.error && <div className="mb-3 rounded-2xl border border-red-800 bg-red-950 p-4 text-sm text-red-100">{state.error}</div>}
 
         <div
-          className={`coach-layout grid min-h-0 min-w-0 max-w-full flex-1 gap-2 ${state.sidebarOpen ? "coach-layout-open" : "coach-layout-closed"}`}
+          className={`coach-layout grid min-h-0 w-full min-w-0 max-w-full flex-1 gap-2 ${state.sidebarOpen ? "coach-layout-open" : "coach-layout-closed"}`}
           style={layoutStyle}
         >
           {state.sidebarOpen && <aside id="coach-sidebar" className="coach-sidebar min-w-0 max-w-full space-y-2 overflow-x-hidden">

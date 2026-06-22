@@ -5,6 +5,7 @@ import { getApiLearnerIdentity } from "@/lib/apiLearnerIdentity";
 import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
 import { renderServerPrompt } from "@/modules/coach-prompts/serverPromptRegistry";
+import { getSavedPosition } from "@/modules/coach-context/coachContext";
 import {
   hasExplicitClassCoordinates,
   isGiveClassQuestion,
@@ -13,6 +14,7 @@ import {
   unitGuideIntentKind,
 } from "@/lib/coachIntent";
 import { createCoachSessionContract, legacyActiveClass, legacyActiveUnit } from "@/modules/coach-session/contract";
+import { transitionCoachSession } from "@/modules/coach-session/stateMachine";
 import {
   mergeClassTargetWithPayload,
   resolveClassTargetFromMessage,
@@ -327,6 +329,7 @@ function renderClassReply(params: {
   identity: ClassIdentity;
   unit: number;
   localClass: number;
+  displayClass?: number | null;
 }) {
   const identity = params.identity;
   const title = unitTitle(params.unit);
@@ -337,7 +340,7 @@ function renderClassReply(params: {
     identity,
   );
   const reference = [
-    `class ${params.localClass}`,
+    `class ${params.displayClass || params.localClass}`,
     displayLesson,
   ].filter(Boolean).join(" · ");
   const header = [
@@ -657,8 +660,9 @@ export async function coachPost(request: Request) {
   const context = await getLearnerContext(email);
   const user = context?.user || {};
   const learnerId = user["Learner ID"] || context?.learnerId || email;
-  const currentUnit = user["Current Unit"] || context?.currentUnit || "";
-  const currentLesson = user["Current Lesson"] || context?.currentLesson || "";
+  const savedPosition = getSavedPosition(context);
+  const currentUnit = savedPosition.unit || user["Current Unit"] || context?.currentUnit || "";
+  const currentLesson = savedPosition.lesson || user["Current Lesson"] || context?.currentLesson || "";
   const sessionFor = (input: Parameters<typeof createCoachSessionContract>[0]) =>
     createCoachSessionContract({
       savedUnit: currentUnit,
@@ -666,6 +670,12 @@ export async function coachPost(request: Request) {
       source: "english_os",
       ...input,
     });
+  const baseSession = sessionFor({ mode: currentUnit ? "current" : "fallback", activeUnit: currentUnit, resourcesUnit: currentUnit });
+  const sessionEventsFor = (session: ReturnType<typeof createCoachSessionContract>) =>
+    transitionCoachSession({
+      current: baseSession,
+      event: { type: "API_RETURNED_SESSION", session },
+    }).events;
 
   if (image) {
     if (!/^data:image\/(png|jpe?g|webp);base64,/i.test(image.dataUrl)) {
@@ -684,6 +694,7 @@ export async function coachPost(request: Request) {
       agent: "coach",
       reply,
       session,
+      sessionEvents: sessionEventsFor(session),
       source: "Ephemeral Visual Vocabulary Analysis",
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
@@ -715,6 +726,7 @@ export async function coachPost(request: Request) {
           "Puedes escribir, por ejemplo: **Dame la clase 2 de la unidad 4**.",
         ].join("\n"),
         session,
+        sessionEvents: sessionEventsFor(session),
         activeUnit: legacyActiveUnit(session),
         activeClass: legacyActiveClass(session),
         source: "Current Class Clarification",
@@ -738,19 +750,20 @@ export async function coachPost(request: Request) {
     );
     assertNoMetadataFallback(modelBody);
     const identity = classIdentity(content);
+    const displayClass = target.explicitClassRequest ? localClass : globalClass || localClass;
     const position = learnerPositionLine({
       context,
       name: learnerName(context, ""),
       requestedUnit: unit,
-      requestedClass: localClass,
+      requestedClass: displayClass,
       explicitClassRequest: target.explicitClassRequest,
     });
-    const reply = renderClassReply({ body: modelBody, position, identity, unit, localClass });
+    const reply = renderClassReply({ body: modelBody, position, identity, unit, localClass, displayClass });
     const u = usage(openaiData);
     const session = sessionFor({
       mode: "class",
       activeUnit: unit,
-      activeClassNumber: localClass,
+      activeClassNumber: displayClass,
       lessonTitle: identity.lessonTitle,
       resourcesUnit: unit,
     });
@@ -760,6 +773,7 @@ export async function coachPost(request: Request) {
       agent: "coach",
       reply,
       session,
+      sessionEvents: sessionEventsFor(session),
       activeUnit: legacyActiveUnit(session),
       activeClass: legacyActiveClass(session),
       source: "Local Class Pack + Pedagogy Prompt",
@@ -799,6 +813,7 @@ export async function coachPost(request: Request) {
       agent: "coach",
       reply,
       session,
+      sessionEvents: sessionEventsFor(session),
       activeUnit: legacyActiveUnit(session),
       source: "Seven Local Teaching Contracts + Review Pedagogy Prompt",
       deterministicIdentity: true,
@@ -838,6 +853,7 @@ export async function coachPost(request: Request) {
       agent: "coach",
       reply,
       session,
+      sessionEvents: sessionEventsFor(session),
       activeUnit: legacyActiveUnit(session),
       source: `Seven Local Teaching Contracts + ${guideKind} Guide Prompt`,
       deterministicIdentity: true,
@@ -854,6 +870,7 @@ export async function coachPost(request: Request) {
     agent: "coach",
     reply,
     session,
+    sessionEvents: sessionEventsFor(session),
     usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
   });
 }

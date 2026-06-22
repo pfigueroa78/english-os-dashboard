@@ -283,7 +283,7 @@ test("resource players are width-contained and load on demand", async () => {
 
   expect(materialsPanel).toContain('data-testid="resource-card"');
   expect(pageController).toContain("resourcesNotice");
-  expect(pageController).toContain("Los materiales conectados no están configurados");
+  expect(pageController).toContain("Los materiales conectados no estan configurados");
   expect(pageController).toContain("Descargar XLSX");
   expect(pageController).toContain("Abrir en Sheets");
   expect(guidesPanel).toContain("coach-workbook-card");

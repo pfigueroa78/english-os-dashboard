@@ -1,4 +1,5 @@
 import { createCoachSessionContract } from "@/modules/coach-session/contract";
+import { transitionCoachSession } from "@/modules/coach-session/stateMachine";
 import type { CoachSessionState } from "@/modules/coach-session/types";
 
 export type CoachControllerMessage = {
@@ -95,7 +96,7 @@ export function resolveCoachResponseState(params: {
   data: any;
   currentUnit: string;
   currentLesson: string;
-  getSavedPosition: (data: any) => { unit: string; lesson: string };
+  getSavedPosition: (data: any) => { unit: string; lesson: string; classNumber?: number | null };
 }) {
   const savedPosition = params.getSavedPosition(params.data);
   const reply = params.data.reply || "No response returned.";
@@ -105,23 +106,52 @@ export function resolveCoachResponseState(params: {
   const unit = activeUnit ? `Unit ${activeUnit}` : "";
   const lesson = savedPosition.lesson;
   const studyMode: CoachStudyMode = isReviewRequest(params.requestMessage) ? "review" : isGuideRequest(params.requestMessage) ? "guide" : "class";
-  const session = params.data.session
-    ? params.data.session as CoachSessionState
-    : createCoachSessionContract({
-      mode: coachModeFromStudyMode(studyMode),
-      savedUnit: savedPosition.unit || params.currentUnit,
-      savedLesson: lesson || params.currentLesson,
-      activeUnit: unit || params.currentUnit,
-      activeClassNumber: activeClass,
-      lessonTitle: lesson || params.currentLesson,
-      resourcesUnit: unit || params.currentUnit,
-      source: "english_os",
-    });
+  const currentSession = createCoachSessionContract({
+    mode: savedPosition.classNumber ? "class" : "current",
+    savedUnit: savedPosition.unit || params.currentUnit,
+    savedLesson: lesson || params.currentLesson,
+    activeUnit: savedPosition.unit || params.currentUnit,
+    activeClassNumber: savedPosition.classNumber,
+    lessonTitle: lesson || params.currentLesson,
+    resourcesUnit: savedPosition.unit || params.currentUnit,
+    source: "english_os",
+  });
+  const transition = transitionCoachSession({
+    current: currentSession,
+    event: params.data.session
+      ? { type: "API_RETURNED_SESSION", session: params.data.session as CoachSessionState }
+      : studyMode === "review"
+        ? {
+          type: "USER_REQUESTED_REVIEW",
+          unit: unit || savedPosition.unit || params.currentUnit,
+          savedUnit: savedPosition.unit || params.currentUnit,
+          savedLesson: lesson || params.currentLesson,
+          lessonTitle: lesson || params.currentLesson,
+        }
+        : studyMode === "guide"
+          ? {
+            type: "USER_REQUESTED_GUIDE",
+            unit: unit || savedPosition.unit || params.currentUnit,
+            savedUnit: savedPosition.unit || params.currentUnit,
+            savedLesson: lesson || params.currentLesson,
+            lessonTitle: lesson || params.currentLesson,
+          }
+          : {
+            type: "USER_REQUESTED_CLASS",
+            unit: unit || savedPosition.unit || params.currentUnit,
+            classNumber: activeClass || savedPosition.classNumber,
+            savedUnit: savedPosition.unit || params.currentUnit,
+            savedLesson: lesson || params.currentLesson,
+            lessonTitle: lesson || params.currentLesson,
+          },
+  });
+  const session = transition.state;
 
   return {
     reply,
     studyMode,
     session,
+    sessionEvents: transition.events,
     studyUnit: session.activeUnit || unit,
     studyClassNumber: session.activeClassNumber && studyMode === "class" ? Number(session.activeClassNumber) : null,
     currentLesson: session.lessonTitle || lesson,

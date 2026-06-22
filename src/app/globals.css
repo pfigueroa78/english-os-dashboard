@@ -405,6 +405,14 @@ body {
 .coach-split-handle {
   display: none;
 }
+.coach-layout {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+}
+.coach-chat-pane,
+.coach-sidebar {
+  grid-column: 1;
+}
 
 @media (min-width: 1024px) {
   .coach-layout-open { grid-template-columns: minmax(260px, var(--coach-sidebar-width, 340px)) 0.45rem minmax(0, 1fr); }
@@ -506,13 +514,6 @@ body {
   }
   #coach-sidebar > section:nth-of-type(4) {
     display: none;
-  }
-  .coach-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .coach-chat-pane,
-  .coach-sidebar {
-    grid-column: 1;
   }
   .coach-split-handle {
     display: none;

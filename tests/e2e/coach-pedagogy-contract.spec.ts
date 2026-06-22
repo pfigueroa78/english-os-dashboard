@@ -449,7 +449,7 @@ test("application-owned identity precedes model-authored teaching", async () => 
   const rendererEnd = handler.indexOf("function renderReviewReply");
   const renderer = handler.slice(rendererStart, rendererEnd);
 
-  expect(renderer).toContain("const teachingBody = ensureMinimumOpeningTask");
+  expect(renderer).toContain("const teachingBody = ensureRichOpeningTask");
   expect(renderer).toContain("stripClassConfirmationDetours(limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections))");
   expect(renderer).toContain('return readableMarkdownPunctuation(sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]');
   expect(renderer).toContain('`# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`');
@@ -461,8 +461,8 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(renderer).toContain('Focus: **${formattedSkillFocus}**');
   expect(renderer).toContain('Empezamos con **${identity.sections.split("+")[0]?.trim() || displayLesson}**.');
   expect(renderer).toContain("learnerFriendlyFocus");
-  expect(renderer).toContain("ensureMinimumOpeningTask");
-  expect(handler).toContain("Let’s start with a short prediction before watching");
+  expect(renderer).toContain("ensureRichOpeningTask");
+  expect(handler).toContain("Video Class - Before watching");
   expect(renderer).not.toContain("const courseReference");
   expect(renderer).not.toContain("bookPages");
   expect(renderer).not.toContain("pdfPages");
@@ -512,6 +512,22 @@ test("class opening cannot invent evaluation or logging results", async () => {
   expect(behavior).toContain("Teacher reaction");
   expect(behavior).toContain("Use 👍 when the answer is clearly correct or strong");
   expect(readFile("public/prompts/coach-route/general-system.md")).toContain("Cambridge-style correction");
+});
+
+test("video class openings are enriched when the model returns a thin response", async () => {
+  const handler = readFile("src/lib/coachRouteHandler.ts");
+  const helperStart = handler.indexOf("export function ensureRichOpeningTask");
+  const helperEnd = handler.indexOf("function renderClassReply", helperStart);
+  const helper = handler.slice(helperStart, helperEnd);
+
+  expect(helper).toContain("hasExplicitOpeningTask");
+  expect(helper).toContain("wordCount >= 45");
+  expect(helper).toContain("Video Class - Before watching");
+  expect(helper).toContain("We will not invent the video transcript");
+  expect(helper).toContain("Two model answers:");
+  expect(helper).toContain("Your turn - answer in English:");
+  expect(helper).toContain("What do you think this video will show?");
+  expect(helper).toContain("Write two short sentences");
 });
 
 test("saved position prefers current class state over stale user unit", async () => {

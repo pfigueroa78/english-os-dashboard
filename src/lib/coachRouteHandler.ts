@@ -51,7 +51,7 @@ type CoachMessage = { role: "user" | "coach"; content: string };
 type CoachImageAttachment = { dataUrl: string; mimeType?: string; name?: string };
 type CoachRequest = { message: string; conversationHistory?: CoachMessage[]; image?: CoachImageAttachment };
 
-type ClassIdentity = {
+export type ClassIdentity = {
   lessonTitle: string;
   bookPages: string;
   pdfPages: string;
@@ -299,10 +299,14 @@ function learnerFriendlyFocus(value: string) {
     .trim();
 }
 
-function ensureMinimumOpeningTask(reply: string, identity: ClassIdentity) {
+function hasExplicitOpeningTask(text: string) {
+  return /(?:\byour turn\b|\bnow your turn\b|\banswer (?:in english|these|this)|\bwrite (?:two|2|one|1|a|your)|\btell me\b|\bcomplete (?:these|this)|\btry\b|^\s*\d+\.\s+\S)/im.test(text);
+}
+
+export function ensureMinimumOpeningTask(reply: string, identity: ClassIdentity) {
   const text = String(reply || "").trim();
   const wordCount = text.split(/\s+/).filter(Boolean).length;
-  if (wordCount >= 30 && /\b(your turn|try|answer|write|tell me|prediction|predict|responde|escribe)\b/i.test(text)) return text;
+  if (wordCount >= 45 && hasExplicitOpeningTask(text)) return text;
 
   const firstSection = identity.sections.split("+")[0]?.trim() || identity.lessonTitle || "Starting point";
   if (/video|before watching/i.test(firstSection)) {
@@ -324,6 +328,51 @@ function ensureMinimumOpeningTask(reply: string, identity: ClassIdentity) {
   ].filter(Boolean).join("\n");
 }
 
+export function ensureRichOpeningTask(reply: string, identity: ClassIdentity) {
+  const text = String(reply || "").trim();
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  if (wordCount >= 45 && hasExplicitOpeningTask(text)) return text;
+
+  const firstSection = identity.sections.split("+")[0]?.trim() || identity.lessonTitle || "Starting point";
+  if (/video|before watching/i.test(firstSection)) {
+    return [
+      text,
+      "",
+      "## Video Class - Before watching",
+      "",
+      "We will not invent the video transcript. First, we prepare your ideas so you can watch or discuss the video with a clear purpose.",
+      "",
+      "Two model answers:",
+      "",
+      "> I think the video will show different daily routines and how people manage their energy.",
+      "> I expect to use Unit language like morning person, night owl, sleep habits, and productivity.",
+      "",
+      "> The video might compare people who work better early with people who feel more creative at night.",
+      "> I can use time clauses such as after I wake up, before I start work, and whenever I feel tired.",
+      "",
+      "Your turn - answer in English:",
+      "",
+      "1. What do you think this video will show?",
+      "2. Which useful Unit words or time clauses can you use to talk about it?",
+      "",
+      "Write two short sentences. I will correct your answer and then we will continue with the next video step.",
+    ].filter(Boolean).join("\n");
+  }
+
+  return [
+    text,
+    "",
+    "## Starting point",
+    "",
+    "Two model answers:",
+    "",
+    "> I can explain my idea with a short example.",
+    "> I can connect the lesson topic to my work or daily routine.",
+    "",
+    "Your turn - answer in English with two short sentences about the lesson topic. I will continue from your answer.",
+  ].filter(Boolean).join("\n");
+}
+
 function renderClassReply(params: {
   body: string;
   position: string;
@@ -336,7 +385,7 @@ function renderClassReply(params: {
   const title = unitTitle(params.unit);
   const displayLesson = identity.lessonTitle || identity.sections.split("+")[0]?.trim() || "Class session";
   const formattedSkillFocus = learnerFriendlyFocus(identity.skillFocus.split(",").map((item) => item.trim()).filter(Boolean).join(", "));
-  const teachingBody = ensureMinimumOpeningTask(
+  const teachingBody = ensureRichOpeningTask(
     stripClassConfirmationDetours(limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections)),
     identity,
   );

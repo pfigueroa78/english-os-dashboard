@@ -1,4 +1,5 @@
 import { createCoachSessionContract } from "@/modules/coach-session/contract";
+import { coachModeFromStudyMode, type CoachSessionStudyMode } from "@/modules/coach-session/application";
 import { transitionCoachSession } from "@/modules/coach-session/stateMachine";
 import type { CoachSessionState } from "@/modules/coach-session/types";
 
@@ -24,7 +25,7 @@ export type CoachImagePayload = {
   mimeType?: string;
 };
 
-export type CoachStudyMode = "current" | "class" | "review" | "guide";
+export type CoachStudyMode = CoachSessionStudyMode;
 
 export type AgentContractLike = {
   id: string;
@@ -39,10 +40,7 @@ export function isGuideRequest(value: string) {
   return /\b(gu[ií]a|guide)\b/i.test(value) && /\b(gram[aá]tica|grammar|vocabulario|vocabulary)\b/i.test(value);
 }
 
-export function coachModeFromStudyMode(mode: CoachStudyMode): CoachSessionState["mode"] {
-  if (mode === "review" || mode === "guide" || mode === "class") return mode;
-  return "current";
-}
+export { coachModeFromStudyMode };
 
 export function inferCoordinatesFromReply(reply: string) {
   const text = String(reply || "");

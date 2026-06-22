@@ -29,7 +29,6 @@ import {
   createCoachErrorMessage,
   createDemoAgentTurn,
   createDemoCoachTurn,
-  coachModeFromStudyMode,
   prepareAgentMessageTurn,
   prepareCoachMessageTurn,
   resolveCoachResponseState,
@@ -61,7 +60,13 @@ import {
   stopMediaDictationRuntime,
   toggleCoachSpeechRuntime,
 } from "@/modules/coach-runtime/coachRuntime";
-import { createCoachSessionContract } from "@/modules/coach-session/contract";
+import {
+  createContextLoadedSession,
+  createInitialCoachSession,
+  createSavedPositionSession,
+  createSelectedUnitSession,
+  resolveCoachUiSession,
+} from "@/modules/coach-session/application";
 import type { CoachSessionState } from "@/modules/coach-session/types";
 import {
   toCoachClassMaterialsPanelModel,
@@ -260,14 +265,10 @@ export function useCoachPageController() {
   const [studyMode, setStudyMode] = useState<StudyMode>("current");
   const [studyClassNumber, setStudyClassNumber] = useState<number | null>(null);
   const [coachSession, setCoachSession] = useState<CoachSessionState>(() =>
-    createCoachSessionContract({
-      mode: "current",
-      savedUnit: E2E_DEMO ? DEMO_UNIT : null,
-      savedLesson: E2E_DEMO ? DEMO_LESSON : null,
-      activeUnit: E2E_DEMO ? DEMO_UNIT : null,
-      lessonTitle: E2E_DEMO ? DEMO_LESSON : null,
-      resourcesUnit: E2E_DEMO ? DEMO_UNIT : null,
-      source: E2E_DEMO ? "fallback" : "english_os",
+    createInitialCoachSession({
+      e2eDemo: E2E_DEMO,
+      demoUnit: DEMO_UNIT,
+      demoLesson: DEMO_LESSON,
     }),
   );
   const [learningPulse, setLearningPulse] = useState<CoachLearningPulse>(() => buildLearningPulse({}));
@@ -310,15 +311,13 @@ export function useCoachPageController() {
 
   const activeAgent = SPECIALIST_AGENT_CONTRACTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENT_CONTRACTS[0];
   const activeAgentMetadata = SPECIALIST_AGENTS.find((agent) => agent.id === activeAgentId) || SPECIALIST_AGENTS[0];
-  const uiSession = createCoachSessionContract({
-    mode: coachModeFromStudyMode(studyMode),
-    savedUnit: currentUnit || coachSession.savedUnit,
-    savedLesson: currentLesson || coachSession.savedLesson,
-    activeUnit: coachSession.activeUnit || studyUnit || currentUnit,
-    activeClassNumber: studyClassNumber || coachSession.activeClassNumber,
-    lessonTitle: coachSession.lessonTitle || currentLesson,
-    resourcesUnit: coachSession.resourcesUnit || coachSession.activeUnit || studyUnit || currentUnit,
-    source: coachSession.source,
+  const uiSession = resolveCoachUiSession({
+    studyMode,
+    currentUnit,
+    currentLesson,
+    studyUnit,
+    studyClassNumber,
+    coachSession,
   });
   const activeStudyUnit = uiSession.resourcesUnit || uiSession.activeUnit || currentUnit;
   const activeStudyUnitLabel = unitLabel(activeStudyUnit);
@@ -468,28 +467,19 @@ export function useCoachPageController() {
     try {
       const data = await coachApi.getContext();
 
-      const { unit, lesson, classNumber } = getSavedPosition(data);
-      const resolvedUnit = unit ? normalizeUnitValue(unit) : "";
+      const contextSession = createContextLoadedSession({ data, getSavedPosition });
+      const resolvedUnit = contextSession.unit ? normalizeUnitValue(contextSession.unit) : "";
+      const lesson = contextSession.lesson;
+      const classNumber = contextSession.classNumber;
       const progressSnapshot = buildProgressSnapshot(data);
-      setCoachSession(createCoachSessionContract({
-        mode: classNumber ? "class" : "current",
-        savedUnit: resolvedUnit || null,
-        savedLesson: lesson || null,
-        activeUnit: resolvedUnit || null,
-        activeClassNumber: classNumber,
-        lessonTitle: lesson || null,
-        resourcesUnit: resolvedUnit || null,
-        source: "english_os",
-      }));
+      setCoachSession(contextSession.session);
 
       if (resolvedUnit) {
         setCurrentUnit(resolvedUnit);
         setStudyUnit(resolvedUnit);
       }
-      if (classNumber) {
-        setStudyClassNumber(classNumber);
-        setStudyMode("class");
-      }
+      setStudyClassNumber(classNumber);
+      setStudyMode(contextSession.studyMode);
       if (lesson) setCurrentLesson(lesson);
       setLearningPulse(buildLearningPulse(data));
 
@@ -921,44 +911,32 @@ export function useCoachPageController() {
   function handleStudyUnitChange(unit: string) {
     setStudyUnit(unit);
     setStudyMode("class");
-    setCoachSession(createCoachSessionContract({
-      mode: "class",
+    setCoachSession(createSelectedUnitSession({
+      current: coachSession,
+      unit,
       savedUnit: currentUnit,
       savedLesson: currentLesson,
-      activeUnit: unit,
-      activeClassNumber: null,
-      lessonTitle: currentLesson,
-      resourcesUnit: unit,
-      source: "request",
     }));
   }
 
   function handleStudyUnitBlur(unit: string) {
     const normalizedUnit = normalizeUnitValue(unit);
     setStudyUnit(normalizedUnit);
-    setCoachSession(createCoachSessionContract({
-      mode: "class",
+    setCoachSession(createSelectedUnitSession({
+      current: coachSession,
+      unit: normalizedUnit,
       savedUnit: currentUnit,
       savedLesson: currentLesson,
-      activeUnit: normalizedUnit,
-      activeClassNumber: null,
-      lessonTitle: currentLesson,
-      resourcesUnit: normalizedUnit,
-      source: "request",
     }));
   }
 
   function handleUseSavedPosition() {
     setStudyUnit(normalizeUnitValue(currentUnit));
     setStudyMode("current");
-    setCoachSession(createCoachSessionContract({
-      mode: "current",
+    setCoachSession(createSavedPositionSession({
+      current: coachSession,
       savedUnit: currentUnit,
       savedLesson: currentLesson,
-      activeUnit: currentUnit,
-      lessonTitle: currentLesson,
-      resourcesUnit: currentUnit,
-      source: "english_os",
     }));
   }
 

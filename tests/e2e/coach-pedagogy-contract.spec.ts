@@ -122,7 +122,9 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   const apiClient = readFile("src/modules/coach-api/coachApiClient.ts");
 
   expect(pageController).toContain("const [coachSession, setCoachSession]");
-  expect(pageController).toContain("const uiSession = createCoachSessionContract");
+  expect(pageController).toContain("const uiSession = resolveCoachUiSession");
+  expect(pageController).toContain("createContextLoadedSession");
+  expect(pageController).not.toContain('from "@/modules/coach-session/contract"');
   expect(pageController).toContain("const topBarModel = toCoachTopBarModel(uiSession, learningPulseLabel)");
   expect(pageController).toContain("const studyPanelModel = toCoachStudyPanelModel");
   expect(pageController).toContain("const learningPulsePanelModel = toCoachLearningPulsePanelModel");

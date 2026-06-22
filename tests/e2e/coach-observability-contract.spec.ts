@@ -43,6 +43,15 @@ test("coach session telemetry stores sanitized transition evidence", () => {
 });
 
 test("coach diagnostics view model exposes render-ready session signals", () => {
+  expect(toCoachDiagnosticsPanelModel({
+    e2eDemo: false,
+    contextError: "",
+    diagnosticsError: "",
+    diagnosticsLoading: false,
+    diagnosticChecks: [],
+    sessionTelemetry: [],
+  }).visible).toBe(true);
+
   const model = toCoachDiagnosticsPanelModel({
     e2eDemo: false,
     contextError: "",

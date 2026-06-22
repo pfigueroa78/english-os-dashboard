@@ -69,11 +69,21 @@ export function createCoachApiClient(fetcher: CoachFetch = fetch, learnerEmail =
 
     getDriveUnitResources(unit: string) {
       const params = new URLSearchParams({ unit });
-      return requestJson(
-        `/api/english-os/drive-unit-resources?${params.toString()}`,
-        { method: "GET", cache: "no-store" },
-        "Failed to load unit resources.",
-      );
+      return fetcher(`/api/english-os/drive-unit-resources?${params.toString()}`, {
+        method: "GET",
+        cache: "no-store",
+        headers: headersWithLearnerEmail(undefined, learnerEmail),
+      }).then(async (response) => {
+        if (response.status === 404) {
+          return {
+            ok: true,
+            resources: [],
+            notice: `No encontre materiales conectados para ${unit}. Puedes continuar la clase sin bloquearte.`,
+          };
+        }
+        const data = await readJsonResponse(response);
+        return assertOkResponse(response, data, "Failed to load unit resources.");
+      });
     },
 
     createWorkbook(params: { kind: "grammar" | "vocabulary"; unit: string; lesson?: string }) {

@@ -537,6 +537,7 @@ export function useCoachPageController() {
     try {
       const data = await coachApi.getDriveUnitResources(unit);
       setResources(Array.isArray(data.resources) ? data.resources : []);
+      setResourcesNotice(typeof data.notice === "string" ? data.notice : "");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown resources error";
       if (/Missing English OS environment variables/i.test(message)) {

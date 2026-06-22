@@ -461,6 +461,7 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(renderer).toContain('Focus: **${formattedSkillFocus}**');
   expect(renderer).toContain('Empezamos con **${identity.sections.split("+")[0]?.trim() || displayLesson}**.');
   expect(renderer).toContain("learnerFriendlyFocus");
+  expect(handler).toContain("it combines");
   expect(renderer).toContain("ensureRichOpeningTask");
   expect(handler).toContain("Video Class - Before watching");
   expect(renderer).not.toContain("const courseReference");

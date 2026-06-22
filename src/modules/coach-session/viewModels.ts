@@ -293,12 +293,7 @@ export function toCoachDiagnosticsPanelModel(input: {
   });
 
   return {
-    visible: !input.e2eDemo && Boolean(
-      input.contextError ||
-      input.diagnosticsError ||
-      input.diagnosticChecks.length > 0 ||
-      telemetryItems.length > 0,
-    ),
+    visible: !input.e2eDemo,
     loading: input.diagnosticsLoading,
     error: input.diagnosticsError,
     checks: input.diagnosticChecks,

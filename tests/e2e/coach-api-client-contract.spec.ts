@@ -50,6 +50,15 @@ test("coach api client turns invalid responses into user-safe errors", async () 
   await expect(failedClient.getDriveUnitResources("Unit 4")).rejects.toThrow("Missing English OS environment variables.");
 });
 
+test("coach api client treats missing unit resources as an empty non-blocking state", async () => {
+  const client = createCoachApiClient(async () => new Response("<h1>Not found</h1>", { status: 404 }));
+  await expect(client.getDriveUnitResources("Unit 5")).resolves.toMatchObject({
+    ok: true,
+    resources: [],
+    notice: expect.stringContaining("Unit 5"),
+  });
+});
+
 test("coach page consumes the api client instead of hardcoding endpoint fetches", async () => {
   const fs = await import("node:fs/promises");
   const pageSource = await fs.readFile("src/app/coach/page.tsx", "utf8");

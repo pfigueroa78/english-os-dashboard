@@ -2,6 +2,7 @@ import {
   extractRequestedClassNumber,
   extractRequestedUnitNumber,
   hasExplicitClassCoordinates,
+  isActiveClassRequest,
 } from "@/lib/coachIntent";
 
 export type CoachClassCoordinates = {
@@ -144,14 +145,15 @@ export function resolveClassTargetFromMessage(message: string, fallbackUnit?: st
   );
   const unit = extractRequestedUnitNumber(message) || activeUnit || Number(String(fallbackUnit || "").match(/\d{1,2}/)?.[0] || 0) || null;
   const explicitClass = extractRequestedClassNumber(message);
+  const explicitClassRequest = hasExplicitClassCoordinates(message);
   const localClass = explicitClass || resolveCurrentLocalClass(context, unit);
   const globalClass = unit && localClass ? (unit - 1) * 7 + localClass : null;
   return {
     unit,
     localClass,
     globalClass,
-    explicitClassRequest: hasExplicitClassCoordinates(message),
-    needsCurrentClassLookup: !unit || !localClass,
+    explicitClassRequest,
+    needsCurrentClassLookup: !explicitClassRequest && isActiveClassRequest(message),
   };
 }
 

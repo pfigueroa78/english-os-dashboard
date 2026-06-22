@@ -26,7 +26,7 @@ test("coach target resolver honors explicit unit/class requests over saved posit
   });
 });
 
-test("coach target resolver uses the active saved class for ambiguous class starters", async () => {
+test("coach target resolver uses saved class as fallback but still requests canonical active-class lookup", async () => {
   const context = {
     recommendedCurrentPosition: {
       currentUnit: "Unit 4",
@@ -41,7 +41,7 @@ test("coach target resolver uses the active saved class for ambiguous class star
     localClass: 6,
     globalClass: 27,
     explicitClassRequest: false,
-    needsCurrentClassLookup: false,
+    needsCurrentClassLookup: true,
   });
 });
 

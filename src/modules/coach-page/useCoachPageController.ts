@@ -16,7 +16,6 @@ import {
   buildInitialCoachMessages,
   buildLearningPulse,
   buildProgressSnapshot,
-  extractUnitNumber,
   getLearnerDisplayName,
   getSavedPosition,
   learningPulseDetail,
@@ -26,21 +25,37 @@ import {
 } from "@/modules/coach-context/coachContext";
 import {
   createAgentCoachMessage,
-  createCoachErrorMessage,
   createDemoAgentTurn,
-  createDemoCoachTurn,
   prepareAgentMessageTurn,
+} from "@/modules/coach-agents/application";
+import { runCoachDiagnostics, type CoachDiagnosticTelemetry } from "@/modules/coach-diagnostics/application";
+import { toCoachAgentClientContracts } from "@/modules/coach-integrations/agentsContract";
+import {
+  createCoachErrorMessage,
+  createDemoCoachTurn,
   prepareCoachMessageTurn,
   resolveCoachResponseState,
   type CoachStudyMode,
-} from "@/modules/coach-controller/coachController";
-import { toCoachAgentClientContracts } from "@/modules/coach-integrations/agentsContract";
+} from "@/modules/coach-message/application";
 import {
   chooseMediaRecorderMimeType,
-  createDictationFormData,
-  isDictationAudioTooShort,
   prepareImageForVocabulary,
 } from "@/modules/coach-media/coachMedia";
+import { transcribeCoachDictation } from "@/modules/coach-dictation/application";
+import {
+  buildHintMessage,
+  buildStartTodayClassMessage,
+  buildUnitGrammarGuideMessage,
+  buildUnitVocabularyGuideMessage,
+} from "@/modules/coach-learning-actions/application";
+import {
+  DEFAULT_SIDEBAR_WIDTH,
+  isCoachTextSize,
+  nextCoachTextSize,
+  resolveCoachSidebarWidthFromClientX,
+  type CoachTextSize,
+  type CoachTheme,
+} from "@/modules/coach-layout/application";
 import {
   getCoachConversationStorageKey,
   loadCoachConversation,
@@ -49,6 +64,7 @@ import {
   saveCoachPreferences,
 } from "@/modules/coach-persistence/coachPersistence";
 import { renderClientPrompt, type ClientPromptId } from "@/modules/coach-prompts/clientPromptRegistry";
+import { loadCoachResources, type CoachResource } from "@/modules/coach-resources/application";
 import {
   focusTextareaSoon,
   insertDictationTranscript,
@@ -77,6 +93,8 @@ import {
   toCoachStudyPanelModel,
   toCoachTopBarModel,
 } from "@/modules/coach-session/viewModels";
+import { createCoachWorkbook } from "@/modules/coach-workbooks/application";
+import type { CoachWorkbookContract } from "@/modules/coach-integrations/workbookContract";
 
 type Message = {
   role: "user" | "coach";
@@ -94,37 +112,7 @@ type Message = {
   };
 };
 
-type DriveUnitResource = {
-  id: string;
-  title: string;
-  description: string;
-  type: "audio" | "video" | "document" | "link";
-  unitNumber: number | null;
-  unitCode: string;
-  section?: string;
-  page?: string;
-  exercise?: string;
-  exercisePart?: string;
-  url: string;
-  embedUrl: string;
-  provider: string;
-  order?: number;
-};
-
-type Workbook = {
-  kind: "grammar" | "vocabulary";
-  title: string;
-  fileId: string;
-  fileUrl: string;
-  exportUrl: string;
-  unit: string;
-  lesson: string;
-  generatedAt?: string;
-};
-
 type AgentId = "grammar_corrector" | "speaking_partner" | "english_evaluator";
-type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue";
-type CoachTextSize = "compact" | "normal" | "large";
 type StudyMode = CoachStudyMode;
 
 type SpecialistAgent = {
@@ -138,10 +126,6 @@ type SpecialistAgent = {
 const E2E_DEMO = process.env.NEXT_PUBLIC_E2E_DEMO === "1";
 const DEMO_UNIT = "Unit 1";
 const DEMO_LESSON = "Business advice speaking practice";
-const COACH_TEXT_SIZE_ORDER: CoachTextSize[] = ["compact", "normal", "large"];
-const DEFAULT_SIDEBAR_WIDTH = 340;
-const MIN_SIDEBAR_WIDTH = 260;
-const MAX_SIDEBAR_WIDTH = 560;
 
 const SPECIALIST_AGENTS: SpecialistAgent[] = [
   {
@@ -168,37 +152,6 @@ const SPECIALIST_AGENTS: SpecialistAgent[] = [
 ];
 
 const SPECIALIST_AGENT_CONTRACTS = toCoachAgentClientContracts(SPECIALIST_AGENTS);
-
-async function buildStartTodayClassPrompt(unit: string, lesson: string) {
-  const unitNumber = extractUnitNumber(unit);
-  return renderClientPrompt("coach.startCurrentClass", {
-    startRequest: unitNumber
-      ? `Empecemos la clase actual de la unidad ${unitNumber}. Usa el contrato real de English OS; si no hay numero de clase activo confiable, no inventes Class 1 y pide confirmacion breve.`
-      : "Empecemos mi clase actual. Usa el contrato real de English OS; si no hay numero de clase activo confiable, no inventes Class 1 y pide confirmacion breve.",
-    lessonContext: lesson ? `Contexto guardado de leccion o foco: ${lesson}` : "",
-  });
-}
-
-async function buildHintPrompt(unit: string, lesson: string) {
-  return renderClientPrompt("coach.hint", {
-    unit: unitLabel(unit),
-    lessonContext: lesson ? `Clase: ${lesson}` : "",
-  });
-}
-
-async function buildUnitGrammarPrompt(unit: string) {
-  const number = extractUnitNumber(unit);
-  return renderClientPrompt("coach.unitGrammarGuide", {
-    requestLine: number ? `Dame una guia de gramatica de la unidad ${number}.` : "Dame una guia de gramatica de mi unidad actual.",
-  });
-}
-
-async function buildUnitVocabularyPrompt(unit: string) {
-  const number = extractUnitNumber(unit);
-  return renderClientPrompt("coach.unitVocabularyGuide", {
-    requestLine: number ? `Dame una guia de vocabulario de la unidad ${number}.` : "Dame una guia de vocabulario de mi unidad actual.",
-  });
-}
 
 function initialCoachMessages(): Message[] {
   return buildInitialCoachMessages({
@@ -234,12 +187,6 @@ function studyModeLabel(mode: StudyMode) {
   if (mode === "guide") return "Guia";
   if (mode === "class") return "Clase";
   return "Actual";
-}
-
-function nextCoachTextSize(current: CoachTextSize, direction: -1 | 1) {
-  const currentIndex = COACH_TEXT_SIZE_ORDER.indexOf(current);
-  const nextIndex = Math.min(Math.max(currentIndex + direction, 0), COACH_TEXT_SIZE_ORDER.length - 1);
-  return COACH_TEXT_SIZE_ORDER[nextIndex] || "normal";
 }
 
 export function useCoachPageController() {
@@ -286,16 +233,16 @@ export function useCoachPageController() {
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
   const [diagnosticsError, setDiagnosticsError] = useState("");
   const [diagnosticChecks, setDiagnosticChecks] = useState<Array<{ name: string; ok: boolean; detail: string }>>([]);
-  const [sessionTelemetry, setSessionTelemetry] = useState<any[]>([]);
-  const [resources, setResources] = useState<DriveUnitResource[]>([]);
+  const [sessionTelemetry, setSessionTelemetry] = useState<CoachDiagnosticTelemetry[]>([]);
+  const [resources, setResources] = useState<CoachResource[]>([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
   const [resourcesError, setResourcesError] = useState("");
   const [resourcesNotice, setResourcesNotice] = useState("");
   const [expandedResourceId, setExpandedResourceId] = useState<string | null>(null);
-  const [grammarWorkbook, setGrammarWorkbook] = useState<Workbook | null>(null);
+  const [grammarWorkbook, setGrammarWorkbook] = useState<CoachWorkbookContract | null>(null);
   const [grammarWorkbookLoading, setGrammarWorkbookLoading] = useState(false);
   const [grammarWorkbookError, setGrammarWorkbookError] = useState("");
-  const [vocabularyWorkbook, setVocabularyWorkbook] = useState<Workbook | null>(null);
+  const [vocabularyWorkbook, setVocabularyWorkbook] = useState<CoachWorkbookContract | null>(null);
   const [vocabularyWorkbookLoading, setVocabularyWorkbookLoading] = useState(false);
   const [vocabularyWorkbookError, setVocabularyWorkbookError] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -404,7 +351,7 @@ export function useCoachPageController() {
       isSmallViewport: window.matchMedia("(max-width: 640px)").matches,
     });
     if (preferences.theme) setTheme(preferences.theme);
-    if (preferences.textSize && COACH_TEXT_SIZE_ORDER.includes(preferences.textSize)) setTextSize(preferences.textSize);
+    if (isCoachTextSize(preferences.textSize)) setTextSize(preferences.textSize);
     if (typeof preferences.sidebarOpen === "boolean") setSidebarOpen(preferences.sidebarOpen);
     if (typeof preferences.sidebarWidth === "number") setSidebarWidth(preferences.sidebarWidth);
   }, []);
@@ -516,15 +463,10 @@ export function useCoachPageController() {
     setDiagnosticsLoading(true);
     setDiagnosticsError("");
     try {
-      const data = await coachApi.getDiagnostics();
-      const checks = Array.isArray(data?.checks) ? data.checks : [];
-      setDiagnosticChecks(checks);
-      setSessionTelemetry(Array.isArray(data?.sessionTelemetry) ? data.sessionTelemetry : []);
-      if (data?.ok === false) {
-        setDiagnosticsError("El diagnostico encontro uno o mas puntos para revisar.");
-      }
-    } catch (err) {
-      setDiagnosticsError(err instanceof Error ? err.message : "No pude ejecutar el diagnostico.");
+      const result = await runCoachDiagnostics({ api: coachApi });
+      setDiagnosticChecks(result.checks);
+      setSessionTelemetry(result.sessionTelemetry);
+      setDiagnosticsError(result.error);
     } finally {
       setDiagnosticsLoading(false);
     }
@@ -535,19 +477,10 @@ export function useCoachPageController() {
     setResourcesError("");
     setResourcesNotice("");
     try {
-      const data = await coachApi.getDriveUnitResources(unit);
-      setResources(Array.isArray(data.resources) ? data.resources : []);
-      setResourcesNotice(typeof data.notice === "string" ? data.notice : "");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown resources error";
-      if (/Missing English OS environment variables/i.test(message)) {
-        setResourcesNotice(
-          "Los materiales conectados no estan configurados en este entorno local. Para cargarlos aqui hacen falta ENGLISH_OS_BASE_URL y ENGLISH_OS_TOKEN en .env.local."
-        );
-        setResources([]);
-      } else {
-        setResourcesError(message);
-      }
+      const result = await loadCoachResources({ api: coachApi, unit });
+      setResources(result.resources);
+      setResourcesNotice(result.notice);
+      setResourcesError(result.error);
     } finally {
       setResourcesLoading(false);
     }
@@ -570,35 +503,21 @@ export function useCoachPageController() {
 
     setError("");
     try {
-      const data = await coachApi.createWorkbook({
+      const result = await createCoachWorkbook({
+        api: coachApi,
         kind,
         unit,
-        lesson: studyMode === "current" ? currentLesson : "",
+        studyMode,
+        currentLesson,
       });
 
-      const workbook = data.workbook as Workbook | undefined;
-      if (!workbook?.fileUrl && !workbook?.exportUrl) {
-        throw new Error(`Invalid ${kind} workbook contract.`);
-      }
+      if (!result) return;
 
-      if (isGrammar) setGrammarWorkbook(workbook);
-      else setVocabularyWorkbook(workbook);
+      if (isGrammar) setGrammarWorkbook(result.workbook);
+      else setVocabularyWorkbook(result.workbook);
 
-      window.open(workbook.exportUrl || workbook.fileUrl, "_blank", "noopener,noreferrer");
-      setMessages((current) => [
-        ...current,
-        {
-          role: "coach",
-          content: [
-            `Listo. Genere la guia de ${isGrammar ? "gramatica" : "vocabulario"} para ${unitLabel(unit)}.`,
-            "",
-            workbook.exportUrl ? `- [Descargar XLSX](${workbook.exportUrl})` : "",
-            workbook.fileUrl ? `- [Abrir en Sheets](${workbook.fileUrl})` : "",
-          ]
-            .filter(Boolean)
-            .join("\n"),
-        },
-      ]);
+      window.open(result.openUrl, "_blank", "noopener,noreferrer");
+      setMessages((current) => [...current, result.coachMessage]);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown workbook error";
       if (isGrammar) setGrammarWorkbookError(message);
@@ -731,19 +650,19 @@ export function useCoachPageController() {
   }
 
   async function startTodayClass() {
-    sendMessage(await buildStartTodayClassPrompt(activeStudyUnit, studyMode === "current" ? currentLesson : ""));
+    sendMessage(await buildStartTodayClassMessage(activeStudyUnit, studyMode === "current" ? currentLesson : ""));
   }
 
   async function requestUnitGrammar() {
-    sendMessage(await buildUnitGrammarPrompt(activeStudyUnit));
+    sendMessage(await buildUnitGrammarGuideMessage(activeStudyUnit));
   }
 
   async function requestUnitVocabulary() {
-    sendMessage(await buildUnitVocabularyPrompt(activeStudyUnit));
+    sendMessage(await buildUnitVocabularyGuideMessage(activeStudyUnit));
   }
 
   async function requestHint() {
-    sendMessage(await buildHintPrompt(activeStudyUnit, studyMode === "current" ? currentLesson : ""));
+    sendMessage(await buildHintMessage(activeStudyUnit, studyMode === "current" ? currentLesson : ""));
   }
 
   function requestResourcePractice(resourceId: string) {
@@ -818,20 +737,14 @@ export function useCoachPageController() {
   }
 
   async function transcribeRecordedAudio(audioBlob: Blob) {
-    if (isDictationAudioTooShort(audioBlob)) {
-      setError("No escuche suficiente audio. Intenta hablar un poco mas cerca del microfono.");
+    const result = await transcribeCoachDictation({ api: coachApi, audioBlob });
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
 
-    const formData = createDictationFormData(audioBlob);
-
-    try {
-      const data = await coachApi.transcribeAudio(formData);
-      if (!insertDictationText(String(data.text))) {
-        setError("No pude convertir el audio en texto util. Intenta hablar mas claro y con menos ruido de fondo.");
-      }
-    } catch {
-      setError("No pude transcribir el audio. Puedes escribir tu respuesta o intentar de nuevo.");
+    if (!insertDictationText(result.text)) {
+      setError("No pude convertir el audio en texto util. Intenta hablar mas claro y con menos ruido de fondo.");
     }
   }
 
@@ -947,10 +860,10 @@ export function useCoachPageController() {
   }
 
   function resizeSidebarFromClientX(clientX: number) {
-    const viewportWidth = window.innerWidth || 1280;
-    const responsiveMax = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, viewportWidth - 560));
-    const nextWidth = Math.min(Math.max(Math.round(clientX), MIN_SIDEBAR_WIDTH), responsiveMax);
-    setSidebarWidth(nextWidth);
+    setSidebarWidth(resolveCoachSidebarWidthFromClientX({
+      clientX,
+      viewportWidth: window.innerWidth || 1280,
+    }));
   }
 
   function startSidebarResize(clientX: number) {

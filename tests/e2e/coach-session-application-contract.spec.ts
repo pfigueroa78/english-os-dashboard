@@ -130,3 +130,27 @@ test("coach page controller delegates session rules to the application layer", a
   expect(pageController).not.toContain('from "@/modules/coach-session/contract"');
   expect(pageController).not.toContain("createCoachSessionContract({");
 });
+
+test("coach page controller delegates resources and diagnostics rules to application use cases", async () => {
+  const fs = await import("node:fs/promises");
+  const pageController = await fs.readFile("src/modules/coach-page/useCoachPageController.ts", "utf8");
+
+  expect(pageController).toContain("loadCoachResources");
+  expect(pageController).toContain("runCoachDiagnostics");
+  expect(pageController).toContain('from "@/modules/coach-agents/application"');
+  expect(pageController).toContain("createCoachWorkbook");
+  expect(pageController).toContain("transcribeCoachDictation");
+  expect(pageController).toContain("buildStartTodayClassMessage");
+  expect(pageController).toContain("resolveCoachSidebarWidthFromClientX");
+  expect(pageController).not.toContain("Missing English OS environment variables");
+  expect(pageController).not.toContain("getDriveUnitResources(unit)");
+  expect(pageController).not.toContain("getDiagnostics()");
+  expect(pageController).not.toContain("Invalid ${kind} workbook contract");
+  expect(pageController).not.toContain("Descargar XLSX");
+  expect(pageController).not.toContain("Abrir en Sheets");
+  expect(pageController).not.toContain("createDictationFormData(audioBlob)");
+  expect(pageController).not.toContain("isDictationAudioTooShort(audioBlob)");
+  expect(pageController).not.toContain("function buildStartTodayClassPrompt");
+  expect(pageController).not.toContain("const MIN_SIDEBAR_WIDTH");
+  expect(pageController).not.toContain("const MAX_SIDEBAR_WIDTH");
+});

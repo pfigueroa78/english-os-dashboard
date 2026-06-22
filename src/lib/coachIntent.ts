@@ -49,11 +49,11 @@ function inferActiveClassRequest(normalized: string) {
   const reasons: string[] = [];
   const hasClassWord = hasAny(normalized, /\b(clase|class|lesson|sesion|session)\b/);
   const classModeRequest = hasAny(normalized, /\b(?:modo clase|modo de clase|class mode|lesson mode)\b/);
-  const studyAction = hasAny(normalized, /\b(dame|dar|quiero|quisiera|vamos|dale|toca|abre|abrir|empecemos|empezar|inicia|iniciar|comencemos|comenzar|arranquemos|arrancar|continua|continuar|continuemos|sigamos|seguir|retoma|retomar|ensename|ensenar|estudiar|estudiemos|trabajar|trabajemos|practicar|practiquemos|start|open|continue|resume|teach|study|practice|work)\b/);
+  const studyAction = hasAny(normalized, /\b(dame|dar|quiero|quisiera|vamos|dale|toca|abre|abrir|empez\w*|empiez\w*|empec\w*|inici\w*|comenz\w*|arranc\w*|arranqu\w*|contin\w*|sig\w*|retom\w*|ensename|ensenar|estudiar|estudiemos|trabajar|trabajemos|practicar|practiquemos|start|open|continue|resume|teach|study|practice|work)\b/);
   const currentSignal = hasAny(normalized, /\b(mi|mis|actual|activa|hoy|guardada|posicion|posicionada|donde|voy|quede|quedamos|today|current|saved)\b/);
   const classObject = hasClassWord || hasAny(normalized, /\b(lo de hoy|que toca|plan de hoy|sesion de hoy|clase de hoy|today lesson|today s lesson|current lesson)\b/);
   const resumeSignal = hasAny(normalized, /\b(continua|continuar|continuemos|sigamos|seguir|retoma|retomar|resume|continue)\b.*\b(donde|voy|quede|quedamos|actual|hoy|current|saved)\b/);
-  const shortStarter = normalized.split(" ").length <= 5 && hasAny(normalized, /\b(vamos|dale|empecemos|arranquemos|comencemos|inicia|start|continue|resume)\b/);
+  const shortStarter = normalized.split(" ").length <= 5 && hasAny(normalized, /\b(vamos|dale|empez\w*|empiez\w*|empec\w*|arranc\w*|arranqu\w*|comenz\w*|inici\w*|start|continue|resume)\b/);
   const standaloneStudyStarter = normalized.split(" ").length <= 6 && hasAny(normalized, /\b(quiero|quisiera|vamos|let'?s|lets)\b.*\b(estudiar|aprender|practicar|trabajar|study|learn|practice|work)\b/);
 
   if (classModeRequest) reasons.push("class-mode wording");

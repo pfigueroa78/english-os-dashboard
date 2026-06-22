@@ -53,6 +53,9 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   const publicRoute = readFile("src/app/api/english-os/coach/route.ts");
   const route = readFile("src/app/api/english-os/coach-pedagogy/route.ts");
   const handler = readFile("src/lib/coachRouteHandler.ts");
+  const replyRendering = readFile("src/modules/coach-delivery/replyRendering.ts");
+  const teachingContracts = readFile("src/modules/coach-delivery/teachingContracts.ts");
+  const targetApplication = readFile("src/modules/coach-target/application.ts");
   const classSystemPrompt = readFile("public/prompts/coach-route/class-system.md");
   const reviewSystemPrompt = readFile("public/prompts/coach-route/review-system.md");
   const generalSystemPrompt = readFile("public/prompts/coach-route/general-system.md");
@@ -64,7 +67,7 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("Local Class Pack + Pedagogy Prompt");
   expect(handler).toContain("coachRoute.class.system");
   expect(classSystemPrompt).toContain("Never answer a class request with a metadata table");
-  expect(handler).toContain("Unsafe class reply contains metadata marker");
+  expect(replyRendering).toContain("Unsafe class reply contains metadata marker");
   expect(handler).toContain("loadUnitTeachingContracts");
   expect(handler).toContain("Seven Local Teaching Contracts + Review Pedagogy Prompt");
   expect(handler).toContain("activeUnit: unit");
@@ -75,7 +78,7 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("deterministicIdentity: true");
   expect(handler).toContain("renderClassReply");
   expect(handler).toContain("renderReviewReply");
-  expect(handler).toContain("stripModelOwnedIdentity");
+  expect(replyRendering).toContain("stripModelOwnedIdentity");
   expect(handler).toContain("assertCompleteModelResponse");
   expect(handler).toContain("OPENAI_COACH_MAX_OUTPUT_TOKENS || 8000");
   expect(handler).toContain("OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS || 12000");
@@ -85,17 +88,17 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("using development-only learner context");
   expect(handler).toContain("localValidationMode: true");
   expect(handler).toContain('process.env.NODE_ENV === "development"');
-  expect(handler).toContain("limitToOpeningClassTurn");
-  expect(handler).toContain("stripPrematureClassClosure");
+  expect(replyRendering).toContain("limitToOpeningClassTurn");
+  expect(replyRendering).toContain("stripPrematureClassClosure");
   expect(classSystemPrompt).toContain("This response is the opening turn of a teacher-led class");
   expect(classSystemPrompt).toContain("Keep this opening turn under 280 words");
   expect(classSystemPrompt).toContain("strategic opening architecture");
-  expect(handler).toContain('replace(/\\bviewing_current_class\\b/gi, "clase activa")');
+  expect(replyRendering).toContain('replace(/\\bviewing_current_class\\b/gi, "clase activa")');
   expect(classSystemPrompt).toContain('Never write "en modo ..." or any app-mode wording');
-  expect(handler).toContain("no inventar **Class 1**");
+  expect(targetApplication).toContain("no inventar **Class 1**");
   expect(handler).toContain("openingSectionInstruction");
-  expect(handler).toContain("Activate the topic only");
-  expect(handler).toContain("Do not teach grammar rules, structure tables, or vocabulary lists yet");
+  expect(teachingContracts).toContain("Activate the topic only");
+  expect(teachingContracts).toContain("Do not teach grammar rules, structure tables, or vocabulary lists yet");
 
   const forbiddenLegacyClassDelivery = [
     "formatCurrentClassContentReply",
@@ -108,6 +111,7 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
 test("coach UI follows the explicitly requested unit for materials", async () => {
   const source = readFile("src/app/coach/page.tsx");
   const pageController = readFile("src/modules/coach-page/useCoachPageController.ts");
+  const learningActions = readFile("src/modules/coach-learning-actions/application.ts");
   const sessionContract = readFile("src/modules/coach-session/contract.ts");
   const viewModels = readFile("src/modules/coach-session/viewModels.ts");
   const topBar = readFile("src/modules/coach-layout/CoachTopBar.tsx");
@@ -119,6 +123,7 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   const messageList = readFile("src/modules/coach-chat/CoachMessageList.tsx");
   const composer = readFile("src/modules/coach-chat/CoachComposer.tsx");
   const coachController = readFile("src/modules/coach-controller/coachController.ts");
+  const coachMessageApplication = readFile("src/modules/coach-message/application.ts");
   const apiClient = readFile("src/modules/coach-api/coachApiClient.ts");
 
   expect(pageController).toContain("const [coachSession, setCoachSession]");
@@ -177,18 +182,21 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
 
   expect(pageController).toContain("resolveCoachResponseState");
   expect(pageController).toContain("const next = resolveCoachResponseState");
-  expect(coachController).toContain("function inferCoordinatesFromReply");
-  expect(coachController).toContain("const inferredCoordinates = inferCoordinatesFromReply(reply)");
-  expect(coachController).toContain("const activeUnit = params.data.activeUnit || inferredCoordinates.unit");
+  expect(pageController).toContain('from "@/modules/coach-message/application"');
+  expect(coachController).toContain('from "@/modules/coach-message/application"');
+  expect(coachMessageApplication).toContain("function inferCoordinatesFromReply");
+  expect(coachMessageApplication).toContain("const inferredCoordinates = inferCoordinatesFromReply(reply)");
+  expect(coachMessageApplication).toContain("const activeUnit = params.data.activeUnit || inferredCoordinates.unit");
   expect(pageController).toContain("normalizeUnitValue");
   expect(pageController).toContain("setStudyUnit(normalizeUnitValue(next.studyUnit))");
   expect(pageController).not.toContain("setCurrentUnit(unit);\n        setStudyUnit(unit)");
-  expect(coachController).toContain("const studyMode: CoachStudyMode = isReviewRequest(params.requestMessage) ? \"review\" : isGuideRequest(params.requestMessage) ? \"guide\" : \"class\"");
+  expect(coachMessageApplication).toContain("const studyMode: CoachStudyMode = isReviewRequest(params.requestMessage) ? \"review\" : isGuideRequest(params.requestMessage) ? \"guide\" : \"class\"");
   expect(pageController).toContain("setStudyMode(next.studyMode)");
   expect(pageController).toContain("setStudyClassNumber(next.studyClassNumber)");
   expect(studyPanel).toContain("Posición guardada:");
-  expect(coachController).toContain("No pude completar la respuesta esta vez");
-  expect(pageController).toContain("no inventes Class 1");
+  expect(coachMessageApplication).toContain("No pude completar la respuesta esta vez");
+  expect(learningActions).toContain("no inventes Class 1");
+  expect(pageController).toContain("buildStartTodayClassMessage");
   expect(readFile("public/prompts/coach/start-current-class.md")).toContain("apertura estratégica por etapas");
   expect(source).not.toContain("finish with an evaluation gate before progress can advance");
   expect(pageController).toContain("createCoachApiClient");
@@ -266,6 +274,7 @@ test("unit grammar and vocabulary guides use verified unit contracts", async () 
   const handler = readFile("src/lib/coachRouteHandler.ts");
   const source = readFile("src/app/coach/page.tsx");
   const pageController = readFile("src/modules/coach-page/useCoachPageController.ts");
+  const learningActions = readFile("src/modules/coach-learning-actions/application.ts");
   const grammarGuidePrompt = readFile("public/prompts/coach/unit-grammar-guide.md");
 
   expect(handler).toContain("function unitGuideKind");
@@ -277,7 +286,8 @@ test("unit grammar and vocabulary guides use verified unit contracts", async () 
   expect(readFile("public/prompts/coach-route/unit-guide-system.md")).toContain("Do not mention Passages");
   expect(handler).toContain("renderUnitGuideReply");
   expect(source).toContain("onRequestGrammarGuide={actions.requestUnitGrammar}");
-  expect(pageController).toContain("coach.unitGrammarGuide");
+  expect(learningActions).toContain("coach.unitGrammarGuide");
+  expect(pageController).toContain("buildUnitGrammarGuideMessage");
   expect(grammarGuidePrompt).toContain("No menciones Passages ni pidas el índice.");
 });
 
@@ -293,6 +303,7 @@ test("explicit unit and class switches always use class delivery", async () => {
     "posiciona mi clase a partir de hoy en la unidad 2, clase 1",
     "actualiza mi clase a Unit 2 Class 1",
     "Empecemos clase",
+    "Arranquemo con la clase por favor",
     "Dame la clase",
     "Ahora vamos a modo clase",
     "Vamos a modo clase",
@@ -314,6 +325,7 @@ test("coach intent resolver classifies natural request families instead of exact
   const activeClassRequests = [
     "Ahora vamos a modo clase",
     "Arranquemos",
+    "arranquemo con la clase por favor",
     "Dale, empecemos",
     "Quiero estudiar",
     "Que toca hoy?",
@@ -345,15 +357,18 @@ test("coach intent resolver classifies natural request families instead of exact
 test("ambiguous active class requests consult English OS current class before clarification", async () => {
   const handler = readFile("src/lib/coachRouteHandler.ts");
   const targetResolver = readFile("src/modules/coach-target/resolve.ts");
+  const targetApplication = readFile("src/modules/coach-target/application.ts");
   const classBranchStart = handler.indexOf("if (isGiveClassQuestion(message))");
   const reviewBranchStart = handler.indexOf("if (isReviewQuestion(message))", classBranchStart);
   const classBranch = handler.slice(classBranchStart, reviewBranchStart);
 
   expect(targetResolver).toContain("function collectStrings");
   expect(targetResolver).toContain("resolveClassCoordinatesFromPayload");
-  expect(handler).toContain("resolveClassTargetFromMessage");
+  expect(handler).toContain("resolveCoachClassTarget");
+  expect(targetApplication).toContain("resolveClassTargetFromMessage");
+  expect(targetApplication).toContain("mergeClassTargetWithPayload(target, activeClassContent)");
+  expect(targetApplication).toContain("readCurrentClassContent");
   expect(classBranch).toContain('callEnglishOSAction("getCurrentClassContent"');
-  expect(classBranch).toContain("mergeClassTargetWithPayload(target, activeClassContent)");
   expect(classBranch.indexOf('callEnglishOSAction("getCurrentClassContent"')).toBeLessThan(classBranch.indexOf("Current Class Clarification"));
 });
 
@@ -445,67 +460,69 @@ test("Unit 4 Class 2 keeps Chilling out separate from the unit theme", async () 
 
 test("application-owned identity precedes model-authored teaching", async () => {
   const handler = readFile("src/lib/coachRouteHandler.ts");
-  const rendererStart = handler.indexOf("function renderClassReply");
-  const rendererEnd = handler.indexOf("function renderReviewReply");
-  const renderer = handler.slice(rendererStart, rendererEnd);
+  const rendererSource = readFile("src/modules/coach-delivery/replyRendering.ts");
+  const rendererStart = rendererSource.indexOf("export function renderClassReply");
+  const rendererEnd = rendererSource.indexOf("export function renderReviewReply");
+  const renderer = rendererSource.slice(rendererStart, rendererEnd);
 
   expect(renderer).toContain("const teachingBody = ensureRichOpeningTask");
   expect(renderer).toContain("stripClassConfirmationDetours(limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections))");
   expect(renderer).toContain('return readableMarkdownPunctuation(sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]');
   expect(renderer).toContain('`# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`');
-  expect(handler).toContain("function readableMarkdownPunctuation");
-  expect(handler).toContain("function ensureTerminalPeriod");
-  expect(handler).toContain("Learning objective|Communication mission");
-  expect(handler).toContain("?::\\*\\*|\\*\\*:|:");
+  expect(rendererSource).toContain("export function readableMarkdownPunctuation");
+  expect(rendererSource).toContain("export function ensureTerminalPeriod");
+  expect(rendererSource).toContain("Learning objective|Communication mission");
+  expect(rendererSource).toContain("?::\\*\\*|\\*\\*:|:");
   expect(renderer).toContain('Hoy trabajaremos **${reference}**.');
   expect(renderer).toContain('Focus: **${formattedSkillFocus}**');
   expect(renderer).toContain('Empezamos con **${identity.sections.split("+")[0]?.trim() || displayLesson}**.');
   expect(renderer).toContain("learnerFriendlyFocus");
-  expect(handler).toContain("it combines");
+  expect(rendererSource).toContain("it combines");
   expect(renderer).toContain("ensureRichOpeningTask");
-  expect(handler).toContain("Video Class - Before watching");
+  expect(rendererSource).toContain("Video Class - Before watching");
   expect(renderer).not.toContain("const courseReference");
   expect(renderer).not.toContain("bookPages");
   expect(renderer).not.toContain("pdfPages");
   expect(renderer).not.toContain("Book ${");
   expect(renderer).not.toContain("PDF ${");
-  expect(handler).toContain("not grammar-centered");
-  expect(handler).toContain("Book pages:|PDF pages:");
+  expect(rendererSource).toContain("not grammar-centered");
+  expect(rendererSource).toContain("Book pages:|PDF pages:");
   expect(readFile("public/prompts/coach-route/class-system.md")).toContain("The application renders learner position and lesson identity");
-  expect(handler).toContain("encontré tu clase activa en English OS");
-  expect(handler).toContain("Trabajaremos con **${target}**.");
+  expect(rendererSource).toContain("encontré tu clase activa en English OS");
+  expect(rendererSource).toContain("Trabajaremos con **${target}**.");
   expect(handler).toContain("const explicitClassRule");
   expect(handler).toContain("Teach the requested unit and class even if the saved English OS position is different");
   expect(handler).toContain('do not offer \\"continue my current class\\" alternatives');
-  expect(handler).toContain("stripClassConfirmationDetours");
-  expect(handler).toContain("current english os position is different");
-  expect(handler).toContain("without your confirmation");
-  expect(handler).toContain("continue my current class");
-  expect(handler).toContain("found your (?:saved|current) (?:position|english os position)");
-  expect(handler).toContain("you asked for\\s+unit\\s+\\d+");
-  expect(handler).toContain(".replace(/\\bPassages\\s+Level\\s+\\d+\\s*[-—]\\s*/gi, \"\")");
+  expect(rendererSource).toContain("stripClassConfirmationDetours");
+  expect(rendererSource).toContain("current english os position is different");
+  expect(rendererSource).toContain("without your confirmation");
+  expect(rendererSource).toContain("continue my current class");
+  expect(rendererSource).toContain("found your (?:saved|current) (?:position|english os position)");
+  expect(rendererSource).toContain("you asked for\\s+unit\\s+\\d+");
+  expect(rendererSource).toContain(".replace(/\\bPassages\\s+Level\\s+\\d+\\s*[-—]\\s*/gi, \"\")");
   expect(handler).not.toContain("For this request, the active learning target is");
-  expect(handler).toContain("/\\bclass pack\\b/i");
+  expect(rendererSource).toContain("/\\bclass pack\\b/i");
 });
 
 test("all classes display the canonical curriculum unit name", async () => {
   const titles = JSON.parse(readFile("knowledge/passages-unit-titles.json"));
-  const handler = readFile("src/lib/coachRouteHandler.ts");
+  const teachingContracts = readFile("src/modules/coach-delivery/teachingContracts.ts");
+  const replyRendering = readFile("src/modules/coach-delivery/replyRendering.ts");
 
   expect(Object.keys(titles.units)).toHaveLength(12);
   expect(titles.units[2]).toBe("Mistakes and mysteries");
   expect(titles.units[3]).toBe("Exploring new cities");
   expect(titles.units[4]).toBe("Early birds and night owls");
-  expect(handler).toContain("passages-unit-titles.json");
-  expect(handler).toContain("const displayLesson = identity.lessonTitle || identity.sections.split");
+  expect(teachingContracts).toContain("passages-unit-titles.json");
+  expect(replyRendering).toContain("const displayLesson = identity.lessonTitle || identity.sections.split");
 });
 
 test("class opening cannot invent evaluation or logging results", async () => {
-  const handler = readFile("src/lib/coachRouteHandler.ts");
+  const replyRendering = readFile("src/modules/coach-delivery/replyRendering.ts");
   const behavior = readFile("src/lib/englishOsCoachPrompt.ts");
   const classSystemPrompt = readFile("public/prompts/coach-route/class-system.md");
 
-  expect(handler).toContain("PREMATURE_CLASS_CLOSURE");
+  expect(replyRendering).toContain("PREMATURE_CLASS_CLOSURE");
   expect(classSystemPrompt).toContain("Do not include the evaluation gate, recap, achievement, weakness");
   expect(behavior).toContain("SESSION CLOSING — ONLY AFTER LEARNER EVIDENCE");
   expect(behavior).toContain("Never claim that a session was logged unless");
@@ -516,10 +533,10 @@ test("class opening cannot invent evaluation or logging results", async () => {
 });
 
 test("video class openings are enriched when the model returns a thin response", async () => {
-  const handler = readFile("src/lib/coachRouteHandler.ts");
-  const helperStart = handler.indexOf("export function ensureRichOpeningTask");
-  const helperEnd = handler.indexOf("function renderClassReply", helperStart);
-  const helper = handler.slice(helperStart, helperEnd);
+  const replyRendering = readFile("src/modules/coach-delivery/replyRendering.ts");
+  const helperStart = replyRendering.indexOf("export function ensureRichOpeningTask");
+  const helperEnd = replyRendering.indexOf("export function renderClassReply", helperStart);
+  const helper = replyRendering.slice(helperStart, helperEnd);
 
   expect(helper).toContain("hasExplicitOpeningTask");
   expect(helper).toContain("wordCount >= 45");

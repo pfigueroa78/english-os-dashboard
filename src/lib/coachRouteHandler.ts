@@ -1,6 +1,4 @@
-import { NextResponse } from "next/server";
-import fs from "node:fs";
-import path from "node:path";
+﻿import { NextResponse } from "next/server";
 import { getApiLearnerIdentity } from "@/lib/apiLearnerIdentity";
 import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
@@ -16,12 +14,25 @@ import {
 } from "@/lib/coachIntent";
 import { createCoachSessionContract, legacyActiveClass, legacyActiveUnit } from "@/modules/coach-session/contract";
 import { transitionCoachSession } from "@/modules/coach-session/stateMachine";
+import { resolveCoachClassTarget } from "@/modules/coach-target/application";
 import {
-  mergeClassTargetWithPayload,
-  resolveClassTargetFromMessage,
   resolveUnitTarget,
 } from "@/modules/coach-target/resolve";
-import passagesUnitTitles from "../../knowledge/passages-unit-titles.json";
+import {
+  classIdentity,
+  loadClassPack,
+  loadUnitTeachingContracts,
+  openingSectionInstruction,
+} from "@/modules/coach-delivery/teachingContracts";
+import {
+  assertNoMetadataFallback,
+  learnerName,
+  learnerPositionLine,
+  renderClassReply,
+  renderReviewReply,
+  renderUnitGuideReply,
+  sanitizeLearnerFacingReply,
+} from "@/modules/coach-delivery/replyRendering";
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
@@ -30,414 +41,15 @@ const OPENAI_COACH_MODEL = process.env.OPENAI_COACH_MODEL || "gpt-5.4-mini";
 const OPENAI_COACH_MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_COACH_MAX_OUTPUT_TOKENS || 8000);
 const OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS || 12000);
 
-const FORBIDDEN_METADATA_MARKERS = [
-  "Clase actual / contenido de clase",
-  "viewing_current_class",
-  "Extract exact",
-  "Extract vocabulary",
-  "Use the target language from the indexed page range",
-  "anchored to Student Book pages",
-];
-
-const FORBIDDEN_METADATA_PATTERNS = [
-  /\bclass pack\b/i,
-  /\blocal class\b/i,
-  /\bclass \d+\s*\/\s*class \d+ locally\b/i,
-  /unit-\d{2}-local-class-/i,
-  /CLASS_PACK_UNIT_/i,
-];
-
 type CoachMessage = { role: "user" | "coach"; content: string };
 type CoachImageAttachment = { dataUrl: string; mimeType?: string; name?: string };
 type CoachRequest = { message: string; conversationHistory?: CoachMessage[]; image?: CoachImageAttachment };
 
-export type ClassIdentity = {
-  lessonTitle: string;
-  bookPages: string;
-  pdfPages: string;
-  sections: string;
-  skillFocus: string;
-};
-
-function pad2(value: number | string) {
-  return String(value).padStart(2, "0");
-}
-
 function isReviewQuestion(message: string) {
   return isReviewIntent(message);
 }
-
 function unitGuideKind(message: string): "grammar" | "vocabulary" | null {
   return unitGuideIntentKind(message);
-}
-
-function classPackFilename(unit: number, localClass: number) {
-  const globalClass = (unit - 1) * 7 + localClass;
-  return `unit-${pad2(unit)}-local-class-${pad2(localClass)}-global-class-${pad2(globalClass)}-class-pack-unit-${pad2(unit)}-class-${pad2(globalClass)}.md`;
-}
-
-function loadClassPack(unit: number, localClass: number) {
-  const filename = classPackFilename(unit, localClass);
-  const fullPath = path.join(process.cwd(), "knowledge", "class-packs-lesson-vision", filename);
-  if (!fs.existsSync(fullPath)) return { filename, content: "" };
-  return { filename, content: fs.readFileSync(fullPath, "utf8") };
-}
-
-function activeTeachingContract(content: string) {
-  const heading = "### Active class teaching contract";
-  const start = content.indexOf(heading);
-  if (start < 0) return "";
-  const safetyRule = content.indexOf("### Safety rule", start);
-  const extractedContent = content.indexOf("## Extracted Student Book content", start);
-  const candidates = [safetyRule, extractedContent].filter((index) => index > start);
-  const end = candidates.length ? Math.min(...candidates) : content.length;
-  return content.slice(start, end).trim();
-}
-
-function contractField(content: string, label: string) {
-  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return content.match(new RegExp(`^- ${escaped}:\\s*([^\\n]+)`, "im"))?.[1]?.trim() || "";
-}
-
-function classIdentity(content: string): ClassIdentity {
-  const contract = activeTeachingContract(content);
-  return {
-    lessonTitle: contractField(contract, "Lesson title"),
-    bookPages: contractField(contract, "Active class book pages"),
-    pdfPages: contractField(contract, "Active class PDF pages"),
-    sections: contractField(contract, "Active class section names"),
-    skillFocus: contractField(contract, "Active class skill focus"),
-  };
-}
-
-function unitTitle(unit: number) {
-  const units = passagesUnitTitles.units as Record<string, string>;
-  return String(units[String(unit)] || "").trim();
-}
-
-function openingSectionInstruction(sectionList: string) {
-  const section = sectionList.split("+")[0]?.trim() || "Starting point";
-  const normalized = section.toLowerCase();
-
-  if (normalized === "starting point") {
-    return `OPENING SECTION: ${section}. Activate the topic only. Give at most two short model reactions and ask one personal or situational question. Do not teach grammar rules, structure tables, or vocabulary lists yet.`;
-  }
-  if (normalized.includes("listening")) {
-    return `OPENING SECTION: ${section}. Provide one short teacher-created listening input when exact audio is unavailable, then ask one gist question and at most one detail question. Do not begin later role-play, grammar, discussion, or writing sections.`;
-  }
-  if (normalized.includes("vocabulary")) {
-    return `OPENING SECTION: ${section}. Teach at most five contract-supported chunks with two short models, then ask one compact reuse task. Do not begin later sections.`;
-  }
-  if (normalized.includes("grammar")) {
-    return `OPENING SECTION: ${section}. Explain one target structure briefly, give two examples, and ask two controlled items. Do not begin later sections.`;
-  }
-  if (normalized.includes("discussion") || normalized.includes("speaking") || normalized.includes("role play")) {
-    return `OPENING SECTION: ${section}. Set one realistic communication situation, give two short model turns, and ask one compact spoken or written response. Do not begin later sections.`;
-  }
-  if (normalized.includes("video") || normalized.includes("before watching")) {
-    return `OPENING SECTION: ${section}. Do only the before-watching activation with one prediction task. Do not invent video content or begin later sections.`;
-  }
-  return `OPENING SECTION: ${section}. Teach only this section with two short models and one learner task. Do not begin later sections.`;
-}
-
-function learnerName(context: any, fallback = "") {
-  const user = context?.user || {};
-  return String(user.Name || user.name || user["Full Name"] || context?.name || fallback || "").trim();
-}
-
-function learnerFriendlySavedPosition(value: string) {
-  return String(value || "")
-    .replace(/^Passages\s+Level\s+\d+\s*[-—]\s*/i, "")
-    .replace(/^Passages\s+Level\s+\d+\s*/i, "")
-    .trim();
-}
-
-function learnerPositionLine(params: {
-  context: any;
-  name: string;
-  requestedUnit: number;
-  requestedClass?: number;
-  review?: boolean;
-  guideKind?: "grammar" | "vocabulary";
-  explicitClassRequest?: boolean;
-}) {
-  const user = params.context?.user || {};
-  const learningState = params.context?.learningState || {};
-  const classIndex = params.context?.currentClassIndex || {};
-  const currentUnit = learningState.currentUnit || classIndex.unit || user["Current Unit"] || params.context?.currentUnit || "";
-  const currentClass = learningState.currentClass || classIndex.classNumber || "";
-  const greeting = params.name ? `${params.name}, ` : "";
-  const target = params.guideKind
-    ? `Unit ${params.requestedUnit} ${params.guideKind === "grammar" ? "grammar guide" : "vocabulary guide"}`
-    : params.review
-      ? `Unit ${params.requestedUnit} review`
-      : `Unit ${params.requestedUnit}, Class ${params.requestedClass}`;
-  const activeTargetMatches =
-    String(currentUnit || "").trim() === String(params.requestedUnit) &&
-    (!params.requestedClass || String(currentClass || "").trim() === String(params.requestedClass));
-
-  if (params.review || params.guideKind || params.explicitClassRequest) {
-    return greeting ? `${greeting}trabajaremos con **${target}**.` : `Trabajaremos con **${target}**.`;
-  }
-
-  if (activeTargetMatches) {
-    return greeting ? `${greeting}encontré tu clase activa en English OS: **${target}**.` : `Encontré tu clase activa en English OS: **${target}**.`;
-  }
-
-  return greeting ? `${greeting}vamos con **${target}**.` : `Vamos con **${target}**.`;
-}
-
-function stripModelOwnedIdentity(reply: string) {
-  return String(reply || "")
-    .split("\n")
-    .filter((line) => {
-      const clean = line.replace(/[*#]/g, "").trim();
-      return !/^(Unit \d+\b|Class:|Global Class|Lesson:|Book pages:|PDF pages:|Class sections:|Main focus:|Grammar focus:|Language support:|Vocabulary focus:)/i.test(clean);
-    })
-    .filter((line) => {
-      const clean = line.replace(/[*#]/g, "").trim();
-      return !/(?:found your (?:saved|current) (?:position|english os position)|you asked for\s+unit\s+\d+|active learning target for this request|for this request,? the active|en modo\s+viewing_current_class|mode\s+viewing_current_class)/i.test(clean);
-    })
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-function sanitizeLearnerFacingReply(reply: string) {
-  return String(reply || "")
-    .replace(/\bviewing_current_class\b/gi, "clase activa")
-    .replace(/\bviewing current class\b/gi, "clase activa")
-    .replace(/\bPassages\s+Level\s+\d+\s*[-—]\s*/gi, "")
-    .replace(/\bPassages\s+Level\s+\d+\s*/gi, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-function hasTerminalPunctuation(value: string) {
-  return /[.!?:;…)](?:\s*[*_`>]+)?$/.test(String(value || "").trim());
-}
-
-function ensureTerminalPeriod(value: string) {
-  const text = String(value || "").trim();
-  if (!text || hasTerminalPunctuation(text)) return text;
-  return `${text}.`;
-}
-
-function readableMarkdownPunctuation(reply: string) {
-  return String(reply || "")
-    .split("\n")
-    .map((line) => {
-      const trimmed = line.trim();
-      if (!trimmed) return line;
-
-      const heading = line.match(/^(\s*#{1,6}\s+)(.+?)(\s*)$/);
-      if (heading) return `${heading[1]}${ensureTerminalPeriod(heading[2])}${heading[3]}`;
-
-      const labelLine = line.match(/^(\s*(?:[-*]\s+)?(?:\*\*)?(?:Learning objective|Communication mission|Main focus|Skill focus|Grammar focus|Vocabulary focus|Language support|Your turn|Try|Model answers?)(?::\*\*|\*\*:|:)\s+)(.+?)(\s*)$/i);
-      if (labelLine) return `${labelLine[1]}${ensureTerminalPeriod(labelLine[2])}${labelLine[3]}`;
-
-      return line;
-    })
-    .join("\n");
-}
-
-const PREMATURE_CLASS_CLOSURE = /^(evaluation gate|recap|main achievement|main weakness|priority correction|new vocabulary\/chunks|next action|session logged(?: in english os)?)[\s:]*$/i;
-
-function stripPrematureClassClosure(reply: string) {
-  const lines = String(reply || "").split("\n");
-  const boundary = lines.findIndex((line) => {
-    const clean = line.replace(/[*#]/g, "").trim();
-    return PREMATURE_CLASS_CLOSURE.test(clean);
-  });
-  const kept = boundary >= 0 ? lines.slice(0, boundary) : lines;
-  return kept
-    .filter((line) => !/session logged(?: in english os)?/i.test(line))
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-function limitToOpeningClassTurn(reply: string, sectionList: string) {
-  const sections = sectionList.split("+").map((section) => section.trim()).filter(Boolean);
-  if (sections.length < 2) return stripPrematureClassClosure(reply);
-
-  const laterSections = new Set(sections.slice(1).map((section) => section.toLowerCase()));
-  const lines = stripPrematureClassClosure(reply).split("\n");
-  const boundary = lines.findIndex((line) => {
-    const trimmed = line.trim();
-    const looksLikeHeading = /^#{1,6}\s+/.test(trimmed) || /^\*\*[^*]+\*\*:?$/.test(trimmed);
-    const clean = trimmed.replace(/^#{1,6}\s+/, "").replace(/[*:]/g, "").trim().toLowerCase();
-    return looksLikeHeading && laterSections.has(clean);
-  });
-  return (boundary >= 0 ? lines.slice(0, boundary) : lines).join("\n").trim();
-}
-
-const CLASS_CONFIRMATION_DETOUR = /(?:current english os position is different|saved position is different|different from unit|can't start|cannot start|without your confirmation|please reply with one option|continue my current class|continue the current class|review unit \d+ overview)/i;
-
-function stripClassConfirmationDetours(reply: string) {
-  const lines = String(reply || "").split("\n");
-  const boundary = lines.findIndex((line) => CLASS_CONFIRMATION_DETOUR.test(line.replace(/[*"“”]/g, "").trim()));
-  const kept = boundary >= 0 ? lines.slice(0, boundary) : lines;
-  return kept
-    .filter((line) => !/^\s*\d+\.\s*["“]?(?:start unit|continue my current class|continue the current class|review unit)/i.test(line.trim()))
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-function learnerFriendlyFocus(value: string) {
-  return String(value || "")
-    .trim()
-    .replace(/^The class is not grammar-centered;\s*(?:it focuses on|its real focus is|the real focus is)\s*/i, "")
-    .replace(/^The class is not grammar-centered;\s*it combines\s*/i, "")
-    .replace(/^This class is not grammar-centered;\s*(?:it focuses on|its real focus is|the real focus is|the main skill focus is)\s*/i, "")
-    .replace(/^This class is not grammar-centered;\s*it combines\s*/i, "")
-    .replace(/^Not grammar-centered;\s*(?:the visible skill focus is|the skill focus is)\s*/i, "")
-    .replace(/^The class is grammar-centered,\s*with\s*/i, "")
-    .replace(/^This class is grammar-centered,\s*with\s*/i, "")
-    .replace(/^The class is grammar-centered,\s*/i, "")
-    .replace(/^This class is grammar-centered,\s*/i, "")
-    .replace(/\.$/, "")
-    .trim();
-}
-
-function hasExplicitOpeningTask(text: string) {
-  return /(?:\byour turn\b|\bnow your turn\b|\banswer (?:in english|these|this)|\bwrite (?:two|2|one|1|a|your)|\btell me\b|\bcomplete (?:these|this)|\btry\b|^\s*\d+\.\s+\S)/im.test(text);
-}
-
-export function ensureMinimumOpeningTask(reply: string, identity: ClassIdentity) {
-  const text = String(reply || "").trim();
-  const wordCount = text.split(/\s+/).filter(Boolean).length;
-  if (wordCount >= 45 && hasExplicitOpeningTask(text)) return text;
-
-  const firstSection = identity.sections.split("+")[0]?.trim() || identity.lessonTitle || "Starting point";
-  if (/video|before watching/i.test(firstSection)) {
-    return [
-      text,
-      "",
-      "Let’s start with a short prediction before watching. Think about the lesson topic and answer in English:",
-      "",
-      "1. What do you think this video will show?",
-      "2. Which Unit language do you expect to use in your answer?",
-      "",
-      "Write two short sentences. I’ll use your answer to continue with the next step.",
-    ].filter(Boolean).join("\n");
-  }
-  return [
-    text,
-    "",
-    "Let’s start with one small step. Answer in English with two short sentences about the lesson topic. I’ll continue from your answer.",
-  ].filter(Boolean).join("\n");
-}
-
-export function ensureRichOpeningTask(reply: string, identity: ClassIdentity) {
-  const text = String(reply || "").trim();
-  const wordCount = text.split(/\s+/).filter(Boolean).length;
-  if (wordCount >= 45 && hasExplicitOpeningTask(text)) return text;
-
-  const firstSection = identity.sections.split("+")[0]?.trim() || identity.lessonTitle || "Starting point";
-  if (/video|before watching/i.test(firstSection)) {
-    return [
-      text,
-      "",
-      "## Video Class - Before watching",
-      "",
-      "We will not invent the video transcript. First, we prepare your ideas so you can watch or discuss the video with a clear purpose.",
-      "",
-      "Two model answers:",
-      "",
-      "> I think the video will show different daily routines and how people manage their energy.",
-      "> I expect to use Unit language like morning person, night owl, sleep habits, and productivity.",
-      "",
-      "> The video might compare people who work better early with people who feel more creative at night.",
-      "> I can use time clauses such as after I wake up, before I start work, and whenever I feel tired.",
-      "",
-      "Your turn - answer in English:",
-      "",
-      "1. What do you think this video will show?",
-      "2. Which useful Unit words or time clauses can you use to talk about it?",
-      "",
-      "Write two short sentences. I will correct your answer and then we will continue with the next video step.",
-    ].filter(Boolean).join("\n");
-  }
-
-  return [
-    text,
-    "",
-    "## Starting point",
-    "",
-    "Two model answers:",
-    "",
-    "> I can explain my idea with a short example.",
-    "> I can connect the lesson topic to my work or daily routine.",
-    "",
-    "Your turn - answer in English with two short sentences about the lesson topic. I will continue from your answer.",
-  ].filter(Boolean).join("\n");
-}
-
-function renderClassReply(params: {
-  body: string;
-  position: string;
-  identity: ClassIdentity;
-  unit: number;
-  localClass: number;
-  displayClass?: number | null;
-}) {
-  const identity = params.identity;
-  const title = unitTitle(params.unit);
-  const displayLesson = identity.lessonTitle || identity.sections.split("+")[0]?.trim() || "Class session";
-  const formattedSkillFocus = learnerFriendlyFocus(identity.skillFocus.split(",").map((item) => item.trim()).filter(Boolean).join(", "));
-  const teachingBody = ensureRichOpeningTask(
-    stripClassConfirmationDetours(limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections)),
-    identity,
-  );
-  const reference = [
-    `class ${params.displayClass || params.localClass}`,
-    displayLesson,
-  ].filter(Boolean).join(" · ");
-  const header = [
-    `# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`,
-    `Hoy trabajaremos **${reference}**.`,
-    "",
-    formattedSkillFocus
-      ? `Focus: **${formattedSkillFocus}**. Iremos paso a paso.`
-      : "Iremos paso a paso.",
-    "",
-    identity.sections ? `Empezamos con **${identity.sections.split("+")[0]?.trim() || displayLesson}**.` : "",
-  ].filter(Boolean);
-
-  return readableMarkdownPunctuation(sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]
-    .join("\n")
-    .trim()));
-}
-
-function renderReviewReply(params: { body: string; position: string; unit: number }) {
-  const title = unitTitle(params.unit);
-  return readableMarkdownPunctuation([params.position, "", `# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""} — Strategic review`)}`, "", stripModelOwnedIdentity(params.body)]
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim());
-}
-
-function renderUnitGuideReply(params: { body: string; position: string; unit: number; kind: "grammar" | "vocabulary" }) {
-  const title = unitTitle(params.unit);
-  const label = params.kind === "grammar" ? "Grammar guide" : "Vocabulary guide";
-  return readableMarkdownPunctuation([params.position, "", `# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""} — ${label}`)}`, "", stripModelOwnedIdentity(params.body)]
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim());
-}
-
-function loadUnitTeachingContracts(unit: number) {
-  return Array.from({ length: 7 }, (_, index) => {
-    const localClass = index + 1;
-    const pack = loadClassPack(unit, localClass);
-    return {
-      localClass,
-      filename: pack.filename,
-      contract: activeTeachingContract(pack.content),
-    };
-  });
 }
 
 function getOutputText(openaiResponse: any): string {
@@ -459,13 +71,6 @@ function usage(openaiResponse: any) {
     outputTokens: Number(u.output_tokens ?? u.completion_tokens ?? 0) || 0,
     totalTokens: Number(u.total_tokens ?? 0) || 0,
   };
-}
-
-function assertNoMetadataFallback(reply: string) {
-  const found = FORBIDDEN_METADATA_MARKERS.find((marker) => reply.includes(marker));
-  if (found) throw new Error(`Unsafe class reply contains metadata marker: ${found}`);
-  const pattern = FORBIDDEN_METADATA_PATTERNS.find((candidate) => candidate.test(reply));
-  if (pattern) throw new Error(`Unsafe class reply contains internal planning language: ${pattern}`);
 }
 
 function assertCompleteModelResponse(data: any, reply: string) {
@@ -766,30 +371,19 @@ export async function coachPost(request: Request) {
   }
 
   if (isGiveClassQuestion(message)) {
-    let target = resolveClassTargetFromMessage(message, currentUnit, context);
-    let activeClassContent: any = null;
-    if (target.needsCurrentClassLookup) {
-      try {
-        activeClassContent = await callEnglishOSAction("getCurrentClassContent", { userEmail: email, learnerId });
-        target = mergeClassTargetWithPayload(target, activeClassContent);
-      } catch {
-        activeClassContent = null;
-      }
-    }
-    const { unit, localClass, globalClass } = target;
-    if (!unit || !localClass) {
-      const savedUnit = unit ? `Unit ${unit}` : "tu unidad actual";
+    const targetResult = await resolveCoachClassTarget({
+      message,
+      currentUnit,
+      context,
+      readCurrentClassContent: () => callEnglishOSAction("getCurrentClassContent", { userEmail: email, learnerId }),
+    });
+    if (targetResult.kind === "needs_clarification") {
+      const unit = targetResult.target.unit;
       const session = sessionFor({ mode: "class", activeUnit: unit, activeClassNumber: null, resourcesUnit: unit });
       return NextResponse.json({
         ok: true,
         agent: "coach",
-        reply: [
-          `Encontré ${savedUnit}, pero no tengo un número de clase activo confiable.`,
-          "",
-          "Para no inventar **Class 1** ni mezclar una lección guardada con otra clase, dime exactamente cuál quieres abrir.",
-          "",
-          "Puedes escribir, por ejemplo: **Dame la clase 2 de la unidad 4**.",
-        ].join("\n"),
+        reply: targetResult.reply,
         session,
         activeUnit: legacyActiveUnit(session),
         activeClass: legacyActiveClass(session),
@@ -798,6 +392,8 @@ export async function coachPost(request: Request) {
       });
     }
 
+    const { target, activeClassContent } = targetResult;
+    const { unit, localClass, globalClass, displayClass } = target;
     const classContent = await callEnglishOSAction("getClassContent", {
       unit: String(unit),
       classNumber: String(globalClass),
@@ -815,7 +411,6 @@ export async function coachPost(request: Request) {
     );
     assertNoMetadataFallback(modelBody);
     const identity = classIdentity(content);
-    const displayClass = target.explicitClassRequest ? localClass : globalClass || localClass;
     const position = learnerPositionLine({
       context,
       name: learnerName(context, ""),

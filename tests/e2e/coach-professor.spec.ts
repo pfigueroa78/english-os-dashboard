@@ -266,6 +266,8 @@ test("resource players are width-contained and load on demand", async () => {
   const source = await fs.readFile("src/app/coach/page.tsx", "utf8");
   const pageController = await fs.readFile("src/modules/coach-page/useCoachPageController.ts", "utf8");
   const materialsPanel = await fs.readFile("src/modules/coach-resources/CoachClassMaterialsPanel.tsx", "utf8");
+  const resourcesApplication = await fs.readFile("src/modules/coach-resources/application.ts", "utf8");
+  const workbooksApplication = await fs.readFile("src/modules/coach-workbooks/application.ts", "utf8");
   const guidesPanel = await fs.readFile("src/modules/coach-resources/CoachGuidesPanel.tsx", "utf8");
   const messageList = await fs.readFile("src/modules/coach-chat/CoachMessageList.tsx", "utf8");
   const messageListViewModel = await fs.readFile("src/modules/coach-chat/messageListViewModel.ts", "utf8");
@@ -273,6 +275,7 @@ test("resource players are width-contained and load on demand", async () => {
   const composerViewModel = await fs.readFile("src/modules/coach-chat/composerViewModel.ts", "utf8");
   const actions = await fs.readFile("src/modules/coach-actions/coachActions.ts", "utf8");
   const topBar = await fs.readFile("src/modules/coach-layout/CoachTopBar.tsx", "utf8");
+  const layoutApplication = await fs.readFile("src/modules/coach-layout/application.ts", "utf8");
   const persistence = await fs.readFile("src/modules/coach-persistence/coachPersistence.ts", "utf8");
   const media = await fs.readFile("src/modules/coach-media/coachMedia.ts", "utf8");
   const controller = await fs.readFile("src/modules/coach-controller/coachController.ts", "utf8");
@@ -283,9 +286,14 @@ test("resource players are width-contained and load on demand", async () => {
 
   expect(materialsPanel).toContain('data-testid="resource-card"');
   expect(pageController).toContain("resourcesNotice");
-  expect(pageController).toContain("Los materiales conectados no estan configurados");
-  expect(pageController).toContain("Descargar XLSX");
-  expect(pageController).toContain("Abrir en Sheets");
+  expect(pageController).toContain("loadCoachResources");
+  expect(pageController).not.toContain("Los materiales conectados no estan configurados");
+  expect(resourcesApplication).toContain("Los materiales conectados no estan configurados");
+  expect(pageController).toContain("createCoachWorkbook");
+  expect(pageController).not.toContain("Descargar XLSX");
+  expect(pageController).not.toContain("Abrir en Sheets");
+  expect(workbooksApplication).toContain("Descargar XLSX");
+  expect(workbooksApplication).toContain("Abrir en Sheets");
   expect(guidesPanel).toContain("coach-workbook-card");
   expect(styles).toContain(".coach-message-user .coach-message-actions { display: none; }");
   expect(styles).toContain(".coach-message-teacher { padding-right: 0; }");
@@ -317,8 +325,9 @@ test("resource players are width-contained and load on demand", async () => {
   expect(styles).toContain("@keyframes coach-thinking-dot");
   expect(styles).toContain(".coach-thinking-dots");
   expect(styles).toContain(".coach-thinking-stop");
-  expect(pageController).toContain('type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue"');
-  expect(pageController).toContain('type CoachTextSize = "compact" | "normal" | "large"');
+  expect(layoutApplication).toContain('type CoachTheme = "slate" | "paper" | "sage" | "sand" | "blue"');
+  expect(layoutApplication).toContain('type CoachTextSize = "compact" | "normal" | "large"');
+  expect(pageController).toContain('from "@/modules/coach-layout/application"');
   expect(persistence).toContain("english-os-coach-text-size");
   expect(pageController).toContain("saveCoachPreferences");
   expect(source).toContain("data-text-size={state.textSize}");

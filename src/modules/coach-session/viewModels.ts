@@ -88,6 +88,27 @@ export type CoachClassMaterialsPanelModel = {
   practiceDisabled: boolean;
 };
 
+export type CoachDiagnosticCheckModel = {
+  name: string;
+  ok: boolean;
+  detail: string;
+};
+
+export type CoachSessionTelemetryItemModel = {
+  id: string;
+  label: string;
+  detail: string;
+  ok: boolean;
+};
+
+export type CoachDiagnosticsPanelModel = {
+  visible: boolean;
+  loading: boolean;
+  error: string;
+  checks: CoachDiagnosticCheckModel[];
+  sessionTelemetry: CoachSessionTelemetryItemModel[];
+};
+
 type StudyPanelModelInput = {
   session: CoachSessionState;
   currentUnitLabel: string;
@@ -234,5 +255,53 @@ export function toCoachClassMaterialsPanelModel(input: {
     error: input.resourcesError,
     expandedResourceId: input.expandedResourceId,
     practiceDisabled: input.practiceDisabled,
+  };
+}
+
+export function toCoachDiagnosticsPanelModel(input: {
+  e2eDemo: boolean;
+  contextError: string;
+  diagnosticsError: string;
+  diagnosticsLoading: boolean;
+  diagnosticChecks: CoachDiagnosticCheckModel[];
+  sessionTelemetry: Array<{
+    id: string;
+    at: string;
+    requestKind: string;
+    source: string;
+    session: {
+      mode: string;
+      activeUnit: string | null;
+      activeClassNumber: number | null;
+      resourcesUnit: string | null;
+    };
+    events: Array<{ type: string; reason?: string; unit?: string | null; policy?: string }>;
+  }>;
+}): CoachDiagnosticsPanelModel {
+  const telemetryItems = input.sessionTelemetry.map((record) => {
+    const location = [
+      record.session.activeUnit,
+      record.session.activeClassNumber ? `Class ${record.session.activeClassNumber}` : "",
+    ].filter(Boolean).join(" · ") || "sin ubicación";
+    const mismatch = record.events.find((event) => event.type === "session_mismatch_detected");
+    return {
+      id: record.id,
+      label: `${record.requestKind} · ${location}`,
+      detail: mismatch?.reason || `${record.session.mode} · recursos ${record.session.resourcesUnit || "sin unidad"}`,
+      ok: !mismatch,
+    };
+  });
+
+  return {
+    visible: !input.e2eDemo && Boolean(
+      input.contextError ||
+      input.diagnosticsError ||
+      input.diagnosticChecks.length > 0 ||
+      telemetryItems.length > 0,
+    ),
+    loading: input.diagnosticsLoading,
+    error: input.diagnosticsError,
+    checks: input.diagnosticChecks,
+    sessionTelemetry: telemetryItems,
   };
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getApiLearnerIdentity } from "@/lib/apiLearnerIdentity";
+import { readCoachSessionTelemetry } from "@/modules/coach-observability/sessionTelemetry";
 
 export const runtime = "nodejs";
 
@@ -147,6 +148,7 @@ export async function GET(request: Request) {
       ok: checks.every((check) => check.ok),
       checks,
       context: englishOS.data || null,
+      sessionTelemetry: readCoachSessionTelemetry(10),
     });
   } catch (error) {
     checks.push({

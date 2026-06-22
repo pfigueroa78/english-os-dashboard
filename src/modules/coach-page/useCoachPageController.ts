@@ -65,6 +65,7 @@ import { createCoachSessionContract } from "@/modules/coach-session/contract";
 import type { CoachSessionState } from "@/modules/coach-session/types";
 import {
   toCoachClassMaterialsPanelModel,
+  toCoachDiagnosticsPanelModel,
   toCoachGuidesPanelModel,
   toCoachLearningPulsePanelModel,
   toCoachQuickHelpPanelModel,
@@ -284,6 +285,7 @@ export function useCoachPageController() {
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
   const [diagnosticsError, setDiagnosticsError] = useState("");
   const [diagnosticChecks, setDiagnosticChecks] = useState<Array<{ name: string; ok: boolean; detail: string }>>([]);
+  const [sessionTelemetry, setSessionTelemetry] = useState<any[]>([]);
   const [resources, setResources] = useState<DriveUnitResource[]>([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
   const [resourcesError, setResourcesError] = useState("");
@@ -364,12 +366,14 @@ export function useCoachPageController() {
     expandedResourceId,
     practiceDisabled: loading,
   });
-  const diagnosticsPanelModel = {
-    visible: !E2E_DEMO && Boolean(contextError || diagnosticsError || diagnosticChecks.length > 0),
-    loading: diagnosticsLoading,
-    error: diagnosticsError,
-    checks: diagnosticChecks,
-  };
+  const diagnosticsPanelModel = toCoachDiagnosticsPanelModel({
+    e2eDemo: E2E_DEMO,
+    contextError,
+    diagnosticsError,
+    diagnosticsLoading,
+    diagnosticChecks,
+    sessionTelemetry,
+  });
   const chatMessageItems = messages.map((message) => ({
     role: message.role,
     content: message.content,
@@ -525,6 +529,7 @@ export function useCoachPageController() {
       const data = await coachApi.getDiagnostics();
       const checks = Array.isArray(data?.checks) ? data.checks : [];
       setDiagnosticChecks(checks);
+      setSessionTelemetry(Array.isArray(data?.sessionTelemetry) ? data.sessionTelemetry : []);
       if (data?.ok === false) {
         setDiagnosticsError("El diagnostico encontro uno o mas puntos para revisar.");
       }

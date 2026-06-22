@@ -1,17 +1,6 @@
 "use client";
 
-type CoachDiagnosticCheckModel = {
-  name: string;
-  ok: boolean;
-  detail: string;
-};
-
-export type CoachDiagnosticsPanelModel = {
-  visible: boolean;
-  loading: boolean;
-  error: string;
-  checks: CoachDiagnosticCheckModel[];
-};
+import type { CoachDiagnosticsPanelModel } from "@/modules/coach-session/viewModels";
 
 type CoachDiagnosticsPanelProps = {
   model: CoachDiagnosticsPanelModel;
@@ -52,6 +41,23 @@ export function CoachDiagnosticsPanel({ model, onRunDiagnostics }: CoachDiagnost
             </li>
           ))}
         </ul>
+      )}
+
+      {model.sessionTelemetry.length > 0 && (
+        <div className="mt-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide opacity-60">Senales de sesion</p>
+          <ul className="mt-2 space-y-2">
+            {model.sessionTelemetry.map((event) => (
+              <li key={event.id} className="rounded-xl border px-3 py-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold">{event.label}</span>
+                  <span className={event.ok ? "text-emerald-700" : "text-amber-700"}>{event.ok ? "OK" : "Revisar"}</span>
+                </div>
+                <p className="mt-1 opacity-75">{event.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </section>
   );

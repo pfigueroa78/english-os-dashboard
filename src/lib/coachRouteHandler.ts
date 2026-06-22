@@ -6,6 +6,7 @@ import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
 import { renderServerPrompt } from "@/modules/coach-prompts/serverPromptRegistry";
 import { getSavedPosition } from "@/modules/coach-context/coachContext";
+import { recordCoachSessionTelemetry } from "@/modules/coach-observability/sessionTelemetry";
 import {
   hasExplicitClassCoordinates,
   isGiveClassQuestion,
@@ -671,11 +672,24 @@ export async function coachPost(request: Request) {
       ...input,
     });
   const baseSession = sessionFor({ mode: currentUnit ? "current" : "fallback", activeUnit: currentUnit, resourcesUnit: currentUnit });
-  const sessionEventsFor = (session: ReturnType<typeof createCoachSessionContract>) =>
-    transitionCoachSession({
+  const sessionEventsFor = (
+    session: ReturnType<typeof createCoachSessionContract>,
+    requestKind: string,
+    source: string,
+  ) => {
+    const transition = transitionCoachSession({
       current: baseSession,
       event: { type: "API_RETURNED_SESSION", session },
-    }).events;
+    });
+    recordCoachSessionTelemetry({
+      learnerEmail: email,
+      requestKind,
+      source,
+      session: transition.state,
+      events: transition.events,
+    });
+    return transition.events;
+  };
 
   if (image) {
     if (!/^data:image\/(png|jpe?g|webp);base64,/i.test(image.dataUrl)) {
@@ -694,8 +708,8 @@ export async function coachPost(request: Request) {
       agent: "coach",
       reply,
       session,
-      sessionEvents: sessionEventsFor(session),
       source: "Ephemeral Visual Vocabulary Analysis",
+      sessionEvents: sessionEventsFor(session, "visual_vocabulary", "Ephemeral Visual Vocabulary Analysis"),
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
   }
@@ -726,10 +740,10 @@ export async function coachPost(request: Request) {
           "Puedes escribir, por ejemplo: **Dame la clase 2 de la unidad 4**.",
         ].join("\n"),
         session,
-        sessionEvents: sessionEventsFor(session),
         activeUnit: legacyActiveUnit(session),
         activeClass: legacyActiveClass(session),
         source: "Current Class Clarification",
+        sessionEvents: sessionEventsFor(session, "class_clarification", "Current Class Clarification"),
       });
     }
 
@@ -773,10 +787,10 @@ export async function coachPost(request: Request) {
       agent: "coach",
       reply,
       session,
-      sessionEvents: sessionEventsFor(session),
       activeUnit: legacyActiveUnit(session),
       activeClass: legacyActiveClass(session),
       source: "Local Class Pack + Pedagogy Prompt",
+      sessionEvents: sessionEventsFor(session, "class", "Local Class Pack + Pedagogy Prompt"),
       deterministicIdentity: true,
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
@@ -813,9 +827,9 @@ export async function coachPost(request: Request) {
       agent: "coach",
       reply,
       session,
-      sessionEvents: sessionEventsFor(session),
       activeUnit: legacyActiveUnit(session),
       source: "Seven Local Teaching Contracts + Review Pedagogy Prompt",
+      sessionEvents: sessionEventsFor(session, "review", "Seven Local Teaching Contracts + Review Pedagogy Prompt"),
       deterministicIdentity: true,
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
@@ -853,9 +867,9 @@ export async function coachPost(request: Request) {
       agent: "coach",
       reply,
       session,
-      sessionEvents: sessionEventsFor(session),
       activeUnit: legacyActiveUnit(session),
       source: `Seven Local Teaching Contracts + ${guideKind} Guide Prompt`,
+      sessionEvents: sessionEventsFor(session, "guide", `Seven Local Teaching Contracts + ${guideKind} Guide Prompt`),
       deterministicIdentity: true,
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
@@ -870,7 +884,7 @@ export async function coachPost(request: Request) {
     agent: "coach",
     reply,
     session,
-    sessionEvents: sessionEventsFor(session),
+    sessionEvents: sessionEventsFor(session, "conversation", "General Coach Prompt"),
     usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
   });
 }

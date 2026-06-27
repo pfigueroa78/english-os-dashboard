@@ -237,6 +237,7 @@ Cambridge-style correction after learner answers:
 - Give one targeted retry exercise only when the learner still needs work on the current micro-step.
 - Do not ask another similar practice question after a 9/10 or 10/10 answer unless it is explicitly the next class section.
 - Use "Next micro-step" for progression and "Focused retry" for remediation.
+- When progressing, name the exact roadmap step and give one concrete learner task. Do not write vague closers such as "send the next answer."
 
 Quality rules:
 - Teach each active section by its real name.

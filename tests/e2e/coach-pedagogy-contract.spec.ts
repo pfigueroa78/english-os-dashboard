@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { classifyCoachIntent, isGiveClassQuestion } from "../../src/lib/coachIntent";
 import { getSavedPosition } from "../../src/modules/coach-context/coachContext";
+import { renderClassReply } from "../../src/modules/coach-delivery/replyRendering";
 
 // Validation scope: UI shell + source contracts + pedagogy-first coach routing.
 const root = process.cwd();
@@ -486,6 +487,8 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(rendererSource).toContain("Before watching");
   expect(rendererSource).toContain("While watching");
   expect(rendererSource).toContain("After watching");
+  expect(rendererSource).toContain("hasVideoStages");
+  expect(rendererSource).toContain("!/^video class$/i.test(section)");
   expect(renderer).toContain('Focus: **${formattedSkillFocus}**');
   expect(renderer).toContain('Empezamos con **${identity.sections.split("+")[0]?.trim() || displayLesson}**.');
   expect(renderer).toContain("learnerFriendlyFocus");
@@ -516,6 +519,25 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(rendererSource).toContain(".replace(/\\bPassages\\s+Level\\s+\\d+\\s*[-—]\\s*/gi, \"\")");
   expect(handler).not.toContain("For this request, the active learning target is");
   expect(rendererSource).toContain("/\\bclass pack\\b/i");
+});
+
+test("video class roadmap starts with the learner action, not the wrapper section", async () => {
+  const reply = renderClassReply({
+    body: "Learning objective: predict ideas before watching.\n\nCommunication mission: use Unit language.\n\nYour turn: Write two predictions.",
+    position: "Pedro, encontré tu clase activa en English OS: **Unit 4, Class 28**.",
+    unit: 4,
+    localClass: 28,
+    identity: {
+      lessonTitle: "Video Class",
+      sections: "Video Class + Before watching + While watching + After watching + Speaking",
+      skillFocus: "video, speaking",
+    },
+  });
+
+  expect(reply).toContain("Ruta de clase: **Paso 1 de 5");
+  expect(reply).toContain("Before watching");
+  expect(reply).toContain("Después: While watching");
+  expect(reply).not.toContain("Paso 1 de 6 — Video Class");
 });
 
 test("all classes display the canonical curriculum unit name", async () => {
@@ -555,7 +577,11 @@ test("strong learner answers advance the micro-step instead of looping similar e
   expect(behavior).toContain("Do not keep asking new exercises for the same micro-skill after a strong answer");
   expect(behavior).toContain("move to the next named class section or to the evaluation gate");
   expect(behavior).toContain('Use "Next micro-step" instead of "Next exercise"');
+  expect(behavior).toContain("Never end a teacher turn with vague instructions");
+  expect(behavior).toContain("Never repeat the same prediction/preparation task after it was approved");
   expect(teacherStyle).toContain("current micro-step is approved");
+  expect(teacherStyle).toContain("name the exact roadmap step");
+  expect(teacherStyle).toContain("Do not write vague closers");
   expect(teacherStyle).toContain("Give one targeted retry exercise only when the learner still needs work");
   expect(teacherStyle).toContain("Do not ask another similar practice question after a 9/10 or 10/10 answer");
 });

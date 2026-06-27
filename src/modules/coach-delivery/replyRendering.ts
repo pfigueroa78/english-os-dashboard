@@ -185,9 +185,12 @@ function activeSectionList(sectionList: string) {
 function lessonRoadmap(identity: ClassIdentity) {
   const sections = activeSectionList(identity.sections);
   const firstSection = sections[0] || identity.lessonTitle || "Starting point";
+  const hasVideoStages = sections.some((section) => /before watching|while watching|after watching/i.test(section));
   const sectionSteps = sections.length === 1 && /video/i.test(firstSection)
     ? ["Before watching", "While watching", "After watching"]
-    : sections;
+    : hasVideoStages
+      ? sections.filter((section) => !/^video class$/i.test(section))
+      : sections;
   const steps = [...sectionSteps, "Evaluation gate"];
   const current = steps[0] || firstSection;
   const next = steps.slice(1).join(" → ");

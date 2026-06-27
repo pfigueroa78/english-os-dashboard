@@ -479,6 +479,13 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(rendererSource).toContain("Learning objective|Communication mission");
   expect(rendererSource).toContain("?::\\*\\*|\\*\\*:|:");
   expect(renderer).toContain('Hoy trabajaremos **${reference}**.');
+  expect(renderer).toContain("lessonRoadmap(identity)");
+  expect(rendererSource).toContain("function lessonRoadmap");
+  expect(rendererSource).toContain("Ruta de clase:");
+  expect(rendererSource).toContain("Paso 1 de ${steps.length}");
+  expect(rendererSource).toContain("Before watching");
+  expect(rendererSource).toContain("While watching");
+  expect(rendererSource).toContain("After watching");
   expect(renderer).toContain('Focus: **${formattedSkillFocus}**');
   expect(renderer).toContain('Empezamos con **${identity.sections.split("+")[0]?.trim() || displayLesson}**.');
   expect(renderer).toContain("learnerFriendlyFocus");
@@ -493,6 +500,8 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(rendererSource).toContain("not grammar-centered");
   expect(rendererSource).toContain("Book pages:|PDF pages:");
   expect(readFile("public/prompts/coach-route/class-system.md")).toContain("The application renders learner position and lesson identity");
+  expect(readFile("public/prompts/coach-route/class-system.md")).toContain("The application shows the finite class roadmap");
+  expect(readFile("public/prompts/coach-route/class-system.md")).toContain("Do not invent unlimited extra micro-steps");
   expect(rendererSource).toContain("encontré tu clase activa en English OS");
   expect(rendererSource).toContain("Trabajaremos con **${target}**.");
   expect(handler).toContain("const explicitClassRule");

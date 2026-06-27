@@ -175,6 +175,28 @@ function hasExplicitOpeningTask(text: string) {
   return /(?:\byour turn\b|\bnow your turn\b|\banswer (?:in english|these|this)|\bwrite (?:two|2|one|1|a|your)|\btell me\b|\bcomplete (?:these|this)|\btry\b|^\s*\d+\.\s+\S)/im.test(text);
 }
 
+function activeSectionList(sectionList: string) {
+  return String(sectionList || "")
+    .split("+")
+    .map((section) => section.trim())
+    .filter(Boolean);
+}
+
+function lessonRoadmap(identity: ClassIdentity) {
+  const sections = activeSectionList(identity.sections);
+  const firstSection = sections[0] || identity.lessonTitle || "Starting point";
+  const sectionSteps = sections.length === 1 && /video/i.test(firstSection)
+    ? ["Before watching", "While watching", "After watching"]
+    : sections;
+  const steps = [...sectionSteps, "Evaluation gate"];
+  const current = steps[0] || firstSection;
+  const next = steps.slice(1).join(" → ");
+  return [
+    `Ruta de clase: **Paso 1 de ${steps.length} — ${current}**.`,
+    next ? `Después: ${next}.` : "",
+  ].filter(Boolean).join(" ");
+}
+
 export function ensureMinimumOpeningTask(reply: string, identity: ClassIdentity) {
   const text = String(reply || "").trim();
   const wordCount = text.split(/\s+/).filter(Boolean).length;
@@ -268,6 +290,8 @@ export function renderClassReply(params: {
   const header = [
     `# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`,
     `Hoy trabajaremos **${reference}**.`,
+    "",
+    lessonRoadmap(identity),
     "",
     formattedSkillFocus
       ? `Focus: **${formattedSkillFocus}**. Iremos paso a paso.`

@@ -15,6 +15,7 @@ import {
   getWwwAuthenticateHeader,
   hasScopes,
 } from "@/lib/mcpOAuth";
+import { canWriteClassApproval } from "@/modules/coach-approval/application";
 
 export const runtime = "nodejs";
 
@@ -352,14 +353,20 @@ const MCP_TOOLS: ToolDefinition[] = [
   withSecurity(
     {
       name: "english_os_approve_current_class_practice",
-      description: "Write action. Approve current class practice only when confirm is true.",
+      description:
+        "Write action. Approve current class practice only when confirm is true and a class-specific approval evaluation proves the learner met the rubric.",
       inputSchema: {
         type: "object",
         properties: {
           userEmail: { type: "string", description: "Learner email address." },
           confirm: { type: "boolean", description: "Must be true to perform this write action." },
+          evaluation: {
+            type: "object",
+            description:
+              "Evidence-based class approval evaluation. Must include canApproveClass=true, completed gates, no blocking errors, and approval evidence.",
+          },
         },
-        required: ["userEmail", "confirm"],
+        required: ["userEmail", "confirm", "evaluation"],
         additionalProperties: false,
       },
     },
@@ -446,9 +453,17 @@ async function callTool(name: string, args: any, request: Request) {
     if (args?.confirm !== true) {
       throw new ToolError("Confirmation required: set confirm=true to approve current class practice.");
     }
+    if (!canWriteClassApproval(args?.evaluation)) {
+      throw new ToolError(
+        "Class approval blocked: provide an evidence-based evaluation with canApproveClass=true, completed gates, approval evidence, and no blocking errors."
+      );
+    }
     const data = await callEnglishOSAction("approveCurrentClassExercises", {
       userEmail,
       learnerId: userEmail,
+      classId: args.evaluation.classId,
+      approvalEvidence: args.evaluation.approvalEvidence,
+      rubric: args.evaluation.rubric,
     });
     return textToolResult(pretty(data), data);
   }

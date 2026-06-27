@@ -109,7 +109,12 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
 });
 
 test("coach UI follows the explicitly requested unit for materials", async () => {
-  const source = readFile("src/app/coach/page.tsx");
+  const source = [
+    readFile("src/app/coach/page.tsx"),
+    readFile("src/modules/coach-page/CoachPageView.tsx"),
+    readFile("src/modules/coach-page/CoachSidebarView.tsx"),
+    readFile("src/modules/coach-page/CoachChatView.tsx"),
+  ].join("\n");
   const pageController = readFile("src/modules/coach-page/useCoachPageController.ts");
   const learningActions = readFile("src/modules/coach-learning-actions/application.ts");
   const sessionContract = readFile("src/modules/coach-session/contract.ts");
@@ -138,12 +143,12 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
   expect(pageController).toContain("const classMaterialsPanelModel = toCoachClassMaterialsPanelModel");
   expect(pageController).toContain("const chatMessageItems = messages.map");
   expect(pageController).toContain("const composerImage = selectedImage");
-  expect(source).toContain("model={models.topBarModel}");
-  expect(source).toContain("model={models.studyPanelModel}");
-  expect(source).toContain("model={models.learningPulsePanelModel}");
-  expect(source).toContain("model={models.guidesPanelModel}");
-  expect(source).toContain("model={models.quickHelpPanelModel}");
-  expect(source).toContain("model={models.classMaterialsPanelModel}");
+  expect(source).toContain("model={viewModel.topBar}");
+  expect(source).toContain("model={viewModel.study}");
+  expect(source).toContain("model={viewModel.learningPulse}");
+  expect(source).toContain("model={viewModel.guides}");
+  expect(source).toContain("model={viewModel.quickHelp}");
+  expect(source).toContain("model={viewModel.materials}");
   expect(source).toContain("<CoachMessageList");
   expect(source).toContain("<CoachComposer");
   expect(source).toContain("<CoachLearningPulsePanel");
@@ -208,7 +213,7 @@ test("coach UI follows the explicitly requested unit for materials", async () =>
 });
 
 test("mobile coach header keeps mode and unit/class visible", async () => {
-  const source = readFile("src/app/coach/page.tsx");
+  const source = readFile("src/modules/coach-page/CoachPageView.tsx");
   const topBar = readFile("src/modules/coach-layout/CoachTopBar.tsx");
   const viewModels = readFile("src/modules/coach-session/viewModels.ts");
   const globals = readFile("src/app/globals.css");
@@ -225,7 +230,7 @@ test("mobile coach header keeps mode and unit/class visible", async () => {
 });
 
 test("coach shows an evidence-based learning pulse without inventing progress", async () => {
-  const source = readFile("src/app/coach/page.tsx");
+  const source = readFile("src/modules/coach-page/CoachSidebarView.tsx");
   const pageController = readFile("src/modules/coach-page/useCoachPageController.ts");
   const contextController = readFile("src/modules/coach-context/coachContext.ts");
   const topBar = readFile("src/modules/coach-layout/CoachTopBar.tsx");
@@ -254,7 +259,7 @@ test("coach shows an evidence-based learning pulse without inventing progress", 
 });
 
 test("mobile sidebar keeps class resources visible after the learning pulse", async () => {
-  const source = readFile("src/app/coach/page.tsx");
+  const source = readFile("src/modules/coach-page/CoachSidebarView.tsx");
   const learningPulsePanel = readFile("src/modules/coach-resources/CoachLearningPulsePanel.tsx");
   const materialsPanel = readFile("src/modules/coach-resources/CoachClassMaterialsPanel.tsx");
   const globals = readFile("src/app/globals.css");
@@ -272,7 +277,7 @@ test("mobile sidebar keeps class resources visible after the learning pulse", as
 
 test("unit grammar and vocabulary guides use verified unit contracts", async () => {
   const handler = readFile("src/lib/coachRouteHandler.ts");
-  const source = readFile("src/app/coach/page.tsx");
+  const source = readFile("src/modules/coach-page/CoachSidebarView.tsx");
   const pageController = readFile("src/modules/coach-page/useCoachPageController.ts");
   const learningActions = readFile("src/modules/coach-learning-actions/application.ts");
   const grammarGuidePrompt = readFile("public/prompts/coach/unit-grammar-guide.md");
@@ -285,7 +290,7 @@ test("unit grammar and vocabulary guides use verified unit contracts", async () 
   expect(readFile("public/prompts/coach-route/unit-guide-system.md")).toContain("Do not ask the learner for the class index");
   expect(readFile("public/prompts/coach-route/unit-guide-system.md")).toContain("Do not mention Passages");
   expect(handler).toContain("renderUnitGuideReply");
-  expect(source).toContain("onRequestGrammarGuide={actions.requestUnitGrammar}");
+  expect(source).toContain('dispatch({ type: "guide.chatGuideRequested", kind: "grammar" })');
   expect(learningActions).toContain("coach.unitGrammarGuide");
   expect(pageController).toContain("buildUnitGrammarGuideMessage");
   expect(grammarGuidePrompt).toContain("No menciones Passages ni pidas el índice.");

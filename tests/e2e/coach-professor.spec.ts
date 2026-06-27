@@ -263,7 +263,11 @@ test("landing page opens and routes to the coach", async ({ page }) => {
 
 test("resource players are width-contained and load on demand", async () => {
   const fs = await import("node:fs/promises");
-  const source = await fs.readFile("src/app/coach/page.tsx", "utf8");
+  const source = [
+    await fs.readFile("src/app/coach/page.tsx", "utf8"),
+    await fs.readFile("src/modules/coach-page/CoachPageView.tsx", "utf8"),
+    await fs.readFile("src/modules/coach-page/CoachChatView.tsx", "utf8"),
+  ].join("\n");
   const pageController = await fs.readFile("src/modules/coach-page/useCoachPageController.ts", "utf8");
   const materialsPanel = await fs.readFile("src/modules/coach-resources/CoachClassMaterialsPanel.tsx", "utf8");
   const resourcesApplication = await fs.readFile("src/modules/coach-resources/application.ts", "utf8");
@@ -330,7 +334,7 @@ test("resource players are width-contained and load on demand", async () => {
   expect(pageController).toContain('from "@/modules/coach-layout/application"');
   expect(persistence).toContain("english-os-coach-text-size");
   expect(pageController).toContain("saveCoachPreferences");
-  expect(source).toContain("data-text-size={state.textSize}");
+  expect(source).toContain("data-text-size={viewModel.shell.textSize}");
   expect(topBar).toContain("Disminuir tamaño de texto");
   expect(topBar).toContain("Aumentar tamaño de texto");
   expect(pageController).toContain("studyModeLabel");

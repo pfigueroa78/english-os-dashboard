@@ -135,7 +135,15 @@ function countTargetMatches(answer: string, targets: string[]) {
     if (/\bgerund\b/i.test(target) && /\b[a-z]{3,}ing\b/i.test(answer)) return true;
     if (/\binfinitive\b/i.test(target) && /\bto\s+[a-z]{3,}\b/i.test(answer)) return true;
     if (/\bshould have\b/i.test(target) && /\bshould\s+have\s+[a-z]{3,}(ed|en)\b/i.test(answer)) return true;
+    if (/\b(was|were)\s+supposed\s+to\b/i.test(target) && /\b(was|were)\s+supposed\s+to\s+[a-z]{2,}\b/i.test(answer)) return true;
     if (/\bused to\b/i.test(target) && /\bused\s+to\s+[a-z]{2,}\b/i.test(answer)) return true;
+    if (/\bhas become\b/i.test(target) && /\b(has|have)\s+become\b/i.test(answer)) return true;
+    if (/\bmodals?\b|\bcertainty\b|\buncertainty\b|\bmust have\b|\bmight have\b|\bcould have\b/i.test(target) && /\b(must|might|may|could|can't)\s+(have\s+)?[a-z]{2,}\b/i.test(answer)) return true;
+    if (/\badjective clauses?\b|\brelative clauses?\b|\bthat\b|\bwhere\b|\bwhich\b|\bwho\b/i.test(target) && /\b(that|where|which|who|when)\b/i.test(answer)) return true;
+    if (/\bpresent perfect\b|\bhave\/has\b/i.test(target) && /\b(have|has)\s+[a-z]{3,}(ed|en)\b/i.test(answer)) return true;
+    if (/\bconditionals?\b|\bif clauses?\b/i.test(target) && /\bif\b.+\b(would|could|will|can)\b|\b(would|could|will|can)\b.+\bif\b/i.test(answer)) return true;
+    if (/\bsmall talk\b|\bconversation\b|\bopeners?\b|\bclosers?\b/i.test(target) && /\b(how's it going|how are you|see you|got to run|great to meet|do you know|can you believe)\b/i.test(answer)) return true;
+    if (/\badvice\b|\bsuggestion\b|\brecommend\b|\bought to\b|\bshould\b/i.test(target) && /\b(should|could|might want to|recommend|ought to|it might not be a bad idea)\b/i.test(answer)) return true;
     if (/\breported\b/i.test(target) && /\b(said|told|asked|warned|explained)\b/i.test(answer)) return true;
     if (/\b(time clauses?|before|after|while|when|whenever|as soon as)\b/i.test(target) && /\b(before|after|while|when|whenever|as soon as|until)\b/i.test(answer)) return true;
     const words = tokenPattern(target);

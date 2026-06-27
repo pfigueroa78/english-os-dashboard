@@ -321,9 +321,7 @@ export async function POST(request: Request) {
       const result = await callMcpTool(request, "english_os_approve_current_class_practice", {
         userEmail,
         confirm: true,
-        approvalEvidence: body.evaluation.approvalEvidence,
-        classId: body.evaluation.classId,
-        rubric: body.evaluation.rubric,
+        evaluation: body.evaluation,
       });
 
       return NextResponse.json({

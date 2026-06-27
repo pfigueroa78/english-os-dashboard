@@ -72,6 +72,34 @@ test("coach message application infers class coordinates only as a fallback when
   expect(resolved.coachMessage.content).toContain("Unit 5");
 });
 
+test("coach message application preserves active class across correction replies without coordinates", async () => {
+  const resolved = resolveCoachResponseState({
+    requestMessage: "I am more of a morning person because I feel focused.",
+    data: {
+      ok: true,
+      reply: "👍\n\nOriginal sentence\nI am more of a morning person because I feel focused.\n\nCorrected sentence\nI’m more of a morning person because I feel focused.",
+    },
+    currentUnit: "Unit 4",
+    currentLesson: "Video Class",
+    currentSession: {
+      mode: "class",
+      savedUnit: "Unit 4",
+      savedLesson: "Video Class",
+      activeUnit: "Unit 4",
+      activeClassNumber: 28,
+      lessonTitle: "Video Class",
+      resourcesUnit: "Unit 4",
+      source: "english_os",
+    },
+    getSavedPosition: () => ({ unit: "Unit 4", lesson: "Video Class", classNumber: null }),
+  });
+
+  expect(resolved.studyMode).toBe("class");
+  expect(resolved.session.activeUnit).toBe("Unit 4");
+  expect(resolved.session.activeClassNumber).toBe(28);
+  expect(resolved.studyClassNumber).toBe(28);
+});
+
 test("coach message application returns a learner-safe recoverable error message", async () => {
   const error = createCoachErrorMessage("timeout");
 

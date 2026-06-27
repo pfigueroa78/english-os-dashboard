@@ -630,6 +630,7 @@ export function useCoachPageController() {
         data,
         currentUnit,
         currentLesson,
+        currentSession: coachSession,
         getSavedPosition,
       });
 

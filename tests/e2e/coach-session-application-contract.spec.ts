@@ -7,6 +7,7 @@ import {
   resolveCoachUiSession,
 } from "../../src/modules/coach-session/application";
 import { createCoachSessionContract } from "../../src/modules/coach-session/contract";
+import { toCoachTopBarModel } from "../../src/modules/coach-session/viewModels";
 
 test("coach session application creates initial and context-loaded states", () => {
   expect(createInitialCoachSession({
@@ -77,6 +78,25 @@ test("coach session application resolves UI session without leaking component ru
     activeClassNumber: 2,
     lessonTitle: "Making conversation",
     resourcesUnit: "Unit 5",
+  });
+});
+
+test("coach top bar keeps class number visible for active class sessions", () => {
+  const session = createCoachSessionContract({
+    mode: "class",
+    savedUnit: "Unit 4",
+    savedLesson: "Video Class",
+    activeUnit: "Unit 4",
+    activeClassNumber: 28,
+    lessonTitle: "Video Class",
+    resourcesUnit: "Unit 4",
+    source: "english_os",
+  });
+
+  expect(toCoachTopBarModel(session, "3/4")).toMatchObject({
+    modeLabel: "Clase",
+    locationLabel: expect.stringContaining("Class 28"),
+    detailLabel: expect.stringContaining("Class 28"),
   });
 });
 

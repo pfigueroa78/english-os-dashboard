@@ -89,6 +89,7 @@ export function resolveCoachResponseState(params: {
   data: any;
   currentUnit: string;
   currentLesson: string;
+  currentSession?: CoachSessionState | null;
   getSavedPosition: (data: any) => { unit: string; lesson: string; classNumber?: number | null };
 }) {
   const savedPosition = params.getSavedPosition(params.data);
@@ -99,7 +100,7 @@ export function resolveCoachResponseState(params: {
   const unit = activeUnit ? `Unit ${activeUnit}` : "";
   const lesson = savedPosition.lesson;
   const studyMode: CoachStudyMode = isReviewRequest(params.requestMessage) ? "review" : isGuideRequest(params.requestMessage) ? "guide" : "class";
-  const currentSession = createCoachSessionContract({
+  const currentSession = params.currentSession || createCoachSessionContract({
     mode: savedPosition.classNumber ? "class" : "current",
     savedUnit: savedPosition.unit || params.currentUnit,
     savedLesson: lesson || params.currentLesson,
@@ -131,8 +132,8 @@ export function resolveCoachResponseState(params: {
           }
           : {
             type: "USER_REQUESTED_CLASS",
-            unit: unit || savedPosition.unit || params.currentUnit,
-            classNumber: activeClass || savedPosition.classNumber,
+            unit: unit || savedPosition.unit || currentSession.activeUnit || params.currentUnit,
+            classNumber: activeClass || savedPosition.classNumber || currentSession.activeClassNumber,
             savedUnit: savedPosition.unit || params.currentUnit,
             savedLesson: lesson || params.currentLesson,
             lessonTitle: lesson || params.currentLesson,

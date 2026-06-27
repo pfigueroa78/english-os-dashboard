@@ -579,11 +579,21 @@ test("strong learner answers advance the micro-step instead of looping similar e
   expect(behavior).toContain('Use "Next micro-step" instead of "Next exercise"');
   expect(behavior).toContain("Never end a teacher turn with vague instructions");
   expect(behavior).toContain("Never repeat the same prediction/preparation task after it was approved");
+  expect(behavior).toContain("Treat each visible roadmap section as one substantial learning step");
+  expect(behavior).toContain("Do not create hidden micro-steps inside the same roadmap section");
+  expect(behavior).toContain("Before watching may ask for one compact prediction task only");
+  expect(behavior).toContain("UNIT CHECKPOINT RULES");
+  expect(behavior).toContain("replace the normal class evaluation gate with a unit checkpoint");
+  expect(behavior).toContain("Unit checkpoint approved");
   expect(teacherStyle).toContain("current micro-step is approved");
   expect(teacherStyle).toContain("name the exact roadmap step");
   expect(teacherStyle).toContain("Do not write vague closers");
   expect(teacherStyle).toContain("Give one targeted retry exercise only when the learner still needs work");
   expect(teacherStyle).toContain("Do not ask another similar practice question after a 9/10 or 10/10 answer");
+  expect(teacherStyle).toContain("A visible roadmap section is one substantial learning step");
+  expect(teacherStyle).toContain("Never ask a second prediction task with different wording");
+  expect(teacherStyle).toContain("Unit checkpoint rule");
+  expect(teacherStyle).toContain("unit checkpoint instead of the normal class evaluation gate");
 });
 
 test("video class openings are enriched when the model returns a thin response", async () => {

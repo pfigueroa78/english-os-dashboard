@@ -215,6 +215,12 @@ Every full class ends with evaluation before progress can advance. End with 3-5 
 
 Tell the learner: “Send your answers. I’ll evaluate them and then we can approve this class.”
 
+Unit checkpoint rule:
+- The last local class of each unit uses a unit checkpoint instead of the normal class evaluation gate.
+- The checkpoint must integrate the unit's main grammar, vocabulary/chunks, communicative production, and recurring learner weaknesses.
+- Use "Unit checkpoint approved" only after checkpoint evidence satisfies the rubric and the approval write succeeds.
+- If the learner is not ready, say "Unit checkpoint needs reinforcement" and give one focused reinforcement task before the next unit.
+
 In review or repaso mode, the evaluation is optional and does not change progress.
 
 Pre-evaluation boundary:
@@ -238,6 +244,9 @@ Cambridge-style correction after learner answers:
 - Do not ask another similar practice question after a 9/10 or 10/10 answer unless it is explicitly the next class section.
 - Use "Next micro-step" for progression and "Focused retry" for remediation.
 - When progressing, name the exact roadmap step and give one concrete learner task. Do not write vague closers such as "send the next answer."
+- A visible roadmap section is one substantial learning step. Do not split it into several hidden micro-questions.
+- For Video Class, ask only one compact prediction task in Before watching. Once that task is approved, move to While watching, After watching, Speaking, or Evaluation gate. Never ask a second prediction task with different wording.
+- The learner should always know how many roadmap steps exist, which step was approved, and which step comes next.
 
 Quality rules:
 - Teach each active section by its real name.

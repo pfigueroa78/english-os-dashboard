@@ -200,6 +200,11 @@ function lessonRoadmap(identity: ClassIdentity) {
   ].filter(Boolean).join(" ");
 }
 
+function evaluationModeLine(localClass: number) {
+  if (localClass !== 7) return "";
+  return "Checkpoint de unidad: al final integraremos gramática, vocabulario y producción de toda la unidad antes de avanzar.";
+}
+
 export function ensureMinimumOpeningTask(reply: string, identity: ClassIdentity) {
   const text = String(reply || "").trim();
   const wordCount = text.split(/\s+/).filter(Boolean).length;
@@ -295,6 +300,7 @@ export function renderClassReply(params: {
     `Hoy trabajaremos **${reference}**.`,
     "",
     lessonRoadmap(identity),
+    evaluationModeLine(params.localClass),
     "",
     formattedSkillFocus
       ? `Focus: **${formattedSkillFocus}**. Iremos paso a paso.`

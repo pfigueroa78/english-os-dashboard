@@ -581,10 +581,16 @@ test("strong learner answers advance the micro-step instead of looping similar e
   expect(behavior).toContain("Never repeat the same prediction/preparation task after it was approved");
   expect(behavior).toContain("Treat each visible roadmap section as one substantial learning step");
   expect(behavior).toContain("Do not create hidden micro-steps inside the same roadmap section");
+  expect(behavior).toContain("Never announce the same \"Next micro-step: Paso X de Y");
+  expect(behavior).toContain("It must not create another new task inside Paso X");
   expect(behavior).toContain("Before watching may ask for one compact prediction task only");
+  expect(behavior).toContain("Do not ask a second simulated While watching dialogue");
   expect(behavior).toContain("UNIT CHECKPOINT RULES");
   expect(behavior).toContain("replace the normal class evaluation gate with a unit checkpoint");
   expect(behavior).toContain("Unit checkpoint approved");
+  const classSystem = readFile("public/prompts/coach-route/class-system.md");
+  expect(classSystem).toContain("Do not open the same numbered step again with a similar task");
+  expect(classSystem).toContain("use at most one teacher-created While watching simulation");
   expect(teacherStyle).toContain("current micro-step is approved");
   expect(teacherStyle).toContain("name the exact roadmap step");
   expect(teacherStyle).toContain("Do not write vague closers");
@@ -592,6 +598,8 @@ test("strong learner answers advance the micro-step instead of looping similar e
   expect(teacherStyle).toContain("Do not ask another similar practice question after a 9/10 or 10/10 answer");
   expect(teacherStyle).toContain("A visible roadmap section is one substantial learning step");
   expect(teacherStyle).toContain("Never ask a second prediction task with different wording");
+  expect(teacherStyle).toContain("Do not generate another While watching dialogue");
+  expect(teacherStyle).toContain("Repeating the same step is allowed only as \"Focused retry\"");
   expect(teacherStyle).toContain("Unit checkpoint rule");
   expect(teacherStyle).toContain("unit checkpoint instead of the normal class evaluation gate");
 });

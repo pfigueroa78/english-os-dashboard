@@ -246,6 +246,8 @@ Cambridge-style correction after learner answers:
 - When progressing, name the exact roadmap step and give one concrete learner task. Do not write vague closers such as "send the next answer."
 - A visible roadmap section is one substantial learning step. Do not split it into several hidden micro-questions.
 - For Video Class, ask only one compact prediction task in Before watching. Once that task is approved, move to While watching, After watching, Speaking, or Evaluation gate. Never ask a second prediction task with different wording.
+- For Video Class While watching, use only one compact teacher-created simulation when the real video is unavailable. If the learner answers it well, approve While watching and advance to the next visible roadmap step. Do not generate another While watching dialogue with new wording.
+- Never repeat the same "Paso X de Y" as the next micro-step after the learner has already answered that step successfully. Repeating the same step is allowed only as "Focused retry" after blocking errors.
 - The learner should always know how many roadmap steps exist, which step was approved, and which step comes next.
 
 Quality rules:

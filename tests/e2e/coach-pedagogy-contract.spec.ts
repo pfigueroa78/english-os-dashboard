@@ -571,6 +571,7 @@ test("class opening cannot invent evaluation or logging results", async () => {
 test("strong learner answers advance the micro-step instead of looping similar exercises", async () => {
   const behavior = readFile("src/lib/englishOsCoachPrompt.ts");
   const teacherStyle = readFile("src/lib/passagesTeacherStyle.ts");
+  const routeHandler = readFile("src/lib/coachRouteHandler.ts");
 
   expect(behavior).toContain("ANTI-LOOP TEACHING RULES");
   expect(behavior).toContain("This micro-step is approved");
@@ -591,6 +592,10 @@ test("strong learner answers advance the micro-step instead of looping similar e
   const classSystem = readFile("public/prompts/coach-route/class-system.md");
   expect(classSystem).toContain("Do not open the same numbered step again with a similar task");
   expect(classSystem).toContain("use at most one teacher-created While watching simulation");
+  expect(routeHandler).toContain("incomingClassProgress");
+  expect(routeHandler).toContain("buildClassContinuationInput");
+  expect(routeHandler).toContain("class_continuation");
+  expect(routeHandler).toContain("Local Class Pack + Class Progress State");
   expect(teacherStyle).toContain("current micro-step is approved");
   expect(teacherStyle).toContain("name the exact roadmap step");
   expect(teacherStyle).toContain("Do not write vague closers");

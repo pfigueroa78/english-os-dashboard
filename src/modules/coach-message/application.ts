@@ -2,6 +2,7 @@ import { createCoachSessionContract } from "@/modules/coach-session/contract";
 import { coachModeFromStudyMode, type CoachSessionStudyMode } from "@/modules/coach-session/application";
 import { transitionCoachSession } from "@/modules/coach-session/stateMachine";
 import type { CoachSessionState } from "@/modules/coach-session/types";
+import type { CoachClassProgressState } from "@/modules/coach-class-progress/application";
 
 export type CoachControllerMessage = {
   role: "user" | "coach";
@@ -56,6 +57,8 @@ export function prepareCoachMessageTurn(params: {
   selectedImage: CoachImagePayload | null;
   messages: CoachControllerMessage[];
   loading: boolean;
+  currentSession?: CoachSessionState | null;
+  classProgress?: CoachClassProgressState | null;
 }) {
   const imageToAnalyze = params.customMessage ? null : params.selectedImage;
   const message = (params.customMessage || params.input || (imageToAnalyze ? "Analiza esta foto y ayúdame a aprender vocabulario en inglés." : "")).trim();
@@ -72,6 +75,8 @@ export function prepareCoachMessageTurn(params: {
     requestBody: {
       message,
       conversationHistory: stripEphemeralImages(params.messages.slice(-12)),
+      session: params.currentSession || null,
+      classProgress: params.classProgress || null,
       image: imageToAnalyze ? { dataUrl: imageToAnalyze.dataUrl, mimeType: imageToAnalyze.mimeType, name: imageToAnalyze.name } : undefined,
     },
   };
@@ -90,6 +95,7 @@ export function resolveCoachResponseState(params: {
   currentUnit: string;
   currentLesson: string;
   currentSession?: CoachSessionState | null;
+  currentClassProgress?: CoachClassProgressState | null;
   getSavedPosition: (data: any) => { unit: string; lesson: string; classNumber?: number | null };
 }) {
   const savedPosition = params.getSavedPosition(params.data);
@@ -146,6 +152,7 @@ export function resolveCoachResponseState(params: {
     studyMode,
     session,
     sessionEvents: transition.events,
+    classProgress: params.data.classProgress || params.currentClassProgress || null,
     studyUnit: session.activeUnit || unit,
     studyClassNumber: session.activeClassNumber && studyMode === "class" ? Number(session.activeClassNumber) : null,
     currentLesson: session.lessonTitle || lesson,

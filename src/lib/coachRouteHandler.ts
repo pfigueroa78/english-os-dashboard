@@ -4,6 +4,14 @@ import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
 import { renderServerPrompt } from "@/modules/coach-prompts/serverPromptRegistry";
 import { getSavedPosition } from "@/modules/coach-context/coachContext";
+import {
+  advanceClassProgressFromReply,
+  buildClassProgressInstruction,
+  createClassProgress,
+  isSameClassProgress,
+  sanitizeClassProgress,
+  type CoachClassProgressState,
+} from "@/modules/coach-class-progress/application";
 import { recordCoachSessionTelemetry } from "@/modules/coach-observability/sessionTelemetry";
 import {
   hasExplicitClassCoordinates,
@@ -43,7 +51,13 @@ const OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_COACH_RET
 
 type CoachMessage = { role: "user" | "coach"; content: string };
 type CoachImageAttachment = { dataUrl: string; mimeType?: string; name?: string };
-type CoachRequest = { message: string; conversationHistory?: CoachMessage[]; image?: CoachImageAttachment };
+type CoachRequest = {
+  message: string;
+  conversationHistory?: CoachMessage[];
+  image?: CoachImageAttachment;
+  session?: unknown;
+  classProgress?: unknown;
+};
 
 function isReviewQuestion(message: string) {
   return isReviewIntent(message);
@@ -151,6 +165,56 @@ async function buildClassInput(params: {
         learnerContext: JSON.stringify(params.learnerContext).slice(0, 5000),
         classContent: JSON.stringify(params.classContent).slice(0, 5000),
         conversationHistory: JSON.stringify(params.conversationHistory).slice(0, 2500),
+      }),
+    },
+  ];
+}
+
+function readableClassContinuation(reply: string) {
+  return sanitizeLearnerFacingReply(reply)
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+async function buildClassContinuationInput(params: {
+  message: string;
+  learnerContext: any;
+  classContent: any;
+  classPack: string;
+  filename: string;
+  conversationHistory: CoachMessage[];
+  classProgress: CoachClassProgressState;
+}) {
+  const identity = classIdentity(params.classPack);
+  return [
+    {
+      role: "system",
+      content: [
+        ENGLISH_OS_COACH_BEHAVIOR_PROMPT,
+        "",
+        PASSAGES_TEACHER_STYLE_GUIDANCE,
+        "",
+        "CLASS CONTINUATION RULES:",
+        "- This is not a new class opening. Continue the active class from the authoritative application progress state.",
+        "- Do not restart the class and do not repeat already approved roadmap steps.",
+        "- If the learner answer satisfies the current step, approve that step and advance to the next visible roadmap step.",
+        "- If the learner answer has blocking errors, keep the same step and give exactly one Focused retry.",
+        "- Do not expose raw class pack, source, retrieval, or application-state metadata.",
+        "",
+        buildClassProgressInstruction(params.classProgress),
+        "",
+        openingSectionInstruction(identity.sections),
+      ].join("\n"),
+    },
+    {
+      role: "user",
+      content: await renderServerPrompt("coachRoute.class.user", {
+        message: params.message,
+        filename: params.filename,
+        classPack: params.classPack.slice(0, 18000),
+        learnerContext: JSON.stringify(params.learnerContext).slice(0, 5000),
+        classContent: JSON.stringify(params.classContent).slice(0, 5000),
+        conversationHistory: JSON.stringify(params.conversationHistory).slice(0, 4000),
       }),
     },
   ];
@@ -312,6 +376,7 @@ export async function coachPost(request: Request) {
   const message = String(body.message || "").trim();
   const conversationHistory = Array.isArray(body.conversationHistory) ? body.conversationHistory.slice(-12) : [];
   const image = body.image?.dataUrl ? body.image : null;
+  const incomingClassProgress = sanitizeClassProgress(body.classProgress);
   if (!message && !image) return NextResponse.json({ ok: false, error: "Message is required." }, { status: 400 });
 
   const context = await getLearnerContext(email);
@@ -411,6 +476,7 @@ export async function coachPost(request: Request) {
     );
     assertNoMetadataFallback(modelBody);
     const identity = classIdentity(content);
+    const classProgress = createClassProgress({ unit, localClass, displayClass, identity });
     const position = learnerPositionLine({
       context,
       name: learnerName(context, ""),
@@ -437,6 +503,61 @@ export async function coachPost(request: Request) {
       activeClass: legacyActiveClass(session),
       source: "Local Class Pack + Pedagogy Prompt",
       sessionEvents: sessionEventsFor(session, "class", "Local Class Pack + Pedagogy Prompt"),
+      deterministicIdentity: true,
+      classProgress,
+      usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
+    });
+  }
+
+  if (incomingClassProgress && !isReviewQuestion(message) && !unitGuideKind(message)) {
+    const { unit, localClass, displayClass } = incomingClassProgress;
+    const { filename, content } = loadClassPack(unit, localClass);
+    if (!content) {
+      return NextResponse.json({ ok: false, error: `Missing local class pack: ${filename}` }, { status: 500 });
+    }
+    const identity = classIdentity(content);
+    const progress = isSameClassProgress(incomingClassProgress, { unit, localClass, displayClass })
+      ? incomingClassProgress
+      : createClassProgress({ unit, localClass, displayClass, identity });
+    const globalClass = (unit - 1) * 7 + localClass;
+    const classContent = await callEnglishOSAction("getClassContent", {
+      unit: String(unit),
+      classNumber: String(globalClass),
+      userEmail: email,
+      learnerId,
+    }).catch(() => null);
+    const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
+      await buildClassContinuationInput({
+        message,
+        learnerContext: context,
+        classContent,
+        classPack: content,
+        filename,
+        conversationHistory,
+        classProgress: progress,
+      }),
+    );
+    assertNoMetadataFallback(modelBody);
+    const reply = readableClassContinuation(modelBody);
+    const nextProgress = advanceClassProgressFromReply(progress, reply);
+    const u = usage(openaiData);
+    const session = sessionFor({
+      mode: "class",
+      activeUnit: unit,
+      activeClassNumber: displayClass,
+      lessonTitle: identity.lessonTitle,
+      resourcesUnit: unit,
+    });
+    return NextResponse.json({
+      ok: true,
+      agent: "coach",
+      reply,
+      session,
+      activeUnit: legacyActiveUnit(session),
+      activeClass: legacyActiveClass(session),
+      classProgress: nextProgress,
+      source: "Local Class Pack + Class Progress State",
+      sessionEvents: sessionEventsFor(session, "class_continuation", "Local Class Pack + Class Progress State"),
       deterministicIdentity: true,
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });

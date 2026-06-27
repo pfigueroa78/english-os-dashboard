@@ -5,6 +5,26 @@ import {
   resolveCoachResponseState,
   stripEphemeralImages,
 } from "../../src/modules/coach-message/application";
+import { createClassProgress } from "../../src/modules/coach-class-progress/application";
+
+const videoIdentity = {
+  lessonTitle: "Video Class",
+  bookPages: "",
+  pdfPages: "",
+  sections: "Video Class + Before watching + While watching + After watching + Speaking",
+  skillFocus: "video discussion",
+};
+
+const classSession = {
+  mode: "class" as const,
+  savedUnit: "Unit 4",
+  savedLesson: "Video Class",
+  activeUnit: "Unit 4",
+  activeClassNumber: 28,
+  lessonTitle: "Video Class",
+  resourcesUnit: "Unit 4",
+  source: "english_os" as const,
+};
 
 test("coach message application prepares image turns without persisting ephemeral image bytes", async () => {
   const prepared = prepareCoachMessageTurn({
@@ -23,6 +43,31 @@ test("coach message application prepares image turns without persisting ephemera
   expect(prepared?.requestBody.image).toMatchObject({ name: "office.png", mimeType: "image/png" });
   expect(JSON.stringify(prepared?.requestBody.conversationHistory)).not.toContain("data:image");
   expect(stripEphemeralImages([{ role: "user", content: "x", image: { dataUrl: "data:image/png;base64,x" } }])[0].image).toBeUndefined();
+});
+
+test("coach message application sends class progress so answers stay on the class route", async () => {
+  const classProgress = {
+    ...createClassProgress({ unit: 4, localClass: 7, displayClass: 28, identity: videoIdentity }),
+    currentStepIndex: 1,
+    completedStepIndexes: [0],
+  };
+  const prepared = prepareCoachMessageTurn({
+    input: "The main idea is that people have different energy patterns.",
+    selectedImage: null,
+    messages: [{ role: "coach", content: "Next micro-step: Paso 2 de 5 — While watching." }],
+    loading: false,
+    currentSession: classSession,
+    classProgress,
+  });
+
+  expect(prepared?.requestBody.session).toEqual(classSession);
+  expect(prepared?.requestBody.classProgress).toMatchObject({
+    unit: 4,
+    localClass: 7,
+    displayClass: 28,
+    currentStepIndex: 1,
+    completedStepIndexes: [0],
+  });
 });
 
 test("coach message application trusts the API session over stale client state", async () => {
@@ -72,25 +117,19 @@ test("coach message application infers class coordinates only as a fallback when
   expect(resolved.coachMessage.content).toContain("Unit 5");
 });
 
-test("coach message application preserves active class across correction replies without coordinates", async () => {
+test("coach message application preserves active class and class progress across correction replies", async () => {
+  const classProgress = createClassProgress({ unit: 4, localClass: 7, displayClass: 28, identity: videoIdentity });
   const resolved = resolveCoachResponseState({
     requestMessage: "I am more of a morning person because I feel focused.",
     data: {
       ok: true,
       reply: "👍\n\nOriginal sentence\nI am more of a morning person because I feel focused.\n\nCorrected sentence\nI’m more of a morning person because I feel focused.",
+      classProgress: { ...classProgress, currentStepIndex: 2, completedStepIndexes: [0, 1] },
     },
     currentUnit: "Unit 4",
     currentLesson: "Video Class",
-    currentSession: {
-      mode: "class",
-      savedUnit: "Unit 4",
-      savedLesson: "Video Class",
-      activeUnit: "Unit 4",
-      activeClassNumber: 28,
-      lessonTitle: "Video Class",
-      resourcesUnit: "Unit 4",
-      source: "english_os",
-    },
+    currentSession: classSession,
+    currentClassProgress: classProgress,
     getSavedPosition: () => ({ unit: "Unit 4", lesson: "Video Class", classNumber: null }),
   });
 
@@ -98,6 +137,13 @@ test("coach message application preserves active class across correction replies
   expect(resolved.session.activeUnit).toBe("Unit 4");
   expect(resolved.session.activeClassNumber).toBe(28);
   expect(resolved.studyClassNumber).toBe(28);
+  expect(resolved.classProgress).toMatchObject({
+    unit: 4,
+    localClass: 7,
+    displayClass: 28,
+    currentStepIndex: 2,
+    completedStepIndexes: [0, 1],
+  });
 });
 
 test("coach message application returns a learner-safe recoverable error message", async () => {

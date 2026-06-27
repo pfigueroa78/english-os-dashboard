@@ -12,6 +12,12 @@ import { createCoachApiClient } from "@/modules/coach-api/coachApiClient";
 import { toCoachComposerModel } from "@/modules/coach-chat/composerViewModel";
 import { toCoachMessageListModel } from "@/modules/coach-chat/messageListViewModel";
 import {
+  classProgressKey,
+  loadStoredClassProgress,
+  saveStoredClassProgress,
+  type CoachClassProgressState,
+} from "@/modules/coach-class-progress/application";
+import {
   buildInitialCoachMessage,
   buildInitialCoachMessages,
   buildLearningPulse,
@@ -220,6 +226,7 @@ export function useCoachPageController() {
       demoLesson: DEMO_LESSON,
     }),
   );
+  const [classProgress, setClassProgress] = useState<CoachClassProgressState | null>(null);
   const [learningPulse, setLearningPulse] = useState<CoachLearningPulse>(() => buildLearningPulse({}));
   const [theme, setTheme] = useState<CoachTheme>("paper");
   const [textSize, setTextSize] = useState<CoachTextSize>("compact");
@@ -366,6 +373,7 @@ export function useCoachPageController() {
     composerModel,
   });
   const conversationStorageKey = getCoachConversationStorageKey(email);
+  const classProgressStorageKey = classProgressKey(email);
 
   useEffect(() => {
     setHydrated(true);
@@ -397,14 +405,20 @@ export function useCoachPageController() {
   }, [messages, loading, agentLoading, conversationStorageKey]);
 
   useEffect(() => {
+    if (!hydrated || E2E_DEMO) return;
+    saveStoredClassProgress(window.localStorage, classProgressStorageKey, classProgress);
+  }, [hydrated, classProgressStorageKey, classProgress]);
+
+  useEffect(() => {
     if (E2E_DEMO) return;
     if (!authReady || !signedIn) return;
 
     const savedMessages = loadCoachConversation(window.localStorage, conversationStorageKey);
     if (savedMessages.length > 0) setMessages(savedMessages);
+    setClassProgress(loadStoredClassProgress(window.localStorage, classProgressStorageKey));
 
     loadUserContext();
-  }, [authReady, signedIn, conversationStorageKey, learnerName]);
+  }, [authReady, signedIn, conversationStorageKey, classProgressStorageKey, learnerName]);
 
   useEffect(() => {
     if (!activeStudyUnit || E2E_DEMO) return;
@@ -601,6 +615,8 @@ export function useCoachPageController() {
       selectedImage,
       messages,
       loading,
+      currentSession: coachSession,
+      classProgress,
     });
     if (!prepared) return;
 
@@ -631,6 +647,7 @@ export function useCoachPageController() {
         currentUnit,
         currentLesson,
         currentSession: coachSession,
+        currentClassProgress: classProgress,
         getSavedPosition,
       });
 
@@ -640,6 +657,7 @@ export function useCoachPageController() {
         setStudyUnit(normalizeUnitValue(next.studyUnit));
       }
       setStudyClassNumber(next.studyClassNumber);
+      setClassProgress(next.classProgress);
       if (next.currentLesson) setCurrentLesson(next.currentLesson);
 
       const activeInitialMessage = buildInitialCoachMessage(

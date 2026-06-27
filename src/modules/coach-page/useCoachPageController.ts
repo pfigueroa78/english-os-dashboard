@@ -95,6 +95,8 @@ import {
 } from "@/modules/coach-session/viewModels";
 import { createCoachWorkbook } from "@/modules/coach-workbooks/application";
 import type { CoachWorkbookContract } from "@/modules/coach-integrations/workbookContract";
+import type { CoachPageDispatch } from "./pageViewModel";
+import { presentCoachPage } from "./presenter";
 
 type Message = {
   role: "user" | "coach";
@@ -342,6 +344,26 @@ export function useCoachPageController() {
     hydrated,
     loading,
     listening,
+  });
+  const pageViewModel = presentCoachPage({
+    authReady,
+    signedIn,
+    e2eDemo: E2E_DEMO,
+    theme,
+    textSize,
+    hydrated,
+    sidebarOpen,
+    sidebarWidth,
+    error,
+    topBarModel,
+    studyPanelModel,
+    learningPulsePanelModel,
+    diagnosticsPanelModel,
+    guidesPanelModel,
+    quickHelpPanelModel,
+    classMaterialsPanelModel,
+    messageListModel,
+    composerModel,
   });
   const conversationStorageKey = getCoachConversationStorageKey(email);
 
@@ -893,6 +915,102 @@ export function useCoachPageController() {
     window.addEventListener("pointercancel", stopResize);
   }
 
+  const dispatch: CoachPageDispatch = (event) => {
+    switch (event.type) {
+      case "auth.signInRequested":
+        return;
+      case "layout.sidebarToggled":
+        setSidebarOpen((open) => !open);
+        return;
+      case "layout.sidebarResizeStarted":
+        startSidebarResize(event.clientX);
+        return;
+      case "layout.themeChanged":
+        setTheme(event.theme);
+        return;
+      case "layout.textSizeChanged":
+        setTextSize((size) => nextCoachTextSize(size, event.direction));
+        return;
+      case "study.unitChanged":
+        handleStudyUnitChange(event.unit);
+        return;
+      case "study.unitCommitted":
+        handleStudyUnitBlur(event.unit);
+        return;
+      case "study.savedPositionRequested":
+        handleUseSavedPosition();
+        return;
+      case "study.classStartRequested":
+        startTodayClass();
+        return;
+      case "guide.workbookCreateRequested":
+        createWorkbook(event.kind);
+        return;
+      case "guide.chatGuideRequested":
+        if (event.kind === "grammar") requestUnitGrammar();
+        else requestUnitVocabulary();
+        return;
+      case "quickHelp.agentSelected":
+        setActiveAgentId(event.agentId as AgentId);
+        return;
+      case "quickHelp.agentRunRequested":
+        handleRunAgent(event.agentId);
+        return;
+      case "materials.resourceToggled":
+        setExpandedResourceId((current) => current === event.resourceId ? null : event.resourceId);
+        return;
+      case "materials.resourcePracticeRequested":
+        requestResourcePractice(event.resourceId);
+        return;
+      case "diagnostics.runRequested":
+        runDiagnostics();
+        return;
+      case "composer.inputChanged":
+        setInput(event.value);
+        return;
+      case "composer.imageSelected":
+        handleImageSelected(event.file);
+        return;
+      case "composer.imageCleared":
+        setSelectedImage(null);
+        return;
+      case "composer.dictationToggled":
+        startDictation();
+        return;
+      case "composer.messageSubmitted":
+        sendMessage();
+        return;
+      case "composer.thinkingStopped":
+        stopThinking();
+        return;
+      case "message.speechToggled": {
+        const message = messages[event.messageIndex];
+        if (message) toggleSpeech(message.content, event.messageIndex);
+        return;
+      }
+      case "message.speechStopOrRestartRequested": {
+        const message = messages[event.messageIndex];
+        if (!message) return;
+        if (speakingMessageIndex === event.messageIndex) stopSpeech();
+        else speakMessage(message.content, event.messageIndex);
+        return;
+      }
+      case "message.feedbackToggled":
+        toggleMessageFeedback(event.messageIndex, event.feedback);
+        return;
+      case "message.reportRequested": {
+        const message = messages[event.messageIndex];
+        if (message) reportMessage(message.content, event.messageIndex);
+        return;
+      }
+      case "message.copyRequested": {
+        const message = messages[event.messageIndex];
+        if (message) copyMessage(message.content, event.messageIndex);
+        return;
+      }
+    }
+  };
+
   return {
     auth: {
       authReady,
@@ -922,6 +1040,8 @@ export function useCoachPageController() {
       textareaRef,
       imageInputRef,
     },
+    viewModel: pageViewModel,
+    dispatch,
     models: {
       topBarModel,
       studyPanelModel,

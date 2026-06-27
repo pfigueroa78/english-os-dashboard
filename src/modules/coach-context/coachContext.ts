@@ -30,7 +30,7 @@ export function extractUnitNumber(value: string) {
 
 export function unitLabel(value: string) {
   const number = extractUnitNumber(value);
-  return number ? `Unit ${number}` : value || "Current unit";
+  return number ? `Unit ${number}` : value || "Unidad actual";
 }
 
 export function normalizeUnitValue(value: string) {
@@ -54,7 +54,7 @@ export function buildInitialCoachMessage(unit: string, lesson: string, progressS
     `Clase / lección actual: ${lesson || "Clase guiada de English OS"}.`,
     progressSnapshot ? `Avance: ${progressSnapshot}.` : "",
     "",
-    "Puedes empezar la explicación, pedir una pista, practicar gramática o responder la evaluación pendiente. Yo mantengo el avance bloqueado hasta que la evaluación quede aprobada.",
+    "Cuando estés listo, empezamos con una explicación breve, ejemplos y práctica guiada. Yo mantengo el avance bloqueado hasta que la evaluación quede aprobada.",
   ].filter((line, index, lines) => line || lines[index - 1]).join("\n");
 }
 
@@ -211,7 +211,7 @@ export function buildLearningPulse(data: any): CoachLearningPulse {
   const evidenceCount = evidenceFlags.some(Boolean) ? evidenceFlags.filter(Boolean).length : null;
 
   return {
-    level: level || "Sin nivel confirmado",
+    level: level || "Nivel aún por confirmar",
     practiceCount: recentLogs.length,
     evidenceCount,
     evidenceTotal: 4,
@@ -221,5 +221,5 @@ export function buildLearningPulse(data: any): CoachLearningPulse {
 }
 
 export function learningPulseDetail(pulse: CoachLearningPulse) {
-  return pulse.evidenceCount === null ? "sin evidencias" : `${pulse.evidenceCount}/${pulse.evidenceTotal}`;
+  return pulse.evidenceCount === null ? "Aún necesito evidencia" : `${pulse.evidenceCount}/${pulse.evidenceTotal}`;
 }

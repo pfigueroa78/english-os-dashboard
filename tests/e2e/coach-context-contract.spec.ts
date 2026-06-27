@@ -43,7 +43,7 @@ test("coach context builds progress without inventing evidence", () => {
     nextStep: "practice contrast",
   });
   expect(learningPulseDetail(pulse)).toBe("2/4");
-  expect(learningPulseDetail(buildLearningPulse({}))).toBe("sin evidencias");
+  expect(learningPulseDetail(buildLearningPulse({}))).toBe("Aún necesito evidencia");
 });
 
 test("coach context creates learner-safe initial messages without hardcoded Pedro", () => {

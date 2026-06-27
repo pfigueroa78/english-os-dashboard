@@ -63,7 +63,7 @@ export function buildCoachReportMailto(params: CoachReportParams) {
     "",
     `Fecha: ${params.nowIso}`,
     `Learner: ${params.email}`,
-    `Modo: ${params.studyModeLabel}`,
+    `Modo de estudio: ${params.studyModeLabel}`,
     `Objetivo activo: ${params.activeLocationLabel || "No definido"}`,
     params.href ? `URL: ${params.href}` : "",
     `Mensaje #: ${params.index + 1}`,

@@ -21,7 +21,7 @@ export function CoachStudyPanel({
     <section className="coach-panel min-w-0 max-w-full overflow-hidden rounded-xl border p-3">
       <p className="text-[11px] font-semibold uppercase tracking-wide opacity-60">Objetivo activo</p>
       <h2 className="mt-1 text-lg font-bold">{model.title}</h2>
-      <p className="mt-1 text-xs font-semibold uppercase tracking-wide opacity-60">Modo: {model.modeLabel}</p>
+      <p className="mt-1 text-xs font-semibold uppercase tracking-wide opacity-60">Modo de estudio: {model.modeLabel}</p>
       <p className="mt-1 text-xs opacity-70">Posición guardada: {model.savedPositionLabel}</p>
       <p className="mt-1 text-sm opacity-75">Recursos: {model.resourcesLabel}.</p>
       <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-500">Unidad de estudio</label>
@@ -34,10 +34,10 @@ export function CoachStudyPanel({
       />
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button type="button" onClick={onUseSavedPosition} disabled={!model.canUseSavedPosition} className="coach-action rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-50">
-          Usar posición
+          Continuar desde aquí
         </button>
         <button type="button" onClick={onStartClass} disabled={!model.canStartClass} className="coach-action-primary rounded-xl px-3 py-2 text-xs font-semibold disabled:opacity-50">
-          Clase
+          Empezar clase
         </button>
       </div>
     </section>

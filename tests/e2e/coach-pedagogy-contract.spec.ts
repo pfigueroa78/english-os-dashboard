@@ -245,8 +245,8 @@ test("coach shows an evidence-based learning pulse without inventing progress", 
   expect(contextController).toContain("\"nextAction\"");
   expect(contextController).toContain("\"mistake\"");
   expect(contextController).toContain("function learningPulseDetail");
-  expect(contextController).toContain("Sin nivel confirmado");
-  expect(contextController).toContain("sin evidencias");
+  expect(contextController).toContain("Nivel aún por confirmar");
+  expect(contextController).toContain("Aún necesito evidencia");
   expect(pageController).toContain("buildLearningPulse");
   expect(pageController).toContain("learningPulseDetail");
   expect(topBar).toContain("coach-status-pulse");

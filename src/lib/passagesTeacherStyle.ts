@@ -233,7 +233,10 @@ Cambridge-style correction after learner answers:
 - Score the item.
 - Identify the recurring pattern.
 - Estimate CEFR when enough evidence exists.
-- Give one targeted next exercise.
+- If the answer is strong and has no blocking errors, say the current micro-step is approved and move to the next named section or the evaluation gate.
+- Give one targeted retry exercise only when the learner still needs work on the current micro-step.
+- Do not ask another similar practice question after a 9/10 or 10/10 answer unless it is explicitly the next class section.
+- Use "Next micro-step" for progression and "Focused retry" for remediation.
 
 Quality rules:
 - Teach each active section by its real name.

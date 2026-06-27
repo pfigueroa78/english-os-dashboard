@@ -537,6 +537,20 @@ test("class opening cannot invent evaluation or logging results", async () => {
   expect(readFile("public/prompts/coach-route/general-system.md")).toContain("Cambridge-style correction");
 });
 
+test("strong learner answers advance the micro-step instead of looping similar exercises", async () => {
+  const behavior = readFile("src/lib/englishOsCoachPrompt.ts");
+  const teacherStyle = readFile("src/lib/passagesTeacherStyle.ts");
+
+  expect(behavior).toContain("ANTI-LOOP TEACHING RULES");
+  expect(behavior).toContain("This micro-step is approved");
+  expect(behavior).toContain("Do not keep asking new exercises for the same micro-skill after a strong answer");
+  expect(behavior).toContain("move to the next named class section or to the evaluation gate");
+  expect(behavior).toContain('Use "Next micro-step" instead of "Next exercise"');
+  expect(teacherStyle).toContain("current micro-step is approved");
+  expect(teacherStyle).toContain("Give one targeted retry exercise only when the learner still needs work");
+  expect(teacherStyle).toContain("Do not ask another similar practice question after a 9/10 or 10/10 answer");
+});
+
 test("video class openings are enriched when the model returns a thin response", async () => {
   const replyRendering = readFile("src/modules/coach-delivery/replyRendering.ts");
   const helperStart = replyRendering.indexOf("export function ensureRichOpeningTask");

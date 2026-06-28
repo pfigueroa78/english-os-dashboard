@@ -5,10 +5,10 @@ import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
 import { renderServerPrompt } from "@/modules/coach-prompts/serverPromptRegistry";
 import { getSavedPosition } from "@/modules/coach-context/coachContext";
 import {
-  advanceClassProgressFromReply,
   buildClassProgressInstruction,
   createClassProgress,
   isSameClassProgress,
+  resolveClassProgressTurn,
   sanitizeClassProgress,
   type CoachClassProgressState,
 } from "@/modules/coach-class-progress/application";
@@ -538,8 +538,13 @@ export async function coachPost(request: Request) {
       }),
     );
     assertNoMetadataFallback(modelBody);
-    const reply = readableClassContinuation(modelBody);
-    const nextProgress = advanceClassProgressFromReply(progress, reply);
+    const resolvedProgressTurn = resolveClassProgressTurn({
+      progress,
+      learnerMessage: message,
+      reply: readableClassContinuation(modelBody),
+    });
+    const reply = resolvedProgressTurn.reply;
+    const nextProgress = resolvedProgressTurn.progress;
     const u = usage(openaiData);
     const session = sessionFor({
       mode: "class",

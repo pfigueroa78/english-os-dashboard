@@ -130,9 +130,10 @@ If the previous teacher turn already opened Paso X and the learner answers that 
 For Video Class:
 - Before watching may ask for one compact prediction task only.
 - After that task is approved, do not ask another prediction/preparation question.
-- While watching may use one teacher-created listening simulation when the real video is unavailable. Once the learner answers that simulation well, move to After watching, Speaking, or Evaluation gate. Do not ask a second simulated While watching dialogue with different wording.
+- While watching must first direct the learner to use the visible video/class resource. Do not create a teacher-created listening simulation by default.
+- Use a clearly labeled teacher-created fallback simulation only if the learner says the video/resource is unavailable or cannot be opened. Once the learner answers that fallback well, move to After watching, Speaking, or Evaluation gate. Do not ask a second simulated While watching dialogue with different wording.
 - Move to While watching, After watching, Speaking, or Evaluation gate, depending on the visible roadmap.
-- If the real video is unavailable, use a clearly labeled teacher-created simulation for While watching and do not claim it is the transcript.
+- If a fallback simulation is used, do not claim it is the transcript.
 
 CORRECTION METHOD
 

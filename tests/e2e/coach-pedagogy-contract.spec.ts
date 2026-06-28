@@ -696,3 +696,15 @@ test("contract generation and audit preserve the complete lesson title", async (
   expect(generator).toContain("Never promote an activity, subsection, listening, reading, or writing heading");
   expect(audit).toContain("does not match full lesson title");
 });
+
+test("approved class advancement is routed before stale class progress continuation", async () => {
+  const source = readFile("src/lib/coachRouteHandler.ts");
+  const advancementIndex = source.indexOf("if (isAdvancementIntent(message))");
+  const continuationIndex = source.indexOf("if (incomingClassProgress && !isReviewQuestion(message) && !unitGuideKind(message))");
+
+  expect(advancementIndex).toBeGreaterThan(0);
+  expect(continuationIndex).toBeGreaterThan(0);
+  expect(advancementIndex).toBeLessThan(continuationIndex);
+  expect(source).toContain("resolveApprovedClassAdvancement");
+  expect(source).toContain("Approved Class Advancement + Local Class Pack");
+});

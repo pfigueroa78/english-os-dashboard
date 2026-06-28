@@ -24,6 +24,8 @@ export function hasExplicitClassCoordinates(message: string) {
 
 export type CoachIntentKind =
   | "specific_class"
+  | "next_class"
+  | "next_unit"
   | "active_class"
   | "review"
   | "grammar_guide"
@@ -82,6 +84,16 @@ export function classifyCoachIntent(message: string): CoachIntent {
   const asksCorrection = hasAny(normalized, /\b(corrige|corregir|correccion|correction|evalua|evaluar|evaluate|feedback)\b/);
   const asksSpeaking = hasAny(normalized, /\b(speaking|hablar|conversacion|conversation|role play|pronunciacion|pronunciation)\b/);
   const asksHint = hasAny(normalized, /\b(pista|hint|ayuda corta|help me answer)\b/);
+  const asksNextUnit = hasAny(normalized, /\b(?:next unit|siguiente unidad|unidad siguiente|move to the next unit|continue to the next unit|pasar a la siguiente unidad|pasemos a la siguiente unidad)\b/);
+  const asksNextClass = hasAny(normalized, /\b(?:next class|next lesson|siguiente clase|clase siguiente|siguiente leccion|leccion siguiente|dame la clase siguiente|go next|avancemos|avanzar|advance|pasemos a la siguiente|continuar a la siguiente)\b/);
+
+  if (asksNextUnit) {
+    return { kind: "next_unit", confidence: "high", unit, classNumber, reasons: ["explicit next-unit wording"] };
+  }
+
+  if (asksNextClass) {
+    return { kind: "next_class", confidence: "high", unit, classNumber, reasons: ["explicit next-class wording"] };
+  }
 
   if (asksReview && (asksUnit || unit)) {
     return { kind: "review", confidence: "high", unit, classNumber, reasons: ["review wording with unit"] };
@@ -113,6 +125,11 @@ export function classifyCoachIntent(message: string): CoachIntent {
 
 export function isActiveClassRequest(message: string) {
   return classifyCoachIntent(message).kind === "active_class";
+}
+
+export function isAdvancementIntent(message: string) {
+  const intent = classifyCoachIntent(message).kind;
+  return intent === "next_class" || intent === "next_unit";
 }
 
 export function isReviewIntent(message: string) {

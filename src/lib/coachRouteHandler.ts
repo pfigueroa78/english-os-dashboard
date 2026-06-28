@@ -16,6 +16,8 @@ import {
 import { recordCoachSessionTelemetry } from "@/modules/coach-observability/sessionTelemetry";
 import {
   hasExplicitClassCoordinates,
+  classifyCoachIntent,
+  isAdvancementIntent,
   isGiveClassQuestion,
   isReviewIntent,
   normalizeCoachMessage as normalize,
@@ -24,6 +26,7 @@ import {
 import { createCoachSessionContract, legacyActiveClass, legacyActiveUnit } from "@/modules/coach-session/contract";
 import { transitionCoachSession } from "@/modules/coach-session/stateMachine";
 import { resolveCoachClassTarget } from "@/modules/coach-target/application";
+import { resolveApprovedClassAdvancement } from "@/modules/coach-advancement/application";
 import {
   resolveUnitTarget,
 } from "@/modules/coach-target/resolve";
@@ -432,6 +435,95 @@ export async function coachPost(request: Request) {
       session,
       source: "Ephemeral Visual Vocabulary Analysis",
       sessionEvents: sessionEventsFor(session, "visual_vocabulary", "Ephemeral Visual Vocabulary Analysis"),
+      usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
+    });
+  }
+
+  if (isAdvancementIntent(message)) {
+    const intent = classifyCoachIntent(message).kind;
+    const advancement = resolveApprovedClassAdvancement({
+      intent: intent === "next_unit" ? "next_unit" : "next_class",
+      classProgress: incomingClassProgress,
+    });
+
+    if (advancement.kind === "blocked") {
+      const session = incomingClassProgress
+        ? sessionFor({
+            mode: "class",
+            activeUnit: incomingClassProgress.unit,
+            activeClassNumber: incomingClassProgress.displayClass,
+            lessonTitle: incomingClassProgress.lessonTitle,
+            resourcesUnit: incomingClassProgress.unit,
+          })
+        : baseSession;
+      return NextResponse.json({
+        ok: true,
+        agent: "coach",
+        reply: advancement.reply,
+        session,
+        activeUnit: legacyActiveUnit(session),
+        activeClass: legacyActiveClass(session),
+        classProgress: incomingClassProgress,
+        source: "Class Advancement Guard",
+        sessionEvents: sessionEventsFor(session, "class_advancement_blocked", "Class Advancement Guard"),
+      });
+    }
+
+    await callEnglishOSAction("advanceToNextClass", {
+      userEmail: email,
+      learnerId,
+    }).catch(() => null);
+
+    const { unit, localClass, globalClass, displayClass } = advancement.target;
+    const { filename, content } = loadClassPack(unit, localClass);
+    if (!content) {
+      return NextResponse.json({ ok: false, error: `Missing local class pack: ${filename}` }, { status: 500 });
+    }
+
+    const classContent = await callEnglishOSAction("getClassContent", {
+      unit: String(unit),
+      classNumber: String(globalClass),
+      userEmail: email,
+      learnerId,
+    }).catch(() => null);
+    const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
+      await buildClassInput({ message, learnerContext: context, classContent, classPack: content, filename, conversationHistory })
+    );
+    assertNoMetadataFallback(modelBody);
+    const identity = classIdentity(content);
+    const classProgress = createClassProgress({ unit, localClass, displayClass, identity });
+    const position = [
+      advancement.replyPrefix,
+      "",
+      learnerPositionLine({
+        context,
+        name: learnerName(context, ""),
+        requestedUnit: unit,
+        requestedClass: displayClass,
+        explicitClassRequest: false,
+      }),
+    ].filter(Boolean).join("\n");
+    const reply = renderClassReply({ body: modelBody, position, identity, unit, localClass, displayClass });
+    const u = usage(openaiData);
+    const session = sessionFor({
+      mode: "class",
+      activeUnit: unit,
+      activeClassNumber: displayClass,
+      lessonTitle: identity.lessonTitle,
+      resourcesUnit: unit,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      agent: "coach",
+      reply,
+      session,
+      activeUnit: legacyActiveUnit(session),
+      activeClass: legacyActiveClass(session),
+      source: "Approved Class Advancement + Local Class Pack",
+      sessionEvents: sessionEventsFor(session, "class_advancement", "Approved Class Advancement + Local Class Pack"),
+      deterministicIdentity: true,
+      classProgress,
       usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
   }

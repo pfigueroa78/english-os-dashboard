@@ -1,4 +1,8 @@
 import type { ClassIdentity } from "@/modules/coach-delivery/teachingContracts";
+import {
+  evaluateClassApproval,
+  type ClassApprovalEvaluation,
+} from "@/modules/coach-approval/application";
 
 export type CoachClassProgressStatus =
   | "awaiting_answer"
@@ -33,6 +37,7 @@ export type ResolvedClassProgressTurn = {
   reply: string;
   progress: CoachClassProgressState;
   repaired: boolean;
+  approvalEvaluation?: ClassApprovalEvaluation;
 };
 
 export function classProgressKey(email: string | null | undefined) {
@@ -221,6 +226,34 @@ export function resolveClassProgressTurn(params: {
   const reply = String(params.reply || "").trim();
   const learnerMessage = String(params.learnerMessage || "").trim();
   const nowIso = params.nowIso || new Date().toISOString();
+
+  if (isEvaluationGateStep(progress) && isLikelyLearnerProduction(learnerMessage)) {
+    const evaluation = evaluateClassApproval({
+      answer: learnerMessage,
+      classPack: approvalRubricSourceFromProgress(progress),
+      evaluationGateCompleted: true,
+      activeSectionsCompleted: previousStepsCompleted(progress),
+    });
+    if (evaluation.canApproveClass) {
+      const approved = approveClassProgress(progress, nowIso);
+      return {
+        reply: buildClassApprovedReply(progress, evaluation),
+        progress: approved,
+        repaired: true,
+        approvalEvaluation: evaluation,
+      };
+    }
+  }
+
+  if (isFalseLanguageRetry(reply, learnerMessage)) {
+    const advanced = approveCurrentStep(progress, nowIso);
+    return {
+      reply: buildDeterministicApprovalReply(progress, advanced),
+      progress: advanced,
+      repaired: true,
+    };
+  }
+
   const nextProgress = advanceClassProgressFromReply(progress, reply, nowIso);
 
   if (nextProgress.status === "needs_retry" || nextProgress.status === "approved") {
@@ -298,6 +331,13 @@ function repairApprovedReplyIfNeeded(
   if (!staleAnnouncement && !staleCurrentStep && !illegalVideoSimulation && !genericEvaluationGate) {
     return { reply: enforceVideoResourceFirst(next, reply, ""), progress: next, repaired: false };
   }
+  if (staleCurrentStep || illegalVideoSimulation) {
+    return {
+      reply: buildDeterministicApprovalReply(previous, next),
+      progress: next,
+      repaired: true,
+    };
+  }
   const approvedPart = reply.split(/Next micro-step:/i)[0].trim() || "This micro-step is approved.";
   return {
     reply: `${approvedPart}\n\n${buildCurrentStepTask(next)}`.trim(),
@@ -360,6 +400,9 @@ function buildCurrentStepTask(progress: CoachClassProgressState) {
 }
 
 function approveCurrentStep(progress: CoachClassProgressState, nowIso: string): CoachClassProgressState {
+  if (progress.currentStepIndex >= progress.steps.length - 1) {
+    return approveClassProgress(progress, nowIso);
+  }
   const nextIndex = Math.min(progress.currentStepIndex + 1, progress.steps.length - 1);
   return {
     ...progress,
@@ -367,6 +410,17 @@ function approveCurrentStep(progress: CoachClassProgressState, nowIso: string): 
     completedStepIndexes: [...new Set([...progress.completedStepIndexes, progress.currentStepIndex])],
     status: progress.steps[nextIndex] === "Evaluation gate" ? "evaluation_ready" : "awaiting_answer",
     lastApprovedStepIndex: progress.currentStepIndex,
+    updatedAt: nowIso,
+  };
+}
+
+function approveClassProgress(progress: CoachClassProgressState, nowIso: string): CoachClassProgressState {
+  return {
+    ...progress,
+    currentStepIndex: progress.steps.length - 1,
+    completedStepIndexes: allStepIndexes(progress),
+    status: "approved",
+    lastApprovedStepIndex: progress.steps.length - 1,
     updatedAt: nowIso,
   };
 }
@@ -406,6 +460,53 @@ function buildEvaluationGateTask(progress: CoachClassProgressState, heading: str
     "",
     "Write 4-6 short sentences in English. I’ll evaluate accuracy, vocabulary, communication goal, and whether this class can be approved.",
   ].join("\n");
+}
+
+function buildClassApprovedReply(
+  progress: CoachClassProgressState,
+  evaluation: ClassApprovalEvaluation,
+) {
+  const isUnitCheckpoint = progress.localClass === 7;
+  const evidence = evaluation.approvalEvidence.slice(0, 4);
+  return [
+    "👍 Good answer. Evaluation gate completed.",
+    "",
+    isUnitCheckpoint
+      ? `Unit ${progress.unit} checkpoint approved.`
+      : `Class ${progress.displayClass} approved.`,
+    "",
+    "Class approved.",
+    "",
+    "Short recap: You completed the required class roadmap and used the target language for this lesson.",
+    `Main achievement: ${evidence[0] || "You produced enough clear English for this class."}`,
+    `Priority correction: ${evaluation.blockingErrors[0] || "Keep expanding your answers with one clear reason or example."}`,
+    "",
+    isUnitCheckpoint
+      ? "Next action: you can ask for the next unit or review your weakest point from this unit."
+      : "Next action: you can ask for the next class or review this class briefly.",
+  ].join("\n");
+}
+
+function approvalRubricSourceFromProgress(progress: CoachClassProgressState) {
+  const profile = progress.evaluationProfile || {};
+  return [
+    `Unit ${progress.unit} Class ${progress.displayClass}`,
+    `Lesson type: ${progress.lessonTitle}`,
+    `Active class grammar focus: ${profile.grammarFocus || ""}`,
+    `Active class vocabulary focus: ${profile.vocabularyFocus || ""}`,
+    `Active class target structures: ${profile.targetStructures || ""}`,
+    `Active class skill focus: ${profile.skillFocus || ""}`,
+    `Expected learner production: ${profile.expectedProduction || ""}`,
+    `Class sections: ${progress.steps.join(" + ")}`,
+    `Functions: ${profile.functions || ""}`,
+  ];
+}
+
+function previousStepsCompleted(progress: CoachClassProgressState) {
+  const required = progress.steps
+    .map((_, index) => index)
+    .filter((index) => index < progress.currentStepIndex);
+  return required.every((index) => progress.completedStepIndexes.includes(index));
 }
 
 function firstUsefulItems(value: string | undefined, limit: number) {
@@ -462,6 +563,25 @@ function hasTeacherSimulation(text: string) {
 
 function learnerRequestedFallback(text: string) {
   return /can'?t open|cannot open|no puedo abrir|no abre|unavailable|not available/i.test(text);
+}
+
+function isEvaluationGateStep(progress: CoachClassProgressState) {
+  return /evaluation gate|checkpoint/i.test(currentStepName(progress)) || progress.status === "evaluation_ready";
+}
+
+function isFalseLanguageRetry(reply: string, learnerMessage: string) {
+  return /need it in English|write your answer in English|now write your answer in English|not in English/i.test(reply) &&
+    isLikelyLearnerProduction(learnerMessage) &&
+    looksLikeEnglishProduction(learnerMessage);
+}
+
+function looksLikeEnglishProduction(text: string) {
+  const words = text.toLowerCase().split(/\s+/).filter(Boolean);
+  const commonEnglish = words.filter((word) =>
+    /^(i|am|is|are|the|a|an|and|because|before|after|as|soon|when|whenever|prefer|work|working|energy|morning|night|day|my|to|in|with|more|feel|focused|productive)$/.test(word.replace(/[^\w']/g, ""))
+  ).length;
+  const hasTargetLanguage = /\b(as soon as|whenever|before|after|while|prefer|because|morning person|night owl|early bird)\b/i.test(text);
+  return commonEnglish >= 6 && hasTargetLanguage;
 }
 
 function isLikelyLearnerProduction(text: string) {

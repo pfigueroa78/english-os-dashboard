@@ -147,12 +147,17 @@ export function resolveCoachResponseState(params: {
   });
   const session = transition.state;
 
+  const resolvedClassProgress = resolveReturnedClassProgress(
+    params.currentClassProgress || null,
+    params.data.classProgress || null,
+  );
+
   return {
     reply,
     studyMode,
     session,
     sessionEvents: transition.events,
-    classProgress: params.data.classProgress || params.currentClassProgress || null,
+    classProgress: resolvedClassProgress,
     studyUnit: session.activeUnit || unit,
     studyClassNumber: session.activeClassNumber && studyMode === "class" ? Number(session.activeClassNumber) : null,
     currentLesson: session.lessonTitle || lesson,
@@ -162,6 +167,29 @@ export function resolveCoachResponseState(params: {
       usage: params.data.usage,
     },
   };
+}
+
+export function resolveReturnedClassProgress(
+  current: CoachClassProgressState | null,
+  incoming: CoachClassProgressState | null,
+) {
+  if (!incoming) return current;
+  if (!current) return incoming;
+  const sameClass =
+    current.unit === incoming.unit &&
+    current.localClass === incoming.localClass &&
+    current.displayClass === incoming.displayClass;
+  if (!sameClass) return incoming;
+  if (current.status === "approved") return current;
+  if (incoming.status === "approved") return incoming;
+  if (incoming.currentStepIndex < current.currentStepIndex) return current;
+  if (
+    incoming.currentStepIndex === current.currentStepIndex &&
+    incoming.completedStepIndexes.length < current.completedStepIndexes.length
+  ) {
+    return current;
+  }
+  return incoming;
 }
 
 export function createCoachErrorMessage(errorMessage: string) {

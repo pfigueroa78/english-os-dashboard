@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   createCoachErrorMessage,
   prepareCoachMessageTurn,
+  resolveReturnedClassProgress,
   resolveCoachResponseState,
   stripEphemeralImages,
 } from "../../src/modules/coach-message/application";
@@ -143,6 +144,26 @@ test("coach message application preserves active class and class progress across
     displayClass: 28,
     currentStepIndex: 2,
     completedStepIndexes: [0, 1],
+  });
+});
+
+test("coach message application refuses class progress regressions from stale responses", async () => {
+  const current = {
+    ...createClassProgress({ unit: 4, localClass: 7, displayClass: 28, identity: videoIdentity }),
+    currentStepIndex: 3,
+    completedStepIndexes: [0, 1, 2],
+    lastApprovedStepIndex: 2,
+  };
+  const stale = {
+    ...current,
+    currentStepIndex: 0,
+    completedStepIndexes: [],
+    lastApprovedStepIndex: null,
+  };
+
+  expect(resolveReturnedClassProgress(current, stale)).toBe(current);
+  expect(resolveReturnedClassProgress(current, { ...current, status: "approved" })).toMatchObject({
+    status: "approved",
   });
 });
 

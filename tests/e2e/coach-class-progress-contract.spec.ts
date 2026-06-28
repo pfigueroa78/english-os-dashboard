@@ -164,6 +164,101 @@ test("focused retry keeps the learner on the same visible step", () => {
   expect(next.status).toBe("needs_retry");
 });
 
+test("real transcript regression: valid English before-watching answer is not rejected as non-English", () => {
+  const progress = createClassProgress({ unit: 4, localClass: 7, displayClass: 28, identity });
+  const resolved = resolveClassProgressTurn({
+    progress,
+    learnerMessage: "I am more like an early bird because I feel more focused in the morning. As soon as I wake up, I organize my tasks and plan my day. I prefer working early because I have more energy.",
+    reply: [
+      "Almost there — one focused retry.",
+      "",
+      "Your answer is a good start, but I need it in English and with one target pattern.",
+      "Now write your answer in English.",
+    ].join("\n"),
+    nowIso: "2026-06-27T00:00:00.000Z",
+  });
+
+  expect(resolved.repaired).toBe(true);
+  expect(resolved.progress.currentStepIndex).toBe(1);
+  expect(resolved.progress.completedStepIndexes).toEqual([0]);
+  expect(resolved.reply).toContain("You completed Paso 1 de 5 - Before watching");
+  expect(resolved.reply).toContain("Next micro-step: Paso 2 de 5 - While watching");
+  expect(resolved.reply).not.toContain("I need it in English");
+});
+
+test("real transcript regression: after-watching answer cannot be routed back to Paso 1", () => {
+  const progress = {
+    ...createClassProgress({ unit: 4, localClass: 7, displayClass: 28, identity }),
+    currentStepIndex: 2,
+    completedStepIndexes: [0, 1],
+  };
+
+  const resolved = resolveClassProgressTurn({
+    progress,
+    learnerMessage: "The video is about how electronics can affect sleep and energy. I sometimes use my phone before I go to bed, but I feel more productive when I sleep well.",
+    reply: [
+      "👍",
+      "",
+      "You already answered Paso 1 de 5 — Before watching very well, so this micro-step is approved.",
+      "",
+      "Quick correction",
+      "Original sentence",
+      "I am more like an early bird because I feel more focused in the morning.",
+      "",
+      "Next micro-step: Paso 4 de 5 - Speaking.",
+    ].join("\n"),
+    nowIso: "2026-06-27T00:00:00.000Z",
+  });
+
+  expect(resolved.repaired).toBe(true);
+  expect(resolved.progress.currentStepIndex).toBe(3);
+  expect(resolved.progress.completedStepIndexes).toEqual([0, 1, 2]);
+  expect(resolved.reply).toContain("You completed Paso 3 de 5 - After watching");
+  expect(resolved.reply).toContain("Next micro-step: Paso 4 de 5 - Speaking");
+  expect(resolved.reply).not.toContain("Original sentence\nI am more like an early bird");
+});
+
+test("real transcript regression: evaluation gate answer closes the class instead of restarting Paso 1", () => {
+  const progress = {
+    ...createClassProgress({ unit: 4, localClass: 7, displayClass: 28, identity }),
+    currentStepIndex: 4,
+    completedStepIndexes: [0, 1, 2, 3],
+    status: "evaluation_ready" as const,
+  };
+
+  const resolved = resolveClassProgressTurn({
+    progress,
+    learnerMessage: [
+      "The class and video topic are about routines, sleep habits, energy, and productivity.",
+      "As soon as I wake up, I organize my tasks and plan my day.",
+      "I am more of a morning person because I have more energy early in the day.",
+      "A late riser or a night owl may feel more productive later in the evening.",
+      "Before watching, I expected the video to show how people manage their schedules and energy.",
+      "After watching, I think it is important to understand my routine so I can work better and avoid distractions.",
+    ].join(" "),
+    reply: [
+      "Pedro Figueroa, encontré tu clase activa en English OS: Unit 4, Class 28.",
+      "",
+      "Unit 4 — Early birds and night owls.",
+      "Hoy trabajaremos class 28 · Video Class. Ruta de clase: Paso 1 de 5 — Before watching.",
+      "",
+      "Video Class — Before watching",
+      "Teacher listening input:",
+      "A: I’m a night owl, so I work better in the evening.",
+    ].join("\n"),
+    nowIso: "2026-06-27T00:00:00.000Z",
+  });
+
+  expect(resolved.repaired).toBe(true);
+  expect(resolved.progress.status).toBe("approved");
+  expect(resolved.progress.currentStepIndex).toBe(4);
+  expect(resolved.progress.completedStepIndexes).toEqual([0, 1, 2, 3, 4]);
+  expect(resolved.reply).toContain("Class approved");
+  expect(resolved.reply).toContain("Unit 4 checkpoint approved");
+  expect(resolved.reply).not.toContain("Paso 1 de 5");
+  expect(resolved.reply).not.toContain("Teacher listening input");
+});
+
 test("class progress persists and resumes after interruption", () => {
   const storage = new Map<string, string>();
   const adapter = {

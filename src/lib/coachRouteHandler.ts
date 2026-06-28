@@ -641,6 +641,15 @@ export async function coachPost(request: Request) {
     });
     const reply = resolvedProgressTurn.reply;
     const nextProgress = resolvedProgressTurn.progress;
+    if (resolvedProgressTurn.approvalEvaluation && nextProgress.status === "approved") {
+      await callEnglishOSAction("approveCurrentClassExercises", {
+        userEmail: email,
+        learnerId,
+        classId: resolvedProgressTurn.approvalEvaluation.classId,
+        approvalEvidence: JSON.stringify(resolvedProgressTurn.approvalEvaluation.approvalEvidence),
+        rubric: JSON.stringify(resolvedProgressTurn.approvalEvaluation.rubric),
+      }).catch(() => null);
+    }
     const u = usage(openaiData);
     const session = sessionFor({
       mode: "class",

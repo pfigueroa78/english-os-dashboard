@@ -7,6 +7,7 @@ import { getSavedPosition } from "@/modules/coach-context/coachContext";
 import {
   buildClassProgressInstruction,
   createClassProgress,
+  enrichClassProgress,
   isSameClassProgress,
   resolveClassProgressTurn,
   sanitizeClassProgress,
@@ -516,9 +517,12 @@ export async function coachPost(request: Request) {
       return NextResponse.json({ ok: false, error: `Missing local class pack: ${filename}` }, { status: 500 });
     }
     const identity = classIdentity(content);
-    const progress = isSameClassProgress(incomingClassProgress, { unit, localClass, displayClass })
-      ? incomingClassProgress
-      : createClassProgress({ unit, localClass, displayClass, identity });
+    const progress = enrichClassProgress(
+      isSameClassProgress(incomingClassProgress, { unit, localClass, displayClass })
+        ? incomingClassProgress
+        : createClassProgress({ unit, localClass, displayClass, identity }),
+      identity,
+    );
     const globalClass = (unit - 1) * 7 + localClass;
     const classContent = await callEnglishOSAction("getClassContent", {
       unit: String(unit),

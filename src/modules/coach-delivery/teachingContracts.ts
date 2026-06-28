@@ -8,6 +8,11 @@ export type ClassIdentity = {
   pdfPages: string;
   sections: string;
   skillFocus: string;
+  grammarFocus: string;
+  vocabularyFocus: string;
+  functions: string;
+  targetStructures: string;
+  expectedProduction: string;
 };
 
 export type UnitTeachingContract = {
@@ -56,6 +61,11 @@ export function classIdentity(content: string): ClassIdentity {
     pdfPages: contractField(contract, "Active class PDF pages"),
     sections: contractField(contract, "Active class section names"),
     skillFocus: contractField(contract, "Active class skill focus"),
+    grammarFocus: contractField(contract, "Active class grammar focus"),
+    vocabularyFocus: contractField(contract, "Active class vocabulary focus"),
+    functions: contractField(contract, "Active class functions"),
+    targetStructures: contractField(contract, "Active class target structures"),
+    expectedProduction: contractField(contract, "Expected learner production"),
   };
 }
 

@@ -16,6 +16,11 @@ const identity = {
   pdfPages: "",
   sections: "Video Class + Before watching + While watching + After watching + Speaking",
   skillFocus: "video discussion",
+  grammarFocus: "Unit 4 review and communicative extension; time clauses, routines, preferences, and advice-style explanations",
+  vocabularyFocus: "time of day; morning person; late riser; night owl; energy; sleep; habits; productivity; schedules",
+  functions: "prepare to watch a unit-related video; understand main ideas and details; discuss routines, sleep habits, energy, and productivity",
+  targetStructures: "As soon as I...; Whenever I...; After I...; Before I...; I prefer... because...; I agree / disagree because...",
+  expectedProduction: "answer before/while/after watching questions and hold a short discussion using Unit 4 language",
 };
 
 test("class progress builds the finite learner roadmap without wrapper sections", () => {
@@ -123,6 +128,27 @@ test("video while-watching step asks for the real resource before using a fallba
   expect(resolved.reply).toContain("Open the video or class resource");
   expect(resolved.reply).toContain("If you cannot open the video");
   expect(resolved.reply).not.toContain("Teacher listening input");
+});
+
+test("evaluation gate is class-specific instead of a generic short-items prompt", () => {
+  const progress = {
+    ...createClassProgress({ unit: 4, localClass: 7, displayClass: 28, identity }),
+    currentStepIndex: 3,
+    completedStepIndexes: [0, 1, 2],
+  };
+  const resolved = resolveClassProgressTurn({
+    progress,
+    learnerMessage: "I prefer working early because I have more energy. Before I start work, I organize my tasks and choose the most difficult one first.",
+    reply: "👍 Good answer. This micro-step is approved.\n\nYou completed Paso 4 de 5 - Speaking.\n\nNext micro-step: Paso 5 de 5 - Evaluation gate.\n\nFinal checkpoint: answer with 3-5 short items using the target grammar, vocabulary, and one personal example.",
+    nowIso: "2026-06-27T00:00:00.000Z",
+  });
+
+  expect(resolved.progress.currentStepIndex).toBe(4);
+  expect(resolved.reply).toContain("Final checkpoint: complete these items");
+  expect(resolved.reply).toContain("As soon as I...");
+  expect(resolved.reply).toContain("morning person");
+  expect(resolved.reply).toContain("discuss routines, sleep habits, energy, and productivity");
+  expect(resolved.reply).not.toContain("3-5 short items");
 });
 
 test("focused retry keeps the learner on the same visible step", () => {

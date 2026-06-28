@@ -17,6 +17,16 @@ export type CoachClassProgressState = {
   status: CoachClassProgressStatus;
   lastApprovedStepIndex: number | null;
   updatedAt: string;
+  evaluationProfile?: CoachClassEvaluationProfile;
+};
+
+export type CoachClassEvaluationProfile = {
+  grammarFocus?: string;
+  vocabularyFocus?: string;
+  functions?: string;
+  targetStructures?: string;
+  expectedProduction?: string;
+  skillFocus?: string;
 };
 
 export type ResolvedClassProgressTurn = {
@@ -62,6 +72,23 @@ export function createClassProgress(input: {
     status: "awaiting_answer",
     lastApprovedStepIndex: null,
     updatedAt: input.nowIso || new Date().toISOString(),
+    evaluationProfile: evaluationProfileFromIdentity(input.identity),
+  };
+}
+
+export function enrichClassProgress(
+  progress: CoachClassProgressState,
+  identity: ClassIdentity,
+): CoachClassProgressState {
+  const evaluationProfile = evaluationProfileFromIdentity(identity);
+  if (!Object.values(evaluationProfile).some(Boolean)) return progress;
+  return {
+    ...progress,
+    lessonTitle: progress.lessonTitle || identity.lessonTitle || "Class session",
+    evaluationProfile: {
+      ...evaluationProfile,
+      ...progress.evaluationProfile,
+    },
   };
 }
 
@@ -98,6 +125,7 @@ export function sanitizeClassProgress(value: unknown): CoachClassProgressState |
     status: isClassProgressStatus(candidate.status) ? candidate.status : "awaiting_answer",
     lastApprovedStepIndex: Number.isInteger(candidate.lastApprovedStepIndex) ? Number(candidate.lastApprovedStepIndex) : null,
     updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : new Date().toISOString(),
+    evaluationProfile: sanitizeEvaluationProfile(candidate.evaluationProfile),
   };
 }
 
@@ -266,7 +294,8 @@ function repairApprovedReplyIfNeeded(
   const staleAnnouncement = Boolean(announcedNextStep && announcedNextStep <= previous.currentStepIndex + 1);
   const staleCurrentStep = announcesStepAtOrBefore(reply, previous.currentStepIndex + 1);
   const illegalVideoSimulation = isVideoWhileWatching(next) && hasTeacherSimulation(reply);
-  if (!staleAnnouncement && !staleCurrentStep && !illegalVideoSimulation) {
+  const genericEvaluationGate = next.status === "evaluation_ready" && /3-5 short items|target grammar, vocabulary|one personal example/i.test(reply);
+  if (!staleAnnouncement && !staleCurrentStep && !illegalVideoSimulation && !genericEvaluationGate) {
     return { reply: enforceVideoResourceFirst(next, reply, ""), progress: next, repaired: false };
   }
   const approvedPart = reply.split(/Next micro-step:/i)[0].trim() || "This micro-step is approved.";
@@ -321,11 +350,7 @@ function buildCurrentStepTask(progress: CoachClassProgressState) {
     ].join("\n");
   }
   if (/evaluation gate|checkpoint/i.test(step)) {
-    return [
-      heading,
-      "",
-      "Final checkpoint: answer with 3-5 short items using the target grammar, vocabulary, and one personal example. I’ll evaluate whether the class can be approved.",
-    ].join("\n");
+    return buildEvaluationGateTask(progress, heading);
   }
   return [
     heading,
@@ -359,6 +384,59 @@ function enforceVideoResourceFirst(
 
 function isMicroStepApproved(text: string) {
   return /This micro-step is approved|micro-step is approved|Paso\s+\d{1,2}\s+approved/i.test(text);
+}
+
+function buildEvaluationGateTask(progress: CoachClassProgressState, heading: string) {
+  const profile = progress.evaluationProfile || {};
+  const structures = firstUsefulItems(profile.targetStructures, 3);
+  const vocabulary = firstUsefulItems(profile.vocabularyFocus, 5);
+  const functions = profile.functions || profile.skillFocus || "show you can use the class language for the communication goal";
+  const production = profile.expectedProduction || "produce a short, clear answer connected to the class topic";
+
+  return [
+    heading,
+    "",
+    "Final checkpoint: complete these items so I can decide whether the class is approved.",
+    "",
+    "1. Main idea: summarize the class/video topic in one sentence.",
+    `2. Target language: use ${structures.length ? structures.join(" / ") : "one structure from this class"} in one sentence.`,
+    `3. Vocabulary: use ${vocabulary.length ? vocabulary.join(", ") : "two useful chunks from this class"} naturally.`,
+    `4. Personal connection: ${production}.`,
+    `5. Communication goal: ${functions}.`,
+    "",
+    "Write 4-6 short sentences in English. I’ll evaluate accuracy, vocabulary, communication goal, and whether this class can be approved.",
+  ].join("\n");
+}
+
+function firstUsefulItems(value: string | undefined, limit: number) {
+  return String(value || "")
+    .split(/;|,|\+/)
+    .map((item) => item.trim())
+    .filter((item) => item && !/^unit\s+\d+\s+review/i.test(item))
+    .slice(0, limit);
+}
+
+function evaluationProfileFromIdentity(identity: ClassIdentity): CoachClassEvaluationProfile {
+  return {
+    grammarFocus: identity.grammarFocus,
+    vocabularyFocus: identity.vocabularyFocus,
+    functions: identity.functions,
+    targetStructures: identity.targetStructures,
+    expectedProduction: identity.expectedProduction,
+    skillFocus: identity.skillFocus,
+  };
+}
+
+function sanitizeEvaluationProfile(value: unknown): CoachClassEvaluationProfile | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const candidate = value as Partial<CoachClassEvaluationProfile>;
+  const profile: CoachClassEvaluationProfile = {};
+  for (const key of ["grammarFocus", "vocabularyFocus", "functions", "targetStructures", "expectedProduction", "skillFocus"] as const) {
+    if (typeof candidate[key] === "string" && candidate[key]!.trim()) {
+      profile[key] = candidate[key]!.trim();
+    }
+  }
+  return Object.keys(profile).length ? profile : undefined;
 }
 
 function announcedStepNumber(text: string, label: string) {

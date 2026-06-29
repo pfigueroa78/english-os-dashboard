@@ -69,6 +69,10 @@ function learnerAnswerFor(classPack: { unit: number; localClass: number; globalC
     "As soon as I wake up, I organize my tasks before I start work.",
     "You might want to rest more, although the project is urgent.",
     "How's it going? It was great to meet you; I have worked on this before.",
+    "He said that it was a secret, and she asked me what I was saying.",
+    "I wonder why the service is so slow, and I feel frustrated when a problem is not solved.",
+    "Even if I were busy, I would be honest, and I would keep it a secret only if it were ethical.",
+    "By the end of next year, I will have improved my English, and I will have been practicing every week.",
     "I can explain my opinion, give a reason, and connect the lesson to my real professional life.",
   ].join(" ");
 }

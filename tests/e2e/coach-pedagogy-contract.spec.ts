@@ -4,6 +4,7 @@ import path from "node:path";
 import { classifyCoachIntent, isGiveClassQuestion } from "../../src/lib/coachIntent";
 import { getSavedPosition } from "../../src/modules/coach-context/coachContext";
 import { renderClassReply } from "../../src/modules/coach-delivery/replyRendering";
+import { buildTeachingContractV2 } from "../../src/modules/coach-delivery/teachingContractV2";
 
 // Validation scope: UI shell + source contracts + pedagogy-first coach routing.
 const root = process.cwd();
@@ -23,6 +24,19 @@ function activeContract(source: string) {
   const start = source.indexOf(marker);
   const end = source.indexOf("### Safety rule", start);
   return start >= 0 ? source.slice(start, end >= 0 ? end : undefined) : "";
+}
+
+const poorTeachingTemplatePhrases = [
+  "Today we will use this lesson to",
+  "I can use **",
+  "Focus on the form, the meaning, and one natural use",
+  "Use **one useful word** in a complete sentence",
+  "It is useful to give one clear reason when you speak",
+  "Using a short example makes your answer easier to understand",
+];
+
+function expectNoPoorTeachingTemplate(reply: string) {
+  for (const phrase of poorTeachingTemplatePhrases) expect(reply).not.toContain(phrase);
 }
 
 test("teacher prompt keeps the general pedagogy workflow", async () => {
@@ -89,17 +103,17 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("using development-only learner context");
   expect(handler).toContain("localValidationMode: true");
   expect(handler).toContain('process.env.NODE_ENV === "development"');
-  expect(replyRendering).toContain("limitToOpeningClassTurn");
+  expect(replyRendering).toContain("guidedOpeningFallback");
   expect(replyRendering).toContain("stripPrematureClassClosure");
   expect(classSystemPrompt).toContain("This response is the opening turn of a teacher-led class");
-  expect(classSystemPrompt).toContain("Keep this opening turn under 280 words");
+  expect(classSystemPrompt).toContain("first learning block");
   expect(classSystemPrompt).toContain("strategic opening architecture");
   expect(replyRendering).toContain('replace(/\\bviewing_current_class\\b/gi, "clase activa")');
   expect(classSystemPrompt).toContain('Never write "en modo ..." or any app-mode wording');
   expect(targetApplication).toContain("no inventar **Class 1**");
   expect(handler).toContain("openingSectionInstruction");
-  expect(teachingContracts).toContain("Activate the topic only");
-  expect(teachingContracts).toContain("Do not teach grammar rules, structure tables, or vocabulary lists yet");
+  expect(teachingContracts).toContain("openingLearningBlockInstruction");
+  expect(readFile("src/modules/coach-delivery/pedagogicalDeliveryPolicy.ts")).toContain("Teach the first learning block, not only the first heading");
 
   const forbiddenLegacyClassDelivery = [
     "formatCurrentClassContentReply",
@@ -471,8 +485,8 @@ test("application-owned identity precedes model-authored teaching", async () => 
   const rendererEnd = rendererSource.indexOf("export function renderReviewReply");
   const renderer = rendererSource.slice(rendererStart, rendererEnd);
 
-  expect(renderer).toContain("const teachingBody = ensureRichOpeningTask");
-  expect(renderer).toContain("stripClassConfirmationDetours(limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections))");
+  expect(renderer).toContain("guidedOpeningFallback");
+  expect(renderer).toContain("stripClassConfirmationDetours(stripPrematureClassClosure(stripModelOwnedIdentity(params.body)))");
   expect(renderer).toContain('return readableMarkdownPunctuation(sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]');
   expect(renderer).toContain('`# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`');
   expect(rendererSource).toContain("export function readableMarkdownPunctuation");
@@ -480,20 +494,18 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(rendererSource).toContain("Learning objective|Communication mission");
   expect(rendererSource).toContain("?::\\*\\*|\\*\\*:|:");
   expect(renderer).toContain('Hoy trabajaremos **${reference}**.');
-  expect(renderer).toContain("lessonRoadmap(identity)");
+  expect(renderer).toContain("lessonRoadmap(identity, params.localClass)");
   expect(rendererSource).toContain("function lessonRoadmap");
   expect(rendererSource).toContain("Ruta de clase:");
-  expect(rendererSource).toContain("Paso 1 de ${steps.length}");
-  expect(rendererSource).toContain("Before watching");
-  expect(rendererSource).toContain("While watching");
-  expect(rendererSource).toContain("After watching");
-  expect(rendererSource).toContain("hasVideoStages");
-  expect(rendererSource).toContain("!/^video class$/i.test(section)");
+  expect(rendererSource).toContain("Bloque 1 de ${learningBlocks.length}");
+  expect(readFile("src/modules/coach-delivery/pedagogicalDeliveryPolicy.ts")).toContain("Before watching");
+  expect(readFile("src/modules/coach-delivery/pedagogicalDeliveryPolicy.ts")).toContain("While/After watching");
+  expect(readFile("src/modules/coach-delivery/pedagogicalDeliveryPolicy.ts")).toContain("lessonBlockRoadmap");
   expect(renderer).toContain('Focus: **${formattedSkillFocus}**');
-  expect(renderer).toContain('Empezamos con **${identity.sections.split("+")[0]?.trim() || displayLesson}**.');
+  expect(renderer).toContain("Empezamos con un bloque docente");
   expect(renderer).toContain("learnerFriendlyFocus");
   expect(rendererSource).toContain("it combines");
-  expect(renderer).toContain("ensureRichOpeningTask");
+  expect(renderer).toContain("guidedOpeningFallback");
   expect(rendererSource).toContain("Video Class - Before watching");
   expect(renderer).not.toContain("const courseReference");
   expect(renderer).not.toContain("bookPages");
@@ -504,7 +516,7 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(rendererSource).toContain("Book pages:|PDF pages:");
   expect(readFile("public/prompts/coach-route/class-system.md")).toContain("The application renders learner position and lesson identity");
   expect(readFile("public/prompts/coach-route/class-system.md")).toContain("The application shows the finite class roadmap");
-  expect(readFile("public/prompts/coach-route/class-system.md")).toContain("Do not invent unlimited extra micro-steps");
+  expect(readFile("public/prompts/coach-route/class-system.md")).toContain("Do not invent unlimited extra sub-steps");
   expect(rendererSource).toContain("encontré tu clase activa en English OS");
   expect(rendererSource).toContain("Trabajaremos con **${target}**.");
   expect(handler).toContain("const explicitClassRule");
@@ -534,10 +546,433 @@ test("video class roadmap starts with the learner action, not the wrapper sectio
     },
   });
 
-  expect(reply).toContain("Ruta de clase: **Paso 1 de 5");
+  expect(reply).toContain("Ruta de clase: **Bloque 1 de 4");
   expect(reply).toContain("Before watching");
-  expect(reply).toContain("Después: While watching");
-  expect(reply).not.toContain("Paso 1 de 6 — Video Class");
+  expect(reply).toContain("Después: While/After watching");
+  expect(reply).not.toContain("Paso 1 de 6");
+});
+
+test("Grammar Plus fallback hides internal source-safety wording from learners", async () => {
+  const reply = renderClassReply({
+    body: "Short answer without enough teaching signals.",
+    position: "Pedro, trabajaremos con **Unit 5, Class 34**.",
+    unit: 5,
+    localClass: 6,
+    displayClass: 34,
+    identity: {
+      lessonTitle: "Grammar Plus",
+      bookPages: "",
+      pdfPages: "",
+      sections: "Grammar Plus + Practice Lab",
+      skillFocus: "grammar consolidation and controlled practice",
+      grammarFocus: "Unit 5 Lesson B grammar consolidation from indexed Unit 5 context only",
+      vocabularyFocus: "Recycle confirmed Unit 5 vocabulary only.",
+      functions: "consolidate grammar accuracy; correct sentence structure; produce controlled and personalized examples",
+      targetStructures: "Use only target structures confirmed in indexed Unit 5 class packs or learner-safe practice examples.",
+      expectedProduction: "write two short controlled sentences",
+    },
+  });
+
+  expect(reply).toContain("Warm-up");
+  expect(reply).toContain("Teacher explanation");
+  expect(reply).not.toContain("Recycle confirmed");
+  expect(reply).not.toContain("confirmed Unit");
+  expect(reply).not.toContain("Use only target structures confirmed");
+  expect(reply).not.toContain("learner-safe");
+  expect(reply).not.toContain("indexed Unit");
+});
+
+test("normal class opening teaches a full learning block before asking once", async () => {
+  const reply = renderClassReply({
+    body: [
+      "## Starting point",
+      "",
+      "Imagine you're at a party.",
+      "",
+      "Two quick models:",
+      "",
+      "> He's very polite.",
+      "> She's a bit unusual.",
+      "",
+      "Your turn: Which type of person do you meet most often?",
+    ].join("\n"),
+    position: "Pedro, trabajaremos con **Unit 5, Class 29**.",
+    unit: 5,
+    localClass: 29,
+    displayClass: 29,
+    identity: {
+      lessonTitle: "Making conversation",
+      bookPages: "",
+      pdfPages: "",
+      sections: "Starting point + Grammar + Vocabulary & Speaking",
+      skillFocus: "reading, pair discussion, and vocabulary/speaking for making conversation",
+      grammarFocus: "Infinitive and gerund phrases",
+      vocabularyFocus: "appropriate; bad form; inappropriate; normal; offensive; polite; rude; strange; typical; unusual",
+      functions: "comment on behavior; discuss what is appropriate; express opinions about social behavior",
+      targetStructures: "It's + adjective/noun + infinitive phrase; gerund phrases; be considered + adjective",
+      expectedProduction: "rewrite sentences using infinitive or gerund phrases, discuss situations using the vocabulary of appropriateness",
+    },
+  });
+
+  expect(reply).toContain("Bloque 1 de 3 - Learn & practice");
+  expect(reply).toContain("Empezamos con un bloque docente");
+  expect(reply).toContain("## Warm-up");
+  expect(reply).toContain("## Key vocabulary");
+  expect(reply).toContain("## Teacher explanation");
+  expect(reply).toContain("## Controlled practice");
+  expect(reply).toContain("## Speaking practice");
+  expect(reply).toContain("Infinitive and gerund phrases");
+  expect(reply).toContain("It's + adjective/noun + infinitive phrase");
+  expect(reply).toContain("It's rude to ignore your conversation partner");
+  expect(reply).toContain("Ignoring your conversation partner is rude");
+  expect(reply).toContain("What kind of conversationalist are you");
+  expectNoPoorTeachingTemplate(reply);
+  expect(reply.match(/Your turn/gi)?.length).toBe(1);
+});
+
+test("teacher-led delivery is driven by Teaching Contract v2 instead of unit-specific patches", async () => {
+  const contractV2 = readFile("src/modules/coach-delivery/teachingContractV2.ts");
+  const policy = readFile("src/modules/coach-delivery/pedagogicalDeliveryPolicy.ts");
+
+  expect(contractV2).toContain("export type TeachingContractV2");
+  expect(contractV2).toContain("buildTeachingContractV2");
+  expect(contractV2).toContain("coreConcept");
+  expect(contractV2).toContain("spanishSupport");
+  expect(contractV2).toContain("controlledPractice");
+  expect(contractV2).toContain("guidedProduction");
+  expect(contractV2).toContain("evaluationCriteria");
+  expect(policy).toContain("buildTeachingContractV2(identity)");
+  expect(policy).toContain("teachingPurposeLine");
+  expect(policy).toContain("spanishSupportBlock");
+  expect(policy).toContain("contractEvaluationPreview");
+  expect(policy).not.toMatch(/Unit\s+4\s+Class\s+27|unit\s*===\s*4|localClass\s*===\s*(?:22|23|24|25|26|27|28)/i);
+});
+
+test("Teaching Contract v2 adds selective Spanish support and measurable production", async () => {
+  const reply = renderClassReply({
+    body: "Thin answer.",
+    position: "Pedro, trabajaremos con **Unit 4, Class 25**.",
+    unit: 4,
+    localClass: 4,
+    displayClass: 25,
+    identity: {
+      lessonTitle: "Tossing and turning",
+      bookPages: "",
+      pdfPages: "",
+      sections: "Starting point + Vocabulary + Grammar",
+      skillFocus: "speaking, vocabulary, grammar practice",
+      grammarFocus: "clauses stating reasons and conditions: even if, considering that, as long as, unless, just in case, only if",
+      vocabularyFocus: "be fast asleep; be wide awake; feel drowsy; nod off; take a power nap; be sound asleep",
+      functions: "describe sleep habits; explain conditions and reasons",
+      targetStructures: "even if I'm really tired; considering that most people need eight hours; as long as I take a nap during the day; Unless I get a good night's sleep",
+      expectedProduction: "describe sleep habits using reason and condition clauses",
+    },
+  });
+
+  expect(reply).toContain("Spanish support");
+  expect(reply).toContain("unless =");
+  expect(reply).toContain("as long as =");
+  expect(reply.toLowerCase()).toContain("write 4 sentences about your sleep or energy habits");
+  expect(reply).toContain("To approve this class later");
+  expect(reply).toContain("uses the target language accurately");
+  expectNoPoorTeachingTemplate(reply);
+});
+
+test("Teaching Contract v2 prioritizes the primary grammar family over secondary advice signals", async () => {
+  const identity = {
+    lessonTitle: "It's about time!",
+    bookPages: "",
+    pdfPages: "",
+    sections: "Starting point + Discussion + Grammar",
+    skillFocus: "speaking, discussion, grammar practice",
+    grammarFocus: "Reduced time clauses: before, after, while; other time clauses with ever since, as soon as, until, whenever, from the moment",
+    vocabularyFocus: "morning person; late riser; night owl; burn out; calm down; doze off; perk up",
+    functions: "define boldfaced words; give advice about routines",
+    targetStructures: "After finishing my workout; While taking my lunch break; As soon as I get up; Until I've had my coffee",
+    expectedProduction: "answer questions about routines and energy patterns using time clauses and unit vocabulary",
+  };
+  const contract = buildTeachingContractV2(identity);
+  const reply = renderClassReply({
+    body: "Thin answer.",
+    position: "Pedro, trabajaremos con **Unit 4, Class 22**.",
+    unit: 4,
+    localClass: 1,
+    displayClass: 22,
+    identity,
+  });
+
+  expect(contract.guidedProduction).toContain("routine");
+  expect(contract.guidedProduction).toContain("reduced time clauses");
+  expect(contract.guidedProduction).not.toContain("advice dialogue");
+  expect(reply.toLowerCase()).toContain("write 4-5 sentences about your routine");
+  expect(reply).not.toContain("Write a 4-6 line advice dialogue");
+  expectNoPoorTeachingTemplate(reply);
+});
+
+test("Grammar Plus openings emphasize accuracy decisions instead of repeating introductory production", async () => {
+  const identity = {
+    lessonTitle: "Grammar Plus",
+    bookPages: "",
+    pdfPages: "",
+    sections: "Grammar Plus + Practice Lab",
+    skillFocus: "grammar consolidation and practice lab",
+    grammarFocus: "Unit lesson consolidation; time clauses with as soon as, after, before, until, when, whenever, and ever since",
+    vocabularyFocus: "routines; energy; sleep; productivity; personal preference vocabulary",
+    functions: "consolidate grammar accuracy",
+    targetStructures: "As soon as I...; After I...; Before I...; Until I...; Whenever I...",
+    expectedProduction: "produce corrected examples and explain which time clauses can be reduced",
+  };
+  const contract = buildTeachingContractV2(identity);
+  const reply = renderClassReply({
+    body: "Thin answer.",
+    position: "Pedro, trabajaremos con **Unit 4, Class 24**.",
+    unit: 4,
+    localClass: 3,
+    displayClass: 24,
+    identity,
+  });
+
+  expect(contract.pedagogicalRole).toBe("grammar-plus");
+  expect(contract.controlledPractice.join(" ")).toContain("Can this clause be reduced");
+  expect(contract.guidedProduction).toContain("which clauses you can reduce");
+  expect(reply).toContain("Can this clause be reduced");
+  expect(reply).toContain("which clauses you can reduce");
+  expectNoPoorTeachingTemplate(reply);
+});
+
+test("small talk class opening teaches openers, closers, and a dialogue before asking", async () => {
+  const reply = renderClassReply({
+    body: "Too short.",
+    position: "Pedro, trabajaremos con **Unit 5, Class 30**.",
+    unit: 5,
+    localClass: 2,
+    displayClass: 30,
+    identity: {
+      lessonTitle: "Making conversation",
+      bookPages: "",
+      pdfPages: "",
+      sections: "Role Play + Listening + Writing",
+      skillFocus: "role play, listening for conversation closings, and writing with an outline",
+      grammarFocus: "The class is not grammar-centered and instead builds speaking, listening, and writing skills for making small talk and organizing ideas.",
+      vocabularyFocus: "small talk; conversation openers; conversation closers; How's it going?; Can you believe this weather?; That's a great jacket.; Do you know many people here?; See you later.; Sorry, I've got to run.; Talk to you soon.; It was great to meet you.; I should get going.; I'll call you later.; outline; topic sentence; supporting sentences; concluding sentence",
+      functions: "start small talk; keep a conversation going; close a conversation; organize ideas before writing",
+      targetStructures: "small talk topics appropriate in your culture; conversation openers; conversation closers; outline notes; paragraph about a cultural rule",
+      expectedProduction: "select appropriate small-talk topics in their culture,role-play starting a conversation, keeping it going for one minute, and closing it,complete an outline from a paragraph about a cultural rule,write a paragraph using their outline",
+    },
+  });
+
+  expect(reply).toContain("## Warm-up: making small talk");
+  expect(reply).toContain("Conversation openers");
+  expect(reply).toContain("Conversation closers");
+  expect(reply).toContain("How's it going?");
+  expect(reply).toContain("It was great to meet you.");
+  expect(reply).toContain("Model dialogue");
+  expect(reply).toContain("one polite closer");
+  expectNoPoorTeachingTemplate(reply);
+  expect(reply.match(/Your turn/gi)?.length).toBe(1);
+});
+
+test("Unit 4 openings use concrete pedagogy instead of mechanical fallback sentences", async () => {
+  const samples = [
+    {
+      name: "stress advice listening and role play",
+      identity: {
+        lessonTitle: "Chilling out",
+        bookPages: "",
+        pdfPages: "",
+        sections: "Listening & Speaking + Role Play + Writing",
+        skillFocus: "listening, speaking, role play, writing",
+        grammarFocus: "advice expressions and causes of stress",
+        vocabularyFocus: "stress; fatigue; lack of energy; call a friend; get a massage; vent your feelings; do yoga; listen to music; exercise vigorously; take a hot bath",
+        functions: "identify causes of stress; suggest practical solutions; give advice naturally",
+        targetStructures: "too little time; too much traffic; too many responsibilities; Have you ever thought of (going) ...?; You might want to ...; It might not be a bad idea to ...",
+        expectedProduction: "give advice about stress and energy problems in a short dialogue",
+      },
+      expected: ["I feel exhausted because I have too many responsibilities", "Have you ever thought of calling a friend", "take a hot bath"],
+    },
+    {
+      name: "time clauses grammar",
+      identity: {
+        lessonTitle: "Grammar Plus",
+        bookPages: "",
+        pdfPages: "",
+        sections: "Grammar Plus + Practice Lab",
+        skillFocus: "grammar practice",
+        grammarFocus: "time clauses with as soon as, after, before, until, when, whenever, and ever since",
+        vocabularyFocus: "routines; energy; sleep; productivity; personal preference vocabulary",
+        functions: "consolidate grammar accuracy; talk about routines and energy patterns",
+        targetStructures: "As soon as I...; After I...; Before I...; Until I...; Whenever I...; Ever since I...",
+        expectedProduction: "write sentences about routines using time clauses",
+      },
+      expected: ["As soon as I wake up", "Whenever I feel tired", "Before I ______, I ______"],
+    },
+    {
+      name: "sleep condition clauses",
+      identity: {
+        lessonTitle: "Tossing and turning",
+        bookPages: "",
+        pdfPages: "",
+        sections: "Starting point + Vocabulary + Grammar",
+        skillFocus: "speaking, vocabulary, grammar practice",
+        grammarFocus: "clauses stating reasons and conditions: even if, considering that, as long as, unless, just in case, only if",
+        vocabularyFocus: "be fast asleep; be wide awake; feel drowsy; nod off; take a power nap; be sound asleep",
+        functions: "describe sleep habits; explain conditions and reasons",
+        targetStructures: "even if I'm really tired; considering that most people need eight hours; as long as I take a nap during the day; Unless I get a good night's sleep",
+        expectedProduction: "describe sleep habits using reason and condition clauses",
+      },
+      expected: ["Even if I am tired", "Unless I get enough sleep", "As long as I ______, I ______"],
+    },
+    {
+      name: "dream listening",
+      identity: {
+        lessonTitle: "I had the wildest dream.",
+        bookPages: "",
+        pdfPages: "",
+        sections: "Listening & Speaking + Discussion + Reading",
+        skillFocus: "listening, speaking, discussion, reading",
+        grammarFocus: "listening for gist and details",
+        vocabularyFocus: "recurring dreams; dream meanings; flying; falling; being chased; being embraced; losing teeth; winning; stands for",
+        functions: "describe dreams; speculate about dream meanings",
+        targetStructures: "I think that means...; It sounds like...; The balloon probably stands for...",
+        expectedProduction: "predict and discuss dream meanings using dream vocabulary",
+      },
+      expected: ["dream about falling", "being chased", "The main idea is"],
+    },
+  ];
+
+  for (const sample of samples) {
+    const reply = renderClassReply({
+      body: "Too short.",
+      position: "Pedro, trabajaremos con **Unit 4**.",
+      unit: 4,
+      localClass: 1,
+      displayClass: 22,
+      identity: sample.identity,
+    });
+
+    for (const expected of sample.expected) expect(reply).toContain(expected);
+    expect(reply).toContain("Your turn");
+    expectNoPoorTeachingTemplate(reply);
+    expect(reply.match(/Your turn/gi)?.length).toBe(1);
+  }
+});
+
+test("generic pedagogical profiles produce rich openings without unit-specific hardcoding", async () => {
+  const cases = [
+    {
+      name: "grammar",
+      identity: {
+        lessonTitle: "Grammar focus",
+        bookPages: "",
+        pdfPages: "",
+        sections: "Starting point + Grammar + Discussion",
+        skillFocus: "grammar practice and discussion",
+        grammarFocus: "Modals of certainty and uncertainty",
+        vocabularyFocus: "mystery; explanation; possibility; certainty",
+        functions: "speculate about a situation; explain possible causes",
+        targetStructures: "must have + past participle; might have + past participle; can't have + past participle",
+        expectedProduction: "complete sentences using modals and discuss possible explanations",
+      },
+      expected: ["## Warm-up: notice the language", "Useful patterns", "must have + past participle", "## Controlled practice"],
+    },
+    {
+      name: "vocabulary-speaking",
+      identity: {
+        lessonTitle: "Vocabulary and Speaking",
+        bookPages: "",
+        pdfPages: "",
+        sections: "Vocabulary & Speaking + Discussion",
+        skillFocus: "vocabulary, speaking, and discussion",
+        grammarFocus: "",
+        vocabularyFocus: "deal with a problem; ignore a problem; solve a problem; aggravate a problem",
+        functions: "describe problems; discuss solutions",
+        targetStructures: "I usually... because...; One solution is...",
+        expectedProduction: "use problem-solving vocabulary in a short spoken answer",
+      },
+      expected: ["## Warm-up: activate the topic", "Key vocabulary and chunks", "deal with a problem", "## Speaking practice"],
+    },
+    {
+      name: "listening",
+      identity: {
+        lessonTitle: "Listening",
+        bookPages: "",
+        pdfPages: "",
+        sections: "Listening + Discussion",
+        skillFocus: "listening for gist and details",
+        grammarFocus: "",
+        vocabularyFocus: "main idea; detail; speaker; reason",
+        functions: "understand the main idea; identify details",
+        targetStructures: "The main idea is...; One detail is...",
+        expectedProduction: "answer gist and detail questions after listening",
+      },
+      expected: ["## Warm-up: listening purpose", "Gist", "Details", "The main idea is"],
+    },
+    {
+      name: "role-play",
+      identity: {
+        lessonTitle: "Role Play",
+        bookPages: "",
+        pdfPages: "",
+        sections: "Role Play + Speaking",
+        skillFocus: "role play and speaking fluency",
+        grammarFocus: "",
+        vocabularyFocus: "opening; follow-up question; polite response; close the conversation",
+        functions: "start a conversation; respond naturally",
+        targetStructures: "A: ... / B: ...; follow-up question + short answer",
+        expectedProduction: "write and perform a short dialogue",
+      },
+      expected: ["## Warm-up: role-play situation", "Model dialogue", "Complete this mini-dialogue", "4-6 line dialogue"],
+    },
+    {
+      name: "writing",
+      identity: {
+        lessonTitle: "Writing",
+        bookPages: "",
+        pdfPages: "",
+        sections: "Writing",
+        skillFocus: "writing with a clear paragraph",
+        grammarFocus: "",
+        vocabularyFocus: "topic sentence; supporting detail; concluding sentence; outline",
+        functions: "organize ideas clearly in writing",
+        targetStructures: "topic sentence; supporting sentences; concluding sentence",
+        expectedProduction: "write a paragraph with a clear main idea",
+      },
+      expected: ["## Warm-up: writing purpose", "Topic sentence", "Model paragraph", "write one short paragraph"],
+    },
+    {
+      name: "discussion",
+      identity: {
+        lessonTitle: "Discussion",
+        bookPages: "",
+        pdfPages: "",
+        sections: "Discussion",
+        skillFocus: "discussion and opinion sharing",
+        grammarFocus: "",
+        vocabularyFocus: "opinion; reason; example; agree; disagree",
+        functions: "express an opinion clearly; give reasons",
+        targetStructures: "I think... because...; In my opinion...; For example...",
+        expectedProduction: "give an opinion with a reason and example",
+      },
+      expected: ["## Warm-up: opinion and reason", "I think", "For example", "Give your opinion"],
+    },
+  ];
+
+  for (const sample of cases) {
+    const reply = renderClassReply({
+      body: "Thin model answer.",
+      position: "Pedro, trabajaremos con **Unit 9, Class 1**.",
+      unit: 9,
+      localClass: 1,
+      displayClass: 57,
+      identity: sample.identity,
+    });
+
+    for (const expected of sample.expected) expect(reply).toContain(expected);
+    expect(reply).toContain("Your turn");
+    expectNoPoorTeachingTemplate(reply);
+    expect(reply).not.toContain("Unit 5");
+    expect(reply.match(/Your turn/gi)?.length).toBe(1);
+  }
 });
 
 test("all classes display the canonical curriculum unit name", async () => {
@@ -568,21 +1003,21 @@ test("class opening cannot invent evaluation or logging results", async () => {
   expect(readFile("public/prompts/coach-route/general-system.md")).toContain("Cambridge-style correction");
 });
 
-test("strong learner answers advance the micro-step instead of looping similar exercises", async () => {
+test("strong learner answers advance the learning block instead of looping similar exercises", async () => {
   const behavior = readFile("src/lib/englishOsCoachPrompt.ts");
   const teacherStyle = readFile("src/lib/passagesTeacherStyle.ts");
   const routeHandler = readFile("src/lib/coachRouteHandler.ts");
 
   expect(behavior).toContain("ANTI-LOOP TEACHING RULES");
-  expect(behavior).toContain("This micro-step is approved");
+  expect(behavior).toContain("This learning block is approved");
   expect(behavior).toContain("Do not keep asking new exercises for the same micro-skill after a strong answer");
   expect(behavior).toContain("move to the next named class section or to the evaluation gate");
-  expect(behavior).toContain('Use "Next micro-step" instead of "Next exercise"');
+  expect(behavior).toContain('Use "Next block" instead of "Next exercise"');
   expect(behavior).toContain("Never end a teacher turn with vague instructions");
   expect(behavior).toContain("Never repeat the same prediction/preparation task after it was approved");
   expect(behavior).toContain("Treat each visible roadmap section as one substantial learning step");
-  expect(behavior).toContain("Do not create hidden micro-steps inside the same roadmap section");
-  expect(behavior).toContain("Never announce the same \"Next micro-step: Paso X de Y");
+  expect(behavior).toContain("Do not create hidden sub-steps inside the same roadmap section");
+  expect(behavior).toContain("Never announce the same \"Next block: Paso X de Y");
   expect(behavior).toContain("It must not create another new task inside Paso X");
   expect(behavior).toContain("Before watching may ask for one compact prediction task only");
   expect(behavior).toContain("Do not ask a second simulated While watching dialogue");
@@ -596,7 +1031,7 @@ test("strong learner answers advance the micro-step instead of looping similar e
   expect(routeHandler).toContain("buildClassContinuationInput");
   expect(routeHandler).toContain("class_continuation");
   expect(routeHandler).toContain("Local Class Pack + Class Progress State");
-  expect(teacherStyle).toContain("current micro-step is approved");
+  expect(teacherStyle).toContain("current learning block is approved");
   expect(teacherStyle).toContain("name the exact roadmap step");
   expect(teacherStyle).toContain("Do not write vague closers");
   expect(teacherStyle).toContain("Give one targeted retry exercise only when the learner still needs work");

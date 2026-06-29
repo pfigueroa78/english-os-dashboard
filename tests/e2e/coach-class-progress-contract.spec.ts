@@ -6,6 +6,7 @@ import {
   classRoadmapFromSections,
   createClassProgress,
   loadStoredClassProgress,
+  resolveClassProgressBeforeModel,
   resolveClassProgressTurn,
   saveStoredClassProgress,
 } from "../../src/modules/coach-class-progress/application";
@@ -23,11 +24,23 @@ const identity = {
   expectedProduction: "answer before/while/after watching questions and hold a short discussion using Unit 4 language",
 };
 
+const unit5Class30Identity = {
+  lessonTitle: "Making conversation",
+  bookPages: "",
+  pdfPages: "",
+  sections: "Role Play + Listening + Discussion + Writing",
+  skillFocus: "role play, listening for conversation closings, and writing with an outline",
+  grammarFocus: "conversation openers and closers; be considered + adjective",
+  vocabularyFocus: "small talk; conversation openers; conversation closers; appropriate; polite; rude; bad form",
+  functions: "start, keep going, and close small talk naturally; write a short outline about a cultural rule",
+  targetStructures: "How's it going?; Do you know many people here?; It was great to meet you; I should get going; be considered + adjective",
+  expectedProduction: "write a small-talk exchange with an opener and closer, answer gist/detail questions, and write a short outline",
+};
+
 test("class progress builds the finite learner roadmap without wrapper sections", () => {
   expect(classRoadmapFromSections(identity.sections)).toEqual([
     "Before watching",
-    "While watching",
-    "After watching",
+    "While/After watching",
     "Speaking",
     "Evaluation gate",
   ]);
@@ -52,8 +65,8 @@ test("class progress instruction makes application state authoritative", () => {
   });
 
   expect(instruction).toContain("CLASS PROGRESS STATE");
-  expect(instruction).toContain("Current step: Paso 2 de 5 - While watching");
-  expect(instruction).toContain("advance to Paso 3 - After watching");
+  expect(instruction).toContain("Current step: Paso 2 de 4 - While/After watching");
+  expect(instruction).toContain("advance to Paso 3 - Speaking");
   expect(instruction).toContain("do not create a teacher listening simulation by default");
   expect(instruction).toContain("Never open the same numbered step again after approving it");
 });
@@ -106,7 +119,7 @@ test("class progress resolver repairs real loop: learner answer is not sent back
 
   expect(resolved.repaired).toBe(true);
   expect(resolved.progress.currentStepIndex).toBe(2);
-  expect(resolved.reply).toContain("Paso 3 de 5 - After watching");
+  expect(resolved.reply).toContain("Paso 3 de 4 - Speaking");
   expect(resolved.reply).not.toContain("Teacher listening input");
 });
 
@@ -133,8 +146,8 @@ test("video while-watching step asks for the real resource before using a fallba
 test("evaluation gate is class-specific instead of a generic short-items prompt", () => {
   const progress = {
     ...createClassProgress({ unit: 4, localClass: 7, displayClass: 28, identity }),
-    currentStepIndex: 3,
-    completedStepIndexes: [0, 1, 2],
+    currentStepIndex: 2,
+    completedStepIndexes: [0, 1],
   };
   const resolved = resolveClassProgressTurn({
     progress,
@@ -143,7 +156,7 @@ test("evaluation gate is class-specific instead of a generic short-items prompt"
     nowIso: "2026-06-27T00:00:00.000Z",
   });
 
-  expect(resolved.progress.currentStepIndex).toBe(4);
+  expect(resolved.progress.currentStepIndex).toBe(3);
   expect(resolved.reply).toContain("Final checkpoint: complete these items");
   expect(resolved.reply).toContain("As soon as I...");
   expect(resolved.reply).toContain("morning person");
@@ -181,8 +194,8 @@ test("real transcript regression: valid English before-watching answer is not re
   expect(resolved.repaired).toBe(true);
   expect(resolved.progress.currentStepIndex).toBe(1);
   expect(resolved.progress.completedStepIndexes).toEqual([0]);
-  expect(resolved.reply).toContain("You completed Paso 1 de 5 - Before watching");
-  expect(resolved.reply).toContain("Next micro-step: Paso 2 de 5 - While watching");
+  expect(resolved.reply).toContain("You completed Paso 1 de 4 - Before watching");
+  expect(resolved.reply).toContain("Next block: Paso 2 de 4 - While/After watching");
   expect(resolved.reply).not.toContain("I need it in English");
 });
 
@@ -213,16 +226,16 @@ test("real transcript regression: after-watching answer cannot be routed back to
   expect(resolved.repaired).toBe(true);
   expect(resolved.progress.currentStepIndex).toBe(3);
   expect(resolved.progress.completedStepIndexes).toEqual([0, 1, 2]);
-  expect(resolved.reply).toContain("You completed Paso 3 de 5 - After watching");
-  expect(resolved.reply).toContain("Next micro-step: Paso 4 de 5 - Speaking");
+  expect(resolved.reply).toContain("You completed Paso 3 de 4 - Speaking");
+  expect(resolved.reply).toContain("Next block: Paso 4 de 4 - Evaluation gate");
   expect(resolved.reply).not.toContain("Original sentence\nI am more like an early bird");
 });
 
 test("real transcript regression: evaluation gate answer closes the class instead of restarting Paso 1", () => {
   const progress = {
     ...createClassProgress({ unit: 4, localClass: 7, displayClass: 28, identity }),
-    currentStepIndex: 4,
-    completedStepIndexes: [0, 1, 2, 3],
+    currentStepIndex: 3,
+    completedStepIndexes: [0, 1, 2],
     status: "evaluation_ready" as const,
   };
 
@@ -251,12 +264,61 @@ test("real transcript regression: evaluation gate answer closes the class instea
 
   expect(resolved.repaired).toBe(true);
   expect(resolved.progress.status).toBe("approved");
-  expect(resolved.progress.currentStepIndex).toBe(4);
-  expect(resolved.progress.completedStepIndexes).toEqual([0, 1, 2, 3, 4]);
+  expect(resolved.progress.currentStepIndex).toBe(3);
+  expect(resolved.progress.completedStepIndexes).toEqual([0, 1, 2, 3]);
   expect(resolved.reply).toContain("Class approved");
   expect(resolved.reply).toContain("Unit 4 checkpoint approved");
   expect(resolved.reply).not.toContain("Paso 1 de 5");
   expect(resolved.reply).not.toContain("Teacher listening input");
+});
+
+test("pre-model deterministic gate closes a visible evaluation gate even when stored progress is behind", () => {
+  const progress = createClassProgress({ unit: 5, localClass: 2, displayClass: 30, identity: unit5Class30Identity });
+  const visibleGate = [
+    "Evaluation gate",
+    "1. Role play: Write a 4-line small-talk exchange.",
+    "2. Listening: What is the gist of the conversation?",
+    "3. Listening detail: Which closing phrases do you hear?",
+    "4. Writing: Write a 3-sentence outline about a cultural rule.",
+  ].join("\n");
+
+  const resolved = resolveClassProgressBeforeModel({
+    progress,
+    recentCoachText: visibleGate,
+    learnerMessage: [
+      "A: Hi, how's it going? B: Pretty good, thanks. Do you know many people here?",
+      "A: Not really, but this party is nice. B: It was great to meet you. I should get going.",
+      "The gist is that two people start small talk and close politely.",
+      "The closing phrases are it was great to meet you and I should get going.",
+      "In my country, arriving on time is considered polite. People usually greet everyone first. This is important because it shows respect.",
+    ].join(" "),
+    nowIso: "2026-06-28T00:00:00.000Z",
+  });
+
+  expect(resolved).not.toBeNull();
+  expect(resolved?.source).toBe("deterministic_evaluation_gate");
+  expect(resolved?.progress.status).toBe("approved");
+  expect(resolved?.reply).toContain("Class 30 approved");
+  expect(resolved?.reply).toContain("Class approved");
+  expect(resolved?.reply).not.toContain("Paso 1 de 3");
+  expect(resolved?.reply).not.toContain("Rewrite these ideas");
+});
+
+test("pre-model deterministic progress advances a learner production answer without reopening the class", () => {
+  const progress = createClassProgress({ unit: 5, localClass: 2, displayClass: 30, identity: unit5Class30Identity });
+
+  const resolved = resolveClassProgressBeforeModel({
+    progress,
+    learnerMessage: "A: Hi, how's it going? B: Pretty good, thanks. Do you know many people here? A: Not really, but everyone seems friendly. B: It was great to meet you. I should get going.",
+    nowIso: "2026-06-28T00:00:00.000Z",
+  });
+
+  expect(resolved).not.toBeNull();
+  expect(resolved?.source).toBe("deterministic_learning_block");
+  expect(resolved?.progress.currentStepIndex).toBe(1);
+  expect(resolved?.reply).toContain("You completed Paso 1 de 3");
+  expect(resolved?.reply).toContain("Next block: Paso 2 de 3 - Production");
+  expect(resolved?.reply).not.toContain("Unit 5 — Communication");
 });
 
 test("class progress persists and resumes after interruption", () => {

@@ -1,4 +1,5 @@
 import type { ClassIdentity } from "@/modules/coach-delivery/teachingContracts";
+import { lessonBlockRoadmap } from "@/modules/coach-delivery/pedagogicalDeliveryPolicy";
 import {
   evaluateClassApproval,
   type ClassApprovalEvaluation,
@@ -40,23 +41,27 @@ export type ResolvedClassProgressTurn = {
   approvalEvaluation?: ClassApprovalEvaluation;
 };
 
+export type PreModelClassProgressTurn = ResolvedClassProgressTurn & {
+  source: "deterministic_evaluation_gate" | "deterministic_learning_block";
+};
+
 export function classProgressKey(email: string | null | undefined) {
   return email ? `english-os-class-progress:${email}` : "";
 }
 
 export function classRoadmapFromSections(sectionList: string) {
-  const sections = String(sectionList || "")
-    .split("+")
-    .map((section) => section.trim())
-    .filter(Boolean);
-  const firstSection = sections[0] || "Starting point";
-  const hasVideoStages = sections.some((section) => /before watching|while watching|after watching/i.test(section));
-  const sectionSteps = sections.length === 1 && /video/i.test(firstSection)
-    ? ["Before watching", "While watching", "After watching"]
-    : hasVideoStages
-      ? sections.filter((section) => !/^video class$/i.test(section))
-      : sections;
-  return [...sectionSteps, "Evaluation gate"];
+  return lessonBlockRoadmap({
+    lessonTitle: "",
+    bookPages: "",
+    pdfPages: "",
+    sections: sectionList,
+    skillFocus: "",
+    grammarFocus: "",
+    vocabularyFocus: "",
+    functions: "",
+    targetStructures: "",
+    expectedProduction: "",
+  });
 }
 
 export function createClassProgress(input: {
@@ -71,7 +76,7 @@ export function createClassProgress(input: {
     localClass: input.localClass,
     displayClass: input.displayClass || input.localClass,
     lessonTitle: input.identity.lessonTitle || "Class session",
-    steps: classRoadmapFromSections(input.identity.sections),
+    steps: lessonBlockRoadmap(input.identity, input.localClass),
     currentStepIndex: 0,
     completedStepIndexes: [],
     status: "awaiting_answer",
@@ -197,7 +202,8 @@ export function advanceClassProgressFromReply(
     };
   }
 
-  const announcedNextStep = announcedStepNumber(text, "Next micro-step");
+  const announcedNextStep =
+    announcedStepNumber(text, "Next block") ?? announcedStepNumber(text, "Next micro-step");
   const fallbackNextIndex = Math.min(currentStepIndex + 1, progress.steps.length - 1);
   const announcedNextIndex = announcedNextStep
     ? Math.min(Math.max(announcedNextStep - 1, 0), progress.steps.length - 1)
@@ -290,6 +296,71 @@ export function resolveClassProgressTurn(params: {
   return { reply, progress: nextProgress, repaired: false };
 }
 
+export function resolveClassProgressBeforeModel(params: {
+  progress: CoachClassProgressState;
+  learnerMessage: string;
+  recentCoachText?: string;
+  nowIso?: string;
+}): PreModelClassProgressTurn | null {
+  const progress = params.progress;
+  const learnerMessage = String(params.learnerMessage || "").trim();
+  const nowIso = params.nowIso || new Date().toISOString();
+  const recentCoachText = String(params.recentCoachText || "");
+
+  if (!isLikelyLearnerProduction(learnerMessage)) return null;
+
+  const learnerIsAnsweringVisibleGate =
+    isEvaluationGateStep(progress) ||
+    /Evaluation gate|Final checkpoint|complete these items|class is approved|approve this class|Send your answers/i.test(recentCoachText);
+
+  if (learnerIsAnsweringVisibleGate) {
+    const gateProgress = isEvaluationGateStep(progress)
+      ? progress
+      : {
+          ...progress,
+          currentStepIndex: progress.steps.length - 1,
+          completedStepIndexes: allStepIndexes(progress).filter((index) => index < progress.steps.length - 1),
+          status: "evaluation_ready" as const,
+          updatedAt: nowIso,
+        };
+    const evaluation = evaluateClassApproval({
+      answer: learnerMessage,
+      classPack: approvalRubricSourceFromProgress(gateProgress),
+      evaluationGateCompleted: true,
+      activeSectionsCompleted: true,
+    });
+    if (evaluation.canApproveClass) {
+      const approved = approveClassProgress(gateProgress, nowIso);
+      return {
+        reply: buildClassApprovedReply(gateProgress, evaluation),
+        progress: approved,
+        repaired: true,
+        approvalEvaluation: evaluation,
+        source: "deterministic_evaluation_gate",
+      };
+    }
+    return {
+      reply: buildFocusedRetryReply(evaluation),
+      progress: {
+        ...gateProgress,
+        status: "needs_retry",
+        updatedAt: nowIso,
+      },
+      repaired: true,
+      approvalEvaluation: evaluation,
+      source: "deterministic_evaluation_gate",
+    };
+  }
+
+  const advanced = approveCurrentStep(progress, nowIso);
+  return {
+    reply: buildDeterministicApprovalReply(progress, advanced),
+    progress: advanced,
+    repaired: true,
+    source: "deterministic_learning_block",
+  };
+}
+
 export function loadStoredClassProgress(
   storage: Pick<Storage, "getItem" | "removeItem">,
   storageKey: string,
@@ -323,7 +394,8 @@ function repairApprovedReplyIfNeeded(
   next: CoachClassProgressState,
   reply: string,
 ): ResolvedClassProgressTurn {
-  const announcedNextStep = announcedStepNumber(reply, "Next micro-step");
+  const announcedNextStep =
+    announcedStepNumber(reply, "Next block") ?? announcedStepNumber(reply, "Next micro-step");
   const staleAnnouncement = Boolean(announcedNextStep && announcedNextStep <= previous.currentStepIndex + 1);
   const staleCurrentStep = announcesStepAtOrBefore(reply, previous.currentStepIndex + 1);
   const illegalVideoSimulation = isVideoWhileWatching(next) && hasTeacherSimulation(reply);
@@ -338,7 +410,8 @@ function repairApprovedReplyIfNeeded(
       repaired: true,
     };
   }
-  const approvedPart = reply.split(/Next micro-step:/i)[0].trim() || "This micro-step is approved.";
+  const approvedPart =
+    reply.split(/Next (?:block|micro-step):/i)[0].trim() || "This learning block is approved.";
   return {
     reply: `${approvedPart}\n\n${buildCurrentStepTask(next)}`.trim(),
     progress: next,
@@ -351,7 +424,7 @@ function buildDeterministicApprovalReply(
   next: CoachClassProgressState,
 ) {
   return [
-    "👍 Good answer. This micro-step is approved.",
+    "👍 Good answer. This learning block is approved.",
     "",
     `You completed Paso ${previous.currentStepIndex + 1} de ${previous.steps.length} - ${currentStepName(previous)}.`,
     "",
@@ -361,7 +434,7 @@ function buildDeterministicApprovalReply(
 
 function buildCurrentStepTask(progress: CoachClassProgressState) {
   const step = currentStepName(progress);
-  const heading = `Next micro-step: Paso ${progress.currentStepIndex + 1} de ${progress.steps.length} - ${step}.`;
+  const heading = `Next block: Paso ${progress.currentStepIndex + 1} de ${progress.steps.length} - ${step}.`;
   if (/while watching/i.test(step)) {
     return [
       heading,
@@ -371,6 +444,46 @@ function buildCurrentStepTask(progress: CoachClassProgressState) {
       "2. one useful word, phrase, or time clause from the unit.",
       "",
       "If you cannot open the video, write: \"I can't open the video\" and I’ll use a short fallback practice.",
+    ].join("\n");
+  }
+  if (/while\/after watching/i.test(step)) {
+    return [
+      heading,
+      "",
+      "Open the video or class resource if it is available. If you cannot open the video, say so and I will use a short fallback.",
+      "",
+      "Answer in 3-4 sentences:",
+      "1. summarize the main idea,",
+      "2. mention one useful word, chunk, or structure, and",
+      "3. connect the topic to your own routine, energy, or productivity.",
+    ].join("\n");
+  }
+  if (/learn & practice/i.test(step)) {
+    return [
+      heading,
+      "",
+      "Use the language from the opening block in one integrated answer.",
+      "Write 3-5 sentences and include:",
+      "1. one target structure,",
+      "2. two useful vocabulary items or chunks, and",
+      "3. one personal or professional example.",
+    ].join("\n");
+  }
+  if (/production/i.test(step)) {
+    return [
+      heading,
+      "",
+      "Now turn the class language into a practical speaking or writing response.",
+      "Write 4-6 lines in English. Keep one clear situation, use the target language, and add one reason or example.",
+    ].join("\n");
+  }
+  if (/integrated checkpoint/i.test(step)) {
+    return [
+      heading,
+      "",
+      "Write one integrated checkpoint answer in English.",
+      "Include the unit grammar, useful vocabulary, and one personal or professional example.",
+      "Aim for 4-6 short sentences.",
     ].join("\n");
   }
   if (/after watching/i.test(step)) {
@@ -437,7 +550,7 @@ function enforceVideoResourceFirst(
 }
 
 function isMicroStepApproved(text: string) {
-  return /This micro-step is approved|micro-step is approved|Paso\s+\d{1,2}\s+approved/i.test(text);
+  return /This (?:learning block|micro-step) is approved|(?:learning block|micro-step) is approved|Paso\s+\d{1,2}\s+approved/i.test(text);
 }
 
 function buildEvaluationGateTask(progress: CoachClassProgressState, heading: string) {
@@ -484,6 +597,17 @@ function buildClassApprovedReply(
     isUnitCheckpoint
       ? "Next action: you can ask for the next unit or review your weakest point from this unit."
       : "Next action: you can ask for the next class or review this class briefly.",
+  ].join("\n");
+}
+
+function buildFocusedRetryReply(evaluation: ClassApprovalEvaluation) {
+  return [
+    "Almost there. I cannot approve the class yet.",
+    "",
+    "Focused retry:",
+    evaluation.retryPrompt,
+    "",
+    "Send only the corrected answer. I will evaluate this same checkpoint again.",
   ].join("\n");
 }
 
@@ -545,7 +669,7 @@ function announcedStepNumber(text: string, label: string) {
 }
 
 function announcesStepAtOrBefore(text: string, oneBasedStep: number) {
-  const matches = [...text.matchAll(/(?:Next micro-step:|We(?:'|’)re at|Estamos en|Paso)\s*(?:Paso\s*)?(\d{1,2})\s+de/gi)];
+  const matches = [...text.matchAll(/(?:Next block:|Next micro-step:|We(?:'|’)re at|Estamos en|Paso)\s*(?:Paso\s*)?(\d{1,2})\s+de/gi)];
   return matches.some((match) => Number(match[1]) <= oneBasedStep);
 }
 
@@ -554,7 +678,7 @@ function currentStepName(progress: CoachClassProgressState) {
 }
 
 function isVideoWhileWatching(progress: CoachClassProgressState) {
-  return /while watching/i.test(currentStepName(progress));
+  return /while(?:\/after)? watching/i.test(currentStepName(progress));
 }
 
 function hasTeacherSimulation(text: string) {

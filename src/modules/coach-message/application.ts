@@ -193,8 +193,11 @@ export function resolveReturnedClassProgress(
 }
 
 export function createCoachErrorMessage(errorMessage: string) {
+  const learnerSafeDetail = /unsafe class reply|metadata marker|internal planning language/i.test(errorMessage)
+    ? "La respuesta del profesor no pasó una validación pedagógica interna. Intenta reenviar tu solicitud."
+    : errorMessage;
   return {
     role: "coach" as const,
-    content: `No pude completar la respuesta esta vez. Puedes volver a enviarla.\n\nDetalle: ${errorMessage}`,
+    content: `No pude completar la respuesta esta vez. Puedes volver a enviarla.\n\nDetalle: ${learnerSafeDetail}`,
   };
 }

@@ -34,6 +34,17 @@ export function localClassFromAnyClassNumber(value: number | null, unit: number 
   return null;
 }
 
+export function globalClassFromLocalClass(localClass: number | null, unit: number | null) {
+  if (!unit || !localClass) return null;
+  return (unit - 1) * 7 + localClass;
+}
+
+export function normalizeClassNumberForUnit(value: number | null, unit: number | null): CoachClassCoordinates {
+  const localClass = localClassFromAnyClassNumber(value, unit);
+  const globalClass = globalClassFromLocalClass(localClass, unit);
+  return { unit, localClass, globalClass };
+}
+
 export function resolveCurrentLocalClass(context: any, unit: number | null) {
   const user = context?.user || {};
   const recommended = context?.recommendedCurrentPosition || {};
@@ -146,8 +157,10 @@ export function resolveClassTargetFromMessage(message: string, fallbackUnit?: st
   const unit = extractRequestedUnitNumber(message) || activeUnit || Number(String(fallbackUnit || "").match(/\d{1,2}/)?.[0] || 0) || null;
   const explicitClass = extractRequestedClassNumber(message);
   const explicitClassRequest = hasExplicitClassCoordinates(message);
-  const localClass = explicitClass || resolveCurrentLocalClass(context, unit);
-  const globalClass = unit && localClass ? (unit - 1) * 7 + localClass : null;
+  const localClass = explicitClass
+    ? localClassFromAnyClassNumber(explicitClass, unit)
+    : resolveCurrentLocalClass(context, unit);
+  const globalClass = globalClassFromLocalClass(localClass, unit);
   return {
     unit,
     localClass,

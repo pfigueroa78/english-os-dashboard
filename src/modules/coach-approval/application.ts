@@ -70,6 +70,12 @@ function unique(values: string[]) {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
+function isGenericTeachingTarget(value: string) {
+  return /\b(accurate forms?|target language|useful language|unit\s+\d+|current unit|class topic|key language)\b/i.test(value) ||
+    /\b(from|for)\s+unit\s+\d+\b/i.test(value) ||
+    /\b(do not|unindexed|unverified|student book|class-pack|learner-safe|indexed .*context|confirmed .*context|confirmed unit|recycle confirmed)\b/i.test(value);
+}
+
 function resolveClassId(source: unknown, strings: string[]) {
   const coordinates = strings.join(" ").match(/\bunit\s+(\d{1,2}).{0,40}\bclass\s+(\d{1,2})\b/i);
   if (coordinates) return `unit-${coordinates[1].padStart(2, "0")}-class-${coordinates[2].padStart(2, "0")}`;
@@ -84,15 +90,19 @@ function resolveClassId(source: unknown, strings: string[]) {
 
 export function buildClassApprovalRubric(source: unknown = null): ClassApprovalRubric {
   const strings = collectStrings(source);
-  const grammarLine = firstByPattern(strings, /Active class grammar focus:|grammar focus:/i);
-  const vocabularyLine = firstByPattern(strings, /Active class vocabulary focus:|vocabulary focus:/i);
-  const targetLine = firstByPattern(strings, /Active class target structures:|target structures:/i);
-  const skillLine = firstByPattern(strings, /Active class skill focus:|skill focus:|class sections:/i);
-  const productionLine = firstByPattern(strings, /Expected learner production:|expected production:|production task:/i);
-  const lessonTypeLine = firstByPattern(strings, /Video Class|Grammar Plus|Practice Lab|Listening|Speaking|Writing|Discussion|Role Play/i);
+  const lines = strings.flatMap((text) => text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean));
+  const grammarLine = firstByPattern(lines, /Active class grammar focus:|grammar focus:/i);
+  const vocabularyLine = firstByPattern(lines, /Active class vocabulary focus:|vocabulary focus:/i);
+  const targetLine = firstByPattern(lines, /Active class target structures:|target structures:/i);
+  const skillLine = firstByPattern(lines, /Active class skill focus:|skill focus:|class sections:/i);
+  const productionLine = firstByPattern(lines, /Expected learner production:|expected production:|production task:/i);
+  const lessonTypeLine = firstByPattern(lines, /Video Class|Grammar Plus|Practice Lab|Listening|Speaking|Writing|Discussion|Role Play/i);
 
-  const targetStructures = splitList(targetLine);
-  const grammarTargets = unique([...splitList(grammarLine), ...targetStructures.filter((item) => /\b(should|must|could|might|although|however|before|after|while|when|whenever|used to|gerund|infinitive|clause|passive|reported|future|conditional)\b/i.test(item))]);
+  const targetStructures = splitList(targetLine).filter((item) => !isGenericTeachingTarget(item));
+  const grammarTargets = unique([
+    ...splitList(grammarLine).filter((item) => !isGenericTeachingTarget(item)),
+    ...targetStructures.filter((item) => /\b(should|must|could|might|although|however|before|after|while|when|whenever|used to|gerund|infinitive|clause|passive|reported|future|conditional)\b/i.test(item)),
+  ]);
   const vocabularyTargets = unique([...splitList(vocabularyLine), ...targetStructures.filter((item) => !grammarTargets.includes(item))]);
   const communicativeFunctions = unique(splitList(skillLine).filter((item) => /\b(speaking|discussion|role play|writing|listening|conversation|describe|explain|compare|react|summarize|predict|advice|opinion)\b/i.test(item)));
   const expectedProduction = unique([...splitList(productionLine), ...targetStructures.slice(0, 4)]);
@@ -141,7 +151,10 @@ function countTargetMatches(answer: string, targets: string[]) {
     if (/\bmodals?\b|\bcertainty\b|\buncertainty\b|\bmust have\b|\bmight have\b|\bcould have\b/i.test(target) && /\b(must|might|may|could|can't)\s+(have\s+)?[a-z]{2,}\b/i.test(answer)) return true;
     if (/\badjective clauses?\b|\brelative clauses?\b|\bthat\b|\bwhere\b|\bwhich\b|\bwho\b/i.test(target) && /\b(that|where|which|who|when)\b/i.test(answer)) return true;
     if (/\bpresent perfect\b|\bhave\/has\b/i.test(target) && /\b(have|has)\s+[a-z]{3,}(ed|en)\b/i.test(answer)) return true;
+    if (/\bfuture perfect continuous\b/i.test(target) && /\bwill\s+have\s+been\s+[a-z]{3,}ing\b/i.test(answer)) return true;
+    if (/\bfuture perfect\b/i.test(target) && /\bwill\s+have\s+[a-z]{3,}(ed|en)\b/i.test(answer)) return true;
     if (/\bconditionals?\b|\bif clauses?\b/i.test(target) && /\bif\b.+\b(would|could|will|can)\b|\b(would|could|will|can)\b.+\bif\b/i.test(answer)) return true;
+    if (/\bindirect questions?\b/i.test(target) && /\b(i wonder|i'd like to know|i want to find out|what i don't get is|my big concern is whether|whether|if)\b/i.test(answer)) return true;
     if (/\bsmall talk\b|\bconversation\b|\bopeners?\b|\bclosers?\b/i.test(target) && /\b(how's it going|how are you|see you|got to run|great to meet|do you know|can you believe)\b/i.test(answer)) return true;
     if (/\badvice\b|\bsuggestion\b|\brecommend\b|\bought to\b|\bshould\b/i.test(target) && /\b(should|could|might want to|recommend|ought to|it might not be a bad idea)\b/i.test(answer)) return true;
     if (/\breported\b/i.test(target) && /\b(said|told|asked|warned|explained)\b/i.test(answer)) return true;
@@ -219,9 +232,9 @@ export function evaluateClassApproval(params: {
   const missing = [
     !evaluationGateCompleted ? "complete the evaluation gate" : "",
     !activeSectionsCompleted ? "complete the active class sections" : "",
-    !grammarApproved ? "use the target grammar/key language more accurately" : "",
-    !vocabularyApproved ? "include class-relevant vocabulary/chunks" : "",
-    !communicativeGoalApproved ? "answer the communicative task more directly" : "",
+    !grammarApproved ? "use the target grammar or key language more clearly" : "",
+    !vocabularyApproved ? "include class vocabulary or useful chunks" : "",
+    !communicativeGoalApproved ? "answer the communication task more directly" : "",
     !productionApproved ? `write at least ${rubric.minSentences} complete sentence(s) with enough detail` : "",
     ...blockingErrors,
   ].filter(Boolean);
@@ -239,7 +252,7 @@ export function evaluateClassApproval(params: {
     approvalEvidence,
     retryPrompt: canApproveClass
       ? "Class can be approved. Close the class and advance only after the approval write succeeds."
-      : `Before approving, ask the learner to ${missing.join("; ")}.`,
+      : `Please try again and ${missing.join("; ")}.`,
     rubric,
     scores: {
       grammar: grammarApproved ? "approved" : "needs_work",

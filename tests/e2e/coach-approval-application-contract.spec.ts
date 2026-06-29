@@ -66,6 +66,45 @@ test("class approval blocks confirmation when evidence has blocking grammar erro
   expect(canWriteClassApproval(evaluation)).toBe(false);
 });
 
+test("generic Grammar Plus targets do not block a complete learner answer", async () => {
+  const evaluation = evaluateClassApproval({
+    classPack: {
+      unit: 5,
+      localClass: 6,
+      globalClass: 34,
+      lessonType: "Grammar Plus + Practice Lab",
+      contract:
+        "Active class grammar focus: Unit 5 Lesson B grammar consolidation from indexed Unit 5 context only\nActive class target structures: accurate forms from Unit 5\nActive class vocabulary focus: appropriate; polite; rude; conversation; follow-up questions\nExpected learner production: write two sentences using It depends on... and I'm not sure, but...",
+    },
+    answer:
+      "It depends on the client, but I usually prefer clear and polite communication. I'm not sure, but I think asking follow-up questions is appropriate in a business conversation. Interrupting people is rude because it can make the conversation uncomfortable.",
+  });
+
+  expect(evaluation.canApproveClass).toBe(true);
+  expect(evaluation.grammarApproved).toBe(true);
+  expect(evaluation.vocabularyApproved).toBe(true);
+  expect(evaluation.retryPrompt).not.toContain("ask the learner");
+});
+
+test("learner-facing retry prompt never exposes evaluator instructions", async () => {
+  const evaluation = evaluateClassApproval({
+    classPack: {
+      unit: 5,
+      localClass: 6,
+      globalClass: 34,
+      lessonType: "Grammar Plus + Practice Lab",
+      contract:
+        "Active class target structures: reported speech\nActive class vocabulary focus: claimed; promised; told me that",
+    },
+    answer: "Good.",
+  });
+
+  expect(evaluation.canApproveClass).toBe(false);
+  expect(evaluation.retryPrompt).toContain("Please try again");
+  expect(evaluation.retryPrompt).not.toContain("ask the learner");
+  expect(evaluation.retryPrompt).not.toContain("Before approving");
+});
+
 test("v02 approval route does not contain Unit 4 business-advice hardcoded approval phrases", async () => {
   const source = readWorkspaceFile("src/app/api/english-os/v02/route.ts");
 

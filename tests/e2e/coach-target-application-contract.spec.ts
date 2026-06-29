@@ -26,7 +26,27 @@ test("coach target application honors explicit class coordinates without current
       unit: 5,
       localClass: 1,
       globalClass: 29,
-      displayClass: 1,
+      displayClass: 29,
+      explicitClassRequest: true,
+    });
+  }
+});
+
+test("coach target application displays global class for explicit global class requests", async () => {
+  const result = await resolveCoachClassTarget({
+    message: "Dame la clase 31 de la unidad 5",
+    currentUnit: "Unit 4",
+    context: {},
+    readCurrentClassContent: async () => ({}),
+  });
+
+  expect(result.kind).toBe("resolved");
+  if (result.kind === "resolved") {
+    expect(result.target).toMatchObject({
+      unit: 5,
+      localClass: 3,
+      globalClass: 31,
+      displayClass: 31,
       explicitClassRequest: true,
     });
   }

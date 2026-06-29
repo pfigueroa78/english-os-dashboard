@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getApiLearnerIdentity } from "@/lib/apiLearnerIdentity";
 import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
@@ -9,6 +9,7 @@ import {
   createClassProgress,
   enrichClassProgress,
   isSameClassProgress,
+  resolveClassProgressBeforeModel,
   resolveClassProgressTurn,
   sanitizeClassProgress,
   type CoachClassProgressState,
@@ -178,6 +179,27 @@ function readableClassContinuation(reply: string) {
   return sanitizeLearnerFacingReply(reply)
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function recentCoachText(conversationHistory: CoachMessage[]) {
+  return conversationHistory
+    .filter((message) => message.role === "coach")
+    .slice(-2)
+    .map((message) => message.content)
+    .join("\n\n")
+    .slice(-6000);
+}
+
+function learnerSafeMissingClassReply(unit: number, displayClass: number, active?: CoachClassProgressState | null) {
+  return [
+    `No pude abrir Unit ${unit}, Class ${displayClass} porque el material de esa clase no esta disponible localmente todavia.`,
+    "",
+    active
+      ? `Sigues en Unit ${active.unit}, Class ${active.displayClass}, Paso ${active.currentStepIndex + 1} de ${active.steps.length}: ${active.steps[active.currentStepIndex]}.`
+      : "Tu clase actual no cambia.",
+    "",
+    "Puedes continuar la clase actual o reportar el material faltante.",
+  ].join("\n");
 }
 
 async function buildClassContinuationInput(params: {
@@ -477,7 +499,19 @@ export async function coachPost(request: Request) {
     const { unit, localClass, globalClass, displayClass } = advancement.target;
     const { filename, content } = loadClassPack(unit, localClass);
     if (!content) {
-      return NextResponse.json({ ok: false, error: `Missing local class pack: ${filename}` }, { status: 500 });
+      console.error("[coach] missing local class pack", { filename, unit, localClass, displayClass });
+      const session = sessionFor({ mode: "class", activeUnit: unit, activeClassNumber: displayClass, resourcesUnit: unit });
+      return NextResponse.json({
+        ok: true,
+        agent: "coach",
+        reply: learnerSafeMissingClassReply(unit, displayClass, incomingClassProgress),
+        session,
+        activeUnit: legacyActiveUnit(session),
+        activeClass: legacyActiveClass(session),
+        classProgress: incomingClassProgress,
+        source: "Learner-safe Missing Class Pack",
+        sessionEvents: sessionEventsFor(session, "class_pack_missing", "Learner-safe Missing Class Pack"),
+      });
     }
 
     const classContent = await callEnglishOSAction("getClassContent", {
@@ -489,7 +523,7 @@ export async function coachPost(request: Request) {
     const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
       await buildClassInput({ message, learnerContext: context, classContent, classPack: content, filename, conversationHistory })
     );
-    assertNoMetadataFallback(modelBody);
+    assertNoMetadataFallback(sanitizeLearnerFacingReply(modelBody));
     const identity = classIdentity(content);
     const classProgress = createClassProgress({ unit, localClass, displayClass, identity });
     const position = [
@@ -561,13 +595,30 @@ export async function coachPost(request: Request) {
 
     const { filename, content } = loadClassPack(unit, localClass);
     if (!content) {
-      return NextResponse.json({ ok: false, error: `Missing local class pack: ${filename}` }, { status: 500 });
+      console.error("[coach] missing local class pack", { filename, unit, localClass, displayClass });
+      const session = sessionFor({
+        mode: "class",
+        activeUnit: unit,
+        activeClassNumber: displayClass,
+        resourcesUnit: unit,
+      });
+      return NextResponse.json({
+        ok: true,
+        agent: "coach",
+        reply: learnerSafeMissingClassReply(unit, displayClass, incomingClassProgress),
+        session,
+        activeUnit: legacyActiveUnit(session),
+        activeClass: legacyActiveClass(session),
+        classProgress: incomingClassProgress,
+        source: "Learner-safe Missing Class Pack",
+        sessionEvents: sessionEventsFor(session, "class_pack_missing", "Learner-safe Missing Class Pack"),
+      });
     }
 
     const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
       await buildClassInput({ message, learnerContext: context, classContent, classPack: content, filename, conversationHistory })
     );
-    assertNoMetadataFallback(modelBody);
+    assertNoMetadataFallback(sanitizeLearnerFacingReply(modelBody));
     const identity = classIdentity(content);
     const classProgress = createClassProgress({ unit, localClass, displayClass, identity });
     const position = learnerPositionLine({
@@ -606,7 +657,19 @@ export async function coachPost(request: Request) {
     const { unit, localClass, displayClass } = incomingClassProgress;
     const { filename, content } = loadClassPack(unit, localClass);
     if (!content) {
-      return NextResponse.json({ ok: false, error: `Missing local class pack: ${filename}` }, { status: 500 });
+      console.error("[coach] missing local class pack", { filename, unit, localClass, displayClass });
+      const session = sessionFor({ mode: "class", activeUnit: unit, activeClassNumber: displayClass, resourcesUnit: unit });
+      return NextResponse.json({
+        ok: true,
+        agent: "coach",
+        reply: learnerSafeMissingClassReply(unit, displayClass, incomingClassProgress),
+        session,
+        activeUnit: legacyActiveUnit(session),
+        activeClass: legacyActiveClass(session),
+        classProgress: incomingClassProgress,
+        source: "Learner-safe Missing Class Pack",
+        sessionEvents: sessionEventsFor(session, "class_pack_missing", "Learner-safe Missing Class Pack"),
+      });
     }
     const identity = classIdentity(content);
     const progress = enrichClassProgress(
@@ -616,6 +679,42 @@ export async function coachPost(request: Request) {
       identity,
     );
     const globalClass = (unit - 1) * 7 + localClass;
+    const deterministicTurn = resolveClassProgressBeforeModel({
+      progress,
+      learnerMessage: message,
+      recentCoachText: recentCoachText(conversationHistory),
+    });
+    if (deterministicTurn) {
+      if (deterministicTurn.approvalEvaluation && deterministicTurn.progress.status === "approved") {
+        await callEnglishOSAction("approveCurrentClassExercises", {
+          userEmail: email,
+          learnerId,
+          classId: deterministicTurn.approvalEvaluation.classId,
+          approvalEvidence: JSON.stringify(deterministicTurn.approvalEvaluation.approvalEvidence),
+          rubric: JSON.stringify(deterministicTurn.approvalEvaluation.rubric),
+        }).catch(() => null);
+      }
+      const session = sessionFor({
+        mode: "class",
+        activeUnit: unit,
+        activeClassNumber: displayClass,
+        lessonTitle: identity.lessonTitle,
+        resourcesUnit: unit,
+      });
+      return NextResponse.json({
+        ok: true,
+        agent: "coach",
+        reply: deterministicTurn.reply,
+        session,
+        activeUnit: legacyActiveUnit(session),
+        activeClass: legacyActiveClass(session),
+        classProgress: deterministicTurn.progress,
+        source: `Deterministic Class Progress (${deterministicTurn.source})`,
+        sessionEvents: sessionEventsFor(session, "class_progress_deterministic", `Deterministic Class Progress (${deterministicTurn.source})`),
+        deterministicIdentity: true,
+        usage: { model: "deterministic", inputTokens: 0, outputTokens: 0, totalTokens: 0, estimatedCostUSD: 0 },
+      });
+    }
     const classContent = await callEnglishOSAction("getClassContent", {
       unit: String(unit),
       classNumber: String(globalClass),
@@ -633,7 +732,7 @@ export async function coachPost(request: Request) {
         classProgress: progress,
       }),
     );
-    assertNoMetadataFallback(modelBody);
+    assertNoMetadataFallback(sanitizeLearnerFacingReply(modelBody));
     const resolvedProgressTurn = resolveClassProgressTurn({
       progress,
       learnerMessage: message,
@@ -689,7 +788,7 @@ export async function coachPost(request: Request) {
     const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
       await buildReviewInput({ message, learnerContext: context, unit, contracts, conversationHistory })
     );
-    assertNoMetadataFallback(modelBody);
+    assertNoMetadataFallback(sanitizeLearnerFacingReply(modelBody));
     const position = learnerPositionLine({
       context,
       name: learnerName(context, ""),
@@ -729,7 +828,7 @@ export async function coachPost(request: Request) {
     const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
       await buildUnitGuideInput({ message, learnerContext: context, unit, kind: guideKind, contracts, conversationHistory })
     );
-    assertNoMetadataFallback(modelBody);
+    assertNoMetadataFallback(sanitizeLearnerFacingReply(modelBody));
     const position = learnerPositionLine({
       context,
       name: learnerName(context, ""),

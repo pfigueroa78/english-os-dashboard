@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import passagesUnitTitles from "../../../knowledge/passages-unit-titles.json";
+import { openingLearningBlockInstruction } from "@/modules/coach-delivery/pedagogicalDeliveryPolicy";
 
 export type ClassIdentity = {
   lessonTitle: string;
@@ -75,28 +76,18 @@ export function unitTitle(unit: number) {
 }
 
 export function openingSectionInstruction(sectionList: string) {
-  const section = sectionList.split("+")[0]?.trim() || "Starting point";
-  const normalized = section.toLowerCase();
-
-  if (normalized === "starting point") {
-    return `OPENING SECTION: ${section}. Activate the topic only. Give at most two short model reactions and ask one personal or situational question. Do not teach grammar rules, structure tables, or vocabulary lists yet.`;
-  }
-  if (normalized.includes("listening")) {
-    return `OPENING SECTION: ${section}. Provide one short teacher-created listening input when exact audio is unavailable, then ask one gist question and at most one detail question. Do not begin later role-play, grammar, discussion, or writing sections.`;
-  }
-  if (normalized.includes("vocabulary")) {
-    return `OPENING SECTION: ${section}. Teach at most five contract-supported chunks with two short models, then ask one compact reuse task. Do not begin later sections.`;
-  }
-  if (normalized.includes("grammar")) {
-    return `OPENING SECTION: ${section}. Explain one target structure briefly, give two examples, and ask two controlled items. Do not begin later sections.`;
-  }
-  if (normalized.includes("discussion") || normalized.includes("speaking") || normalized.includes("role play")) {
-    return `OPENING SECTION: ${section}. Set one realistic communication situation, give two short model turns, and ask one compact spoken or written response. Do not begin later sections.`;
-  }
-  if (normalized.includes("video") || normalized.includes("before watching")) {
-    return `OPENING SECTION: ${section}. Do only the before-watching activation with one prediction task. Do not invent video content or begin later sections.`;
-  }
-  return `OPENING SECTION: ${section}. Teach only this section with two short models and one learner task. Do not begin later sections.`;
+  return openingLearningBlockInstruction({
+    lessonTitle: "",
+    bookPages: "",
+    pdfPages: "",
+    sections: sectionList,
+    skillFocus: "",
+    grammarFocus: "",
+    vocabularyFocus: "",
+    functions: "",
+    targetStructures: "",
+    expectedProduction: "",
+  });
 }
 
 export function loadUnitTeachingContracts(unit: number): UnitTeachingContract[] {

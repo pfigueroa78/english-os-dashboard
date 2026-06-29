@@ -1,4 +1,9 @@
 import { unitTitle, type ClassIdentity } from "@/modules/coach-delivery/teachingContracts";
+import {
+  classSections,
+  guidedOpeningFallback,
+  lessonBlockRoadmap,
+} from "@/modules/coach-delivery/pedagogicalDeliveryPolicy";
 
 const FORBIDDEN_METADATA_MARKERS = [
   "Clase actual / contenido de clase",
@@ -7,6 +12,11 @@ const FORBIDDEN_METADATA_MARKERS = [
   "Extract vocabulary",
   "Use the target language from the indexed page range",
   "anchored to Student Book pages",
+  "Recycle confirmed",
+  "confirmed Unit",
+  "Use only target structures confirmed",
+  "learner-safe practice",
+  "indexed Unit",
 ];
 
 const FORBIDDEN_METADATA_PATTERNS = [
@@ -75,6 +85,12 @@ export function stripModelOwnedIdentity(reply: string) {
 
 export function sanitizeLearnerFacingReply(reply: string) {
   return String(reply || "")
+    .split("\n")
+    .filter((line) => {
+      const clean = line.replace(/[*#]/g, "").trim();
+      return !/\b(recycle confirmed|confirmed unit|use only target structures confirmed|learner-safe practice|indexed unit|unverified student book|do not invent missing|do not infer unindexed)\b/i.test(clean);
+    })
+    .join("\n")
     .replace(/\bviewing_current_class\b/gi, "clase activa")
     .replace(/\bviewing current class\b/gi, "clase activa")
     .replace(/\bPassages\s+Level\s+\d+\s*[-—]\s*/gi, "")
@@ -176,13 +192,18 @@ function hasExplicitOpeningTask(text: string) {
 }
 
 function activeSectionList(sectionList: string) {
-  return String(sectionList || "")
-    .split("+")
-    .map((section) => section.trim())
-    .filter(Boolean);
+  return classSections(sectionList);
 }
 
-function lessonRoadmap(identity: ClassIdentity) {
+function lessonRoadmap(identity: ClassIdentity, localClass?: number | null) {
+  const learningBlocks = lessonBlockRoadmap(identity, localClass);
+  const activeBlock = learningBlocks[0] || "Learn & practice";
+  const laterBlocks = learningBlocks.slice(1).join(" -> ");
+  return [
+    `Ruta de clase: **Bloque 1 de ${learningBlocks.length} - ${activeBlock}**.`,
+    laterBlocks ? `Después: ${laterBlocks}.` : "",
+  ].filter(Boolean).join(" ");
+
   const sections = activeSectionList(identity.sections);
   const firstSection = sections[0] || identity.lessonTitle || "Starting point";
   const hasVideoStages = sections.some((section) => /before watching|while watching|after watching/i.test(section));
@@ -287,9 +308,10 @@ export function renderClassReply(params: {
   const title = unitTitle(params.unit);
   const displayLesson = identity.lessonTitle || identity.sections.split("+")[0]?.trim() || "Class session";
   const formattedSkillFocus = learnerFriendlyFocus(identity.skillFocus.split(",").map((item) => item.trim()).filter(Boolean).join(", "));
-  const teachingBody = ensureRichOpeningTask(
-    stripClassConfirmationDetours(limitToOpeningClassTurn(stripModelOwnedIdentity(params.body), identity.sections)),
+  const teachingBody = guidedOpeningFallback(
+    stripClassConfirmationDetours(stripPrematureClassClosure(stripModelOwnedIdentity(params.body))),
     identity,
+    params.localClass,
   );
   const reference = [
     `class ${params.displayClass || params.localClass}`,
@@ -299,14 +321,14 @@ export function renderClassReply(params: {
     `# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`,
     `Hoy trabajaremos **${reference}**.`,
     "",
-    lessonRoadmap(identity),
+    lessonRoadmap(identity, params.localClass),
     evaluationModeLine(params.localClass),
     "",
     formattedSkillFocus
       ? `Focus: **${formattedSkillFocus}**. Iremos paso a paso.`
       : "Iremos paso a paso.",
     "",
-    identity.sections ? `Empezamos con **${identity.sections.split("+")[0]?.trim() || displayLesson}**.` : "",
+    identity.sections ? `Empezamos con un bloque docente: **${activeSectionList(identity.sections).slice(0, 3).join(" + ") || displayLesson}**.` : "",
   ].filter(Boolean);
 
   return readableMarkdownPunctuation(sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]

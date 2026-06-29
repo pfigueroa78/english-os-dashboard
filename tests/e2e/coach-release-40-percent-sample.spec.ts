@@ -47,6 +47,11 @@ function passingAnswerFor(unit: number, localClass: number) {
     "I used to make short answers, but I have become more confident when I explain my ideas.",
     "As soon as I understand the question, I organize my answer before I speak.",
     "You might want to compare two options, although the best solution depends on the context.",
+    "How's it going? It was great to meet you; I have worked on this before.",
+    "He said that it was a secret, and she asked me what I was saying.",
+    "I wonder why the service is so slow, and I feel frustrated when a problem is not solved.",
+    "Even if I were busy, I would be honest, and I would keep it a secret only if it were ethical.",
+    "By the end of next year, I will have improved my English, and I will have been practicing every week.",
     "This answer includes vocabulary, grammar, production, and a short professional reason.",
   ].join(" ");
 }

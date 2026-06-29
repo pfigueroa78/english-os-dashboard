@@ -26,6 +26,22 @@ test("coach target resolver honors explicit unit/class requests over saved posit
   });
 });
 
+test("coach target resolver accepts global class numbers inside an explicit unit", async () => {
+  expect(resolveClassTargetFromMessage("Dame la clase 31 de la unidad 5", "Unit 4", {})).toMatchObject({
+    unit: 5,
+    localClass: 3,
+    globalClass: 31,
+    explicitClassRequest: true,
+  });
+
+  expect(resolveClassTargetFromMessage("Dame la clase 35 de la unidad 5", "Unit 4", {})).toMatchObject({
+    unit: 5,
+    localClass: 7,
+    globalClass: 35,
+    explicitClassRequest: true,
+  });
+});
+
 test("coach target resolver uses saved class as fallback but still requests canonical active-class lookup", async () => {
   const context = {
     recommendedCurrentPosition: {

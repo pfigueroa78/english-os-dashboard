@@ -170,71 +170,6 @@ export function buildClassProgressInstruction(progress: CoachClassProgressState)
   ].filter(Boolean).join("\n");
 }
 
-export function advanceClassProgressFromReply(
-  progress: CoachClassProgressState,
-  reply: string,
-  nowIso = new Date().toISOString(),
-): CoachClassProgressState {
-  const text = String(reply || "");
-  if (/\b(class|unit checkpoint)\s+approved\b/i.test(text)) {
-    return {
-      ...progress,
-      completedStepIndexes: allStepIndexes(progress),
-      currentStepIndex: progress.steps.length - 1,
-      status: "approved",
-      lastApprovedStepIndex: progress.steps.length - 1,
-      updatedAt: nowIso,
-    };
-  }
-
-  if (/focused retry|one focused retry|needs reinforcement|almost there/i.test(text)) {
-    return {
-      ...progress,
-      status: "needs_retry",
-      updatedAt: nowIso,
-    };
-  }
-
-  const approved = isMicroStepApproved(text);
-  const currentStepIndex = progress.currentStepIndex;
-  if (!approved) {
-    return {
-      ...progress,
-      status: "awaiting_answer",
-      updatedAt: nowIso,
-    };
-  }
-
-  if (currentStepIndex >= progress.steps.length - 1) {
-    return {
-      ...progress,
-      completedStepIndexes: allStepIndexes(progress),
-      status: "approved",
-      lastApprovedStepIndex: currentStepIndex,
-      updatedAt: nowIso,
-    };
-  }
-
-  const announcedNextStep =
-    announcedStepNumber(text, "Next block") ?? announcedStepNumber(text, "Next micro-step");
-  const fallbackNextIndex = Math.min(currentStepIndex + 1, progress.steps.length - 1);
-  const announcedNextIndex = announcedNextStep
-    ? Math.min(Math.max(announcedNextStep - 1, 0), progress.steps.length - 1)
-    : null;
-  const nextIndex = announcedNextIndex !== null && announcedNextIndex > currentStepIndex
-    ? announcedNextIndex
-    : fallbackNextIndex;
-
-  return {
-    ...progress,
-    currentStepIndex: nextIndex,
-    completedStepIndexes: [...new Set([...progress.completedStepIndexes, currentStepIndex])],
-    status: progress.steps[nextIndex] === "Evaluation gate" ? "evaluation_ready" : "awaiting_answer",
-    lastApprovedStepIndex: currentStepIndex,
-    updatedAt: nowIso,
-  };
-}
-
 export function applyClassProgressEvent(
   progress: CoachClassProgressState,
   event: ClassProgressEvent,
@@ -599,10 +534,6 @@ function enforceVideoResourceFirst(
     return reply;
   }
   return buildCurrentStepTask(progress);
-}
-
-function isMicroStepApproved(text: string) {
-  return /This (?:learning block|micro-step) is approved|(?:learning block|micro-step) is approved|Paso\s+\d{1,2}\s+approved/i.test(text);
 }
 
 function buildEvaluationGateTask(progress: CoachClassProgressState, heading: string) {

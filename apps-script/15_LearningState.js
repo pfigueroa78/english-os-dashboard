@@ -49,6 +49,7 @@ function ensureLearningStateSheet_(ss) {
     'Approval Score',
     'Approval Gate Completed',
     'Approval Evaluator Version',
+    'Approval Policy ID',
     'Approval Source Request ID'
   ];
 
@@ -128,6 +129,7 @@ function createDefaultLearningState_(ss, userEmail, learnerId, user) {
     '',
     '',
     '',
+    '',
     ''
   ];
 
@@ -201,6 +203,7 @@ function approveCurrentClassExercises_(ss, params) {
     'Approval Score': validation.score,
     'Approval Gate Completed': 'TRUE',
     'Approval Evaluator Version': validation.evaluatorVersion,
+    'Approval Policy ID': validation.policyId,
     'Approval Source Request ID': validation.requestId
   });
 
@@ -216,9 +219,33 @@ function validateApprovalEvidence_(params) {
   const evidence = String(params.approvalEvidence || '').trim();
   const rubric = String(params.rubric || '').trim();
   const score = Number(params.approvalScore || params.score || 0);
-  const gateCompleted = String(params.evaluationGateCompleted || params.approvalGateCompleted || 'true').toLowerCase() === 'true';
+  const gateRaw = params.evaluationGateCompleted || params.approvalGateCompleted || '';
+  const gateCompleted = String(gateRaw).toLowerCase() === 'true';
   const evaluatorVersion = String(params.evaluatorVersion || '').trim();
-  const requestId = String(params.requestId || params.approvalSourceRequestId || Utilities.getUuid()).trim();
+  const requestId = String(params.requestId || params.approvalSourceRequestId || '').trim();
+  const classId = String(params.classId || '').trim();
+  const policyId = String(params.policyId || '').trim();
+  const canApproveClass = String(params.canApproveClass || '').toLowerCase() === 'true';
+  const blockingErrors = String(params.blockingErrors || '').trim();
+
+  if (!classId || !/^unit-\d{2}-class-\d{2}$/i.test(classId)) {
+    return { ok: false, error: 'Approval rejected: explicit classId is required.' };
+  }
+  if (!policyId) {
+    return { ok: false, error: 'Approval rejected: policyId is required.' };
+  }
+  if (!requestId) {
+    return { ok: false, error: 'Approval rejected: requestId is required.' };
+  }
+  if (!canApproveClass) {
+    return { ok: false, error: 'Approval rejected: canApproveClass must be true.' };
+  }
+  if (!gateRaw) {
+    return { ok: false, error: 'Approval rejected: evaluationGateCompleted must be explicit.' };
+  }
+  if (blockingErrors && blockingErrors !== '[]') {
+    return { ok: false, error: 'Approval rejected: blockingErrors must be empty.' };
+  }
 
   if (!evidence || evidence === '[]') {
     return { ok: false, error: 'Approval rejected: approvalEvidence is required.' };
@@ -242,6 +269,7 @@ function validateApprovalEvidence_(params) {
     rubric: rubric,
     score: String(score),
     evaluatorVersion: evaluatorVersion,
+    policyId: policyId,
     requestId: requestId
   };
 }

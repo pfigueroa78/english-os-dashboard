@@ -10,6 +10,7 @@ import {
   courseStructureRepository,
   getApprovalPolicyConfig,
   getGrammarRuleSetConfig,
+  getTargetMatcherSetConfig,
 } from "../../src/modules/coach-config/pedagogyConfig";
 
 function readWorkspaceFile(relativePath: string) {
@@ -159,5 +160,43 @@ test("Apps Script class approval write requires evidence, rubric, score, gate an
   expect(source).toContain("'Approval Score'");
   expect(source).toContain("'Approval Gate Completed'");
   expect(source).toContain("'Approval Evaluator Version'");
+  expect(source).toContain("'Approval Policy ID'");
   expect(source).toContain("approvalScore must be at least 8");
+  expect(source).toContain("explicit classId is required");
+  expect(source).toContain("policyId is required");
+  expect(source).toContain("requestId is required");
+  expect(source).toContain("canApproveClass must be true");
+  expect(source).toContain("evaluationGateCompleted must be explicit");
+  expect(source).toContain("blockingErrors must be empty");
+  expect(source).not.toContain("Utilities.getUuid()).trim()");
+  expect(source).not.toContain("|| 'true'");
+});
+
+test("approval persistence failures are not swallowed by coach route handler", async () => {
+  const source = readWorkspaceFile("src/lib/coachRouteHandler.ts");
+
+  expect(source).toContain("writeClassApprovalOrThrow");
+  expect(source).toContain("Evaluation passed, but approval could not be saved yet.");
+  expect(source).toContain("Class Approval Persistence Failed");
+  expect(source).not.toMatch(/approveCurrentClassExercises[\s\S]{0,500}\.catch\(\(\)\s*=>\s*null\)/);
+});
+
+test("approval evaluator uses configured target matchers instead of pedagogical if-chains", async () => {
+  const matcherConfig = getTargetMatcherSetConfig();
+  const source = readWorkspaceFile("src/modules/coach-approval/application.ts");
+
+  expect(matcherConfig.matcherSetId).toBe("default-target-matchers");
+  expect(matcherConfig.evidenceMatchers.map((matcher) => matcher.id)).toContain("time-clauses");
+  expect(source).toContain("getTargetMatcherSetConfig");
+  expect(source).not.toContain("\\bgerund\\b/i.test(target)");
+  expect(source).not.toContain("\\bsmall talk\\b");
+  expect(source).not.toContain("\\b(time clauses?|before|after");
+});
+
+test("class progress module does not export text-driven advancement", async () => {
+  const source = readWorkspaceFile("src/modules/coach-class-progress/application.ts");
+
+  expect(source).not.toContain("export function advanceClassProgressFromReply");
+  expect(source).not.toContain("function isMicroStepApproved");
+  expect(source).not.toContain("This (?:learning block|micro-step) is approved");
 });

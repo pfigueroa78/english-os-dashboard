@@ -80,6 +80,59 @@ async function callEnglishOSAction(action: string, params: Record<string, string
   return response.ok ? data : null;
 }
 
+async function callEnglishOSActionOrThrow(action: string, params: Record<string, string>) {
+  const data = await callEnglishOSAction(action, params);
+  if (!data?.ok) {
+    const error = data?.error ? String(data.error) : `English OS action failed: ${action}`;
+    throw new Error(error);
+  }
+  return data;
+}
+
+function approvalWriteParams(input: {
+  userEmail: string;
+  learnerId: string;
+  evaluation: NonNullable<ReturnType<typeof resolveClassProgressTurn>["approvalEvaluation"]>;
+}) {
+  return {
+    userEmail: input.userEmail,
+    learnerId: input.learnerId,
+    classId: input.evaluation.classId,
+    approvalEvidence: JSON.stringify(input.evaluation.approvalEvidence),
+    rubric: JSON.stringify(input.evaluation.rubric),
+    approvalScore: String(input.evaluation.score),
+    evaluationGateCompleted: String(input.evaluation.evaluationGateCompleted),
+    evaluatorVersion: input.evaluation.evaluatorVersion,
+    policyId: input.evaluation.policyId,
+    canApproveClass: String(input.evaluation.canApproveClass),
+    blockingErrors: JSON.stringify(input.evaluation.blockingErrors),
+    requestId: `${input.evaluation.classId}-${Date.now()}`,
+  };
+}
+
+async function writeClassApprovalOrThrow(input: {
+  userEmail: string;
+  learnerId: string;
+  evaluation: NonNullable<ReturnType<typeof resolveClassProgressTurn>["approvalEvaluation"]>;
+}) {
+  return callEnglishOSActionOrThrow(
+    "approveCurrentClassExercises",
+    approvalWriteParams(input),
+  );
+}
+
+function buildApprovalWriteFailedReply(error: unknown) {
+  const reason = error instanceof Error ? error.message : "approval persistence failed";
+  return [
+    "Evaluation passed, but approval could not be saved yet.",
+    "",
+    "Your class is not marked as approved yet.",
+    "Please try again in a moment. If the problem continues, report the issue so we can review the English OS connection.",
+    "",
+    `Technical note: ${reason}`,
+  ].join("\n");
+}
+
 async function getLearnerContext(email: string) {
   if (process.env.NODE_ENV === "development" && (!ENGLISH_OS_BASE_URL || !ENGLISH_OS_TOKEN)) {
     console.warn("[coach] using development-only learner context; English OS read/write is unavailable");
@@ -619,18 +672,38 @@ export async function coachPost(request: Request) {
     });
     if (deterministicTurn) {
       if (deterministicTurn.approvalEvaluation && deterministicTurn.progress.status === "approved") {
-        await callEnglishOSAction("approveCurrentClassExercises", {
-          userEmail: email,
-          learnerId,
-          classId: deterministicTurn.approvalEvaluation.classId,
-          approvalEvidence: JSON.stringify(deterministicTurn.approvalEvaluation.approvalEvidence),
-          rubric: JSON.stringify(deterministicTurn.approvalEvaluation.rubric),
-          approvalScore: String(deterministicTurn.approvalEvaluation.score),
-          evaluationGateCompleted: String(deterministicTurn.approvalEvaluation.evaluationGateCompleted),
-          evaluatorVersion: deterministicTurn.approvalEvaluation.evaluatorVersion,
-          policyId: deterministicTurn.approvalEvaluation.policyId,
-          requestId: `${deterministicTurn.approvalEvaluation.classId}-${Date.now()}`,
-        }).catch(() => null);
+        try {
+          await writeClassApprovalOrThrow({
+            userEmail: email,
+            learnerId,
+            evaluation: deterministicTurn.approvalEvaluation,
+          });
+        } catch (error) {
+          const session = sessionFor({
+            mode: "class",
+            activeUnit: unit,
+            activeClassNumber: displayClass,
+            lessonTitle: identity.lessonTitle,
+            resourcesUnit: unit,
+          });
+          return NextResponse.json({
+            ok: true,
+            agent: "coach",
+            reply: buildApprovalWriteFailedReply(error),
+            session,
+            activeUnit: legacyActiveUnit(session),
+            activeClass: legacyActiveClass(session),
+            classProgress: {
+              ...progress,
+              status: "evaluation_ready",
+              currentStepIndex: progress.steps.length - 1,
+            },
+            source: "Class Approval Persistence Failed",
+            sessionEvents: sessionEventsFor(session, "class_approval_write_failed", "Class Approval Persistence Failed"),
+            deterministicIdentity: true,
+            usage: { model: "deterministic", inputTokens: 0, outputTokens: 0, totalTokens: 0, estimatedCostUSD: 0 },
+          });
+        }
       }
       const session = sessionFor({
         mode: "class",
@@ -679,18 +752,38 @@ export async function coachPost(request: Request) {
     const reply = resolvedProgressTurn.reply;
     const nextProgress = resolvedProgressTurn.progress;
     if (resolvedProgressTurn.approvalEvaluation && nextProgress.status === "approved") {
-      await callEnglishOSAction("approveCurrentClassExercises", {
-        userEmail: email,
-        learnerId,
-        classId: resolvedProgressTurn.approvalEvaluation.classId,
-        approvalEvidence: JSON.stringify(resolvedProgressTurn.approvalEvaluation.approvalEvidence),
-        rubric: JSON.stringify(resolvedProgressTurn.approvalEvaluation.rubric),
-        approvalScore: String(resolvedProgressTurn.approvalEvaluation.score),
-        evaluationGateCompleted: String(resolvedProgressTurn.approvalEvaluation.evaluationGateCompleted),
-        evaluatorVersion: resolvedProgressTurn.approvalEvaluation.evaluatorVersion,
-        policyId: resolvedProgressTurn.approvalEvaluation.policyId,
-        requestId: `${resolvedProgressTurn.approvalEvaluation.classId}-${Date.now()}`,
-      }).catch(() => null);
+      try {
+        await writeClassApprovalOrThrow({
+          userEmail: email,
+          learnerId,
+          evaluation: resolvedProgressTurn.approvalEvaluation,
+        });
+      } catch (error) {
+        const session = sessionFor({
+          mode: "class",
+          activeUnit: unit,
+          activeClassNumber: displayClass,
+          lessonTitle: identity.lessonTitle,
+          resourcesUnit: unit,
+        });
+        return NextResponse.json({
+          ok: true,
+          agent: "coach",
+          reply: buildApprovalWriteFailedReply(error),
+          session,
+          activeUnit: legacyActiveUnit(session),
+          activeClass: legacyActiveClass(session),
+          classProgress: {
+            ...progress,
+            status: "evaluation_ready",
+            currentStepIndex: progress.steps.length - 1,
+          },
+          source: "Class Approval Persistence Failed",
+          sessionEvents: sessionEventsFor(session, "class_approval_write_failed", "Class Approval Persistence Failed"),
+          deterministicIdentity: true,
+          usage: { model: coachModelName(), inputTokens: 0, outputTokens: 0, totalTokens: 0, estimatedCostUSD: 0 },
+        });
+      }
     }
     const u = usage(openaiData);
     const session = sessionFor({

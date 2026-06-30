@@ -463,12 +463,14 @@ async function callTool(name: string, args: any, request: Request) {
       userEmail,
       learnerId: userEmail,
       classId: args.evaluation.classId,
-      approvalEvidence: args.evaluation.approvalEvidence,
-      rubric: args.evaluation.rubric,
+      approvalEvidence: JSON.stringify(args.evaluation.approvalEvidence),
+      rubric: JSON.stringify(args.evaluation.rubric),
       approvalScore: String(args.evaluation.score),
       evaluationGateCompleted: String(args.evaluation.evaluationGateCompleted),
       evaluatorVersion: args.evaluation.evaluatorVersion,
       policyId: args.evaluation.policyId,
+      canApproveClass: String(args.evaluation.canApproveClass),
+      blockingErrors: JSON.stringify(args.evaluation.blockingErrors),
       requestId: `${args.evaluation.classId}-${Date.now()}`,
     });
     return textToolResult(pretty(data), data);

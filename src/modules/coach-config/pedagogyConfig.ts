@@ -1,5 +1,6 @@
 import approvalPolicyConfig from "../../../knowledge/pedagogy/approval-policies/default.json";
 import grammarRuleConfig from "../../../knowledge/pedagogy/grammar-rules/default.json";
+import matcherConfig from "../../../knowledge/pedagogy/matchers/default.json";
 import courseStructureConfig from "../../../knowledge/course-structure/english-os-course.json";
 
 export type ApprovalCriterionId =
@@ -56,6 +57,21 @@ export type GrammarRuleSetConfig = {
   rules: GrammarRuleConfig[];
 };
 
+export type EvidenceMatcherConfig = {
+  id: string;
+  targetPattern: string;
+  answerPattern: string;
+};
+
+export type TargetMatcherSetConfig = {
+  schemaVersion: number;
+  matcherSetId: string;
+  description: string;
+  grammarTargetPatterns: string[];
+  communicativeFunctionPatterns: string[];
+  evidenceMatchers: EvidenceMatcherConfig[];
+};
+
 export type CourseStructureConfig = {
   schemaVersion: number;
   courseId: string;
@@ -78,6 +94,11 @@ export function getApprovalPolicyConfig(): ApprovalPolicyConfig {
 export function getGrammarRuleSetConfig(): GrammarRuleSetConfig {
   assertGrammarRuleSetConfig(grammarRuleConfig);
   return grammarRuleConfig;
+}
+
+export function getTargetMatcherSetConfig(): TargetMatcherSetConfig {
+  assertTargetMatcherSetConfig(matcherConfig);
+  return matcherConfig;
 }
 
 export function getCourseStructureConfig(): CourseStructureConfig {
@@ -149,6 +170,21 @@ function assertGrammarRuleSetConfig(value: unknown): asserts value is GrammarRul
   if (!Array.isArray(candidate.rules)) throw new Error("Grammar rule config must define rules.");
   for (const rule of candidate.rules) {
     if (!rule.id || !rule.pattern || !rule.message) throw new Error(`Invalid grammar rule: ${rule.id || "unknown"}`);
+  }
+}
+
+function assertTargetMatcherSetConfig(value: unknown): asserts value is TargetMatcherSetConfig {
+  const candidate = value as Partial<TargetMatcherSetConfig>;
+  if (!candidate || candidate.schemaVersion !== 1 || !candidate.matcherSetId) {
+    throw new Error("Invalid target matcher config.");
+  }
+  if (!Array.isArray(candidate.grammarTargetPatterns)) throw new Error("Matcher config must define grammarTargetPatterns.");
+  if (!Array.isArray(candidate.communicativeFunctionPatterns)) throw new Error("Matcher config must define communicativeFunctionPatterns.");
+  if (!Array.isArray(candidate.evidenceMatchers)) throw new Error("Matcher config must define evidenceMatchers.");
+  for (const matcher of candidate.evidenceMatchers) {
+    if (!matcher.id || !matcher.targetPattern || !matcher.answerPattern) {
+      throw new Error(`Invalid evidence matcher: ${matcher.id || "unknown"}`);
+    }
   }
 }
 

@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "matcherSetId": "default-target-matchers",
+  "description": "Configurable evidence matchers used by the approval evaluator. TypeScript may interpret these patterns but must not encode pedagogical target families directly.",
+  "grammarTargetPatterns": [
+    "\\b(should|must|could|might|although|however|before|after|while|when|whenever|used to|gerund|infinitive|clause|passive|reported|future|conditional)\\b"
+  ],
+  "communicativeFunctionPatterns": [
+    "\\b(speaking|discussion|role play|writing|listening|conversation|describe|explain|compare|react|summarize|predict|advice|opinion)\\b"
+  ],
+  "evidenceMatchers": [
+    {
+      "id": "gerund",
+      "targetPattern": "\\bgerund\\b",
+      "answerPattern": "\\b[a-z]{3,}ing\\b"
+    },
+    {
+      "id": "infinitive",
+      "targetPattern": "\\binfinitive\\b",
+      "answerPattern": "\\bto\\s+[a-z]{3,}\\b"
+    },
+    {
+      "id": "should-have",
+      "targetPattern": "\\bshould have\\b",
+      "answerPattern": "\\bshould\\s+have\\s+[a-z]{3,}(ed|en)\\b"
+    },
+    {
+      "id": "supposed-to",
+      "targetPattern": "\\b(was|were)\\s+supposed\\s+to\\b",
+      "answerPattern": "\\b(was|were)\\s+supposed\\s+to\\s+[a-z]{2,}\\b"
+    },
+    {
+      "id": "used-to",
+      "targetPattern": "\\bused to\\b",
+      "answerPattern": "\\bused\\s+to\\s+[a-z]{2,}\\b"
+    },
+    {
+      "id": "has-become",
+      "targetPattern": "\\bhas become\\b",
+      "answerPattern": "\\b(has|have)\\s+become\\b"
+    },
+    {
+      "id": "certainty-modals",
+      "targetPattern": "\\bmodals?\\b|\\bcertainty\\b|\\buncertainty\\b|\\bmust have\\b|\\bmight have\\b|\\bcould have\\b",
+      "answerPattern": "\\b(must|might|may|could|can't)\\s+(have\\s+)?[a-z]{2,}\\b"
+    },
+    {
+      "id": "relative-clauses",
+      "targetPattern": "\\badjective clauses?\\b|\\brelative clauses?\\b|\\bthat\\b|\\bwhere\\b|\\bwhich\\b|\\bwho\\b",
+      "answerPattern": "\\b(that|where|which|who|when)\\b"
+    },
+    {
+      "id": "present-perfect",
+      "targetPattern": "\\bpresent perfect\\b|\\bhave/has\\b",
+      "answerPattern": "\\b(have|has)\\s+[a-z]{3,}(ed|en)\\b"
+    },
+    {
+      "id": "future-perfect-continuous",
+      "targetPattern": "\\bfuture perfect continuous\\b",
+      "answerPattern": "\\bwill\\s+have\\s+been\\s+[a-z]{3,}ing\\b"
+    },
+    {
+      "id": "future-perfect",
+      "targetPattern": "\\bfuture perfect\\b",
+      "answerPattern": "\\bwill\\s+have\\s+[a-z]{3,}(ed|en)\\b"
+    },
+    {
+      "id": "conditionals",
+      "targetPattern": "\\bconditionals?\\b|\\bif clauses?\\b",
+      "answerPattern": "\\bif\\b.+\\b(would|could|will|can)\\b|\\b(would|could|will|can)\\b.+\\bif\\b"
+    },
+    {
+      "id": "indirect-questions",
+      "targetPattern": "\\bindirect questions?\\b",
+      "answerPattern": "\\b(i wonder|i'd like to know|i want to find out|what i don't get is|my big concern is whether|whether|if)\\b"
+    },
+    {
+      "id": "small-talk",
+      "targetPattern": "\\bsmall talk\\b|\\bconversation\\b|\\bopeners?\\b|\\bclosers?\\b",
+      "answerPattern": "\\b(how's it going|how are you|see you|got to run|great to meet|do you know|can you believe)\\b"
+    },
+    {
+      "id": "advice",
+      "targetPattern": "\\badvice\\b|\\bsuggestion\\b|\\brecommend\\b|\\bought to\\b|\\bshould\\b",
+      "answerPattern": "\\b(should|could|might want to|recommend|ought to|it might not be a bad idea)\\b"
+    },
+    {
+      "id": "reported-speech",
+      "targetPattern": "\\breported\\b",
+      "answerPattern": "\\b(said|told|asked|warned|explained)\\b"
+    },
+    {
+      "id": "time-clauses",
+      "targetPattern": "\\b(time clauses?|before|after|while|when|whenever|as soon as)\\b",
+      "answerPattern": "\\b(before|after|while|when|whenever|as soon as|until)\\b"
+    }
+  ]
+}

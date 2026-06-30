@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
 import {
-  advanceClassProgressFromReply,
   buildClassProgressInstruction,
   classProgressKey,
   classRoadmapFromSections,
@@ -71,37 +70,40 @@ test("class progress instruction makes application state authoritative", () => {
   expect(instruction).toContain("Never open the same numbered step again after approving it");
 });
 
-test("approved answers advance exactly one visible step and prevent same-step loops", () => {
+test("model approval text alone does not advance class progress", () => {
   const progress = {
     ...createClassProgress({ unit: 4, localClass: 7, displayClass: 28, identity }),
     currentStepIndex: 1,
     completedStepIndexes: [0],
   };
-  const next = advanceClassProgressFromReply(
+  const resolved = resolveClassProgressTurn({
     progress,
-    "This micro-step is approved.\n\nNext micro-step: Paso 3 de 5 - After watching.\n\nAnswer this reflection.",
-  );
+    learnerMessage: "continue",
+    reply: "This micro-step is approved.\n\nNext micro-step: Paso 3 de 5 - After watching.\n\nAnswer this reflection.",
+    nowIso: "2026-06-27T00:00:00.000Z",
+  });
 
-  expect(next.currentStepIndex).toBe(2);
-  expect(next.completedStepIndexes).toEqual([0, 1]);
-  expect(next.lastApprovedStepIndex).toBe(1);
-  expect(next.status).toBe("awaiting_answer");
+  expect(resolved.progress.currentStepIndex).toBe(1);
+  expect(resolved.progress.completedStepIndexes).toEqual([0]);
+  expect(resolved.progress.status).toBe("awaiting_answer");
 });
 
-test("approved answers advance even when the model repeats the same step announcement", () => {
+test("valid learner production advances through structured learning event even when model repeats stale text", () => {
   const progress = {
     ...createClassProgress({ unit: 4, localClass: 7, displayClass: 28, identity }),
     currentStepIndex: 1,
     completedStepIndexes: [0],
   };
-  const next = advanceClassProgressFromReply(
+  const resolved = resolveClassProgressTurn({
     progress,
-    "This micro-step is approved.\n\nNext micro-step: Paso 2 de 5 - While watching.\n\nTeacher listening input:",
-  );
+    learnerMessage: "The main idea is that people have different energy patterns. Early birds work better in the morning, while night owls are more creative later.",
+    reply: "This micro-step is approved.\n\nNext micro-step: Paso 2 de 5 - While watching.\n\nTeacher listening input:",
+    nowIso: "2026-06-27T00:00:00.000Z",
+  });
 
-  expect(next.currentStepIndex).toBe(2);
-  expect(next.completedStepIndexes).toEqual([0, 1]);
-  expect(next.lastApprovedStepIndex).toBe(1);
+  expect(resolved.progress.currentStepIndex).toBe(2);
+  expect(resolved.progress.completedStepIndexes).toEqual([0, 1]);
+  expect(resolved.progress.lastApprovedStepIndex).toBe(1);
 });
 
 test("class progress resolver repairs real loop: learner answer is not sent back to the same video simulation", () => {
@@ -170,11 +172,16 @@ test("focused retry keeps the learner on the same visible step", () => {
     currentStepIndex: 1,
     completedStepIndexes: [0],
   };
-  const next = advanceClassProgressFromReply(progress, "Almost there - one focused retry. Focused retry: Paso 2 de 5 - While watching.");
+  const resolved = resolveClassProgressTurn({
+    progress,
+    learnerMessage: "ok",
+    reply: "Almost there - one focused retry. Focused retry: Paso 2 de 5 - While watching.",
+    nowIso: "2026-06-27T00:00:00.000Z",
+  });
 
-  expect(next.currentStepIndex).toBe(1);
-  expect(next.completedStepIndexes).toEqual([0]);
-  expect(next.status).toBe("needs_retry");
+  expect(resolved.progress.currentStepIndex).toBe(1);
+  expect(resolved.progress.completedStepIndexes).toEqual([0]);
+  expect(resolved.progress.status).toBe("awaiting_answer");
 });
 
 test("real transcript regression: valid English before-watching answer is not rejected as non-English", () => {

@@ -43,7 +43,13 @@ function ensureLearningStateSheet_(ss) {
     'Source',
     'Notes',
     'Advance Requires Approval',
-    'Exercise Approval Status'
+    'Exercise Approval Status',
+    'Approval Evidence',
+    'Approval Rubric',
+    'Approval Score',
+    'Approval Gate Completed',
+    'Approval Evaluator Version',
+    'Approval Source Request ID'
   ];
 
   return getOrCreateSheet_(ss, LEARNING_STATE_SHEET_NAME, headers);
@@ -97,7 +103,8 @@ function createDefaultLearningState_(ss, userEmail, learnerId, user) {
   const learner = String(learnerId || email).trim();
   const currentUnitText = user ? String(user['Current Unit'] || '') : '';
   const currentUnit = extractUnitNumberFromText_(currentUnitText) || '1';
-  const currentClass = currentUnit === '4' ? '25' : String(((Number(currentUnit) - 1) * 7) + 1);
+  const firstClassIndex = getCourseClassIndex_(ss, { unit: currentUnit });
+  const currentClass = String((firstClassIndex.items && firstClassIndex.items[0] && firstClassIndex.items[0].classNumber) || '1');
 
   const row = [
     email,
@@ -115,7 +122,13 @@ function createDefaultLearningState_(ss, userEmail, learnerId, user) {
     'auto_default',
     'Default learning state created by English OS.',
     'TRUE',
-    'pending'
+    'pending',
+    '',
+    '',
+    '',
+    '',
+    '',
+    ''
   ];
 
   const sheet = ensureLearningStateSheet_(ss);
@@ -163,6 +176,17 @@ function approveCurrentClassExercises_(ss, params) {
   const userEmail = normalizeEmail_(params.userEmail || '');
   const learnerId = String(params.learnerId || userEmail).trim();
   const state = getLearningState_(ss, params).learningState;
+  const validation = validateApprovalEvidence_(params);
+
+  if (!validation.ok) {
+    return {
+      ok: false,
+      action: 'approveCurrentClassExercises',
+      error: validation.error,
+      learningState: state,
+      canAdvance: false
+    };
+  }
 
   const updated = updateLearningState_(ss, userEmail, learnerId, {
     'Current Class Status': 'approved',
@@ -171,7 +195,13 @@ function approveCurrentClassExercises_(ss, params) {
     'Last Approved Class': state.currentClass,
     'Last Approved At': today_(),
     'Source': 'exercise_approval',
-    'Notes': params.notes || 'Current class exercises approved.'
+    'Notes': params.notes || 'Current class exercises approved with evaluated evidence.',
+    'Approval Evidence': validation.approvalEvidence,
+    'Approval Rubric': validation.rubric,
+    'Approval Score': validation.score,
+    'Approval Gate Completed': 'TRUE',
+    'Approval Evaluator Version': validation.evaluatorVersion,
+    'Approval Source Request ID': validation.requestId
   });
 
   return {
@@ -179,6 +209,40 @@ function approveCurrentClassExercises_(ss, params) {
     action: 'approveCurrentClassExercises',
     learningState: updated,
     canAdvance: true
+  };
+}
+
+function validateApprovalEvidence_(params) {
+  const evidence = String(params.approvalEvidence || '').trim();
+  const rubric = String(params.rubric || '').trim();
+  const score = Number(params.approvalScore || params.score || 0);
+  const gateCompleted = String(params.evaluationGateCompleted || params.approvalGateCompleted || 'true').toLowerCase() === 'true';
+  const evaluatorVersion = String(params.evaluatorVersion || '').trim();
+  const requestId = String(params.requestId || params.approvalSourceRequestId || Utilities.getUuid()).trim();
+
+  if (!evidence || evidence === '[]') {
+    return { ok: false, error: 'Approval rejected: approvalEvidence is required.' };
+  }
+  if (!rubric) {
+    return { ok: false, error: 'Approval rejected: rubric is required.' };
+  }
+  if (!Number.isFinite(score) || score < 8) {
+    return { ok: false, error: 'Approval rejected: approvalScore must be at least 8.' };
+  }
+  if (!gateCompleted) {
+    return { ok: false, error: 'Approval rejected: evaluation gate must be completed.' };
+  }
+  if (!evaluatorVersion) {
+    return { ok: false, error: 'Approval rejected: evaluatorVersion is required.' };
+  }
+
+  return {
+    ok: true,
+    approvalEvidence: evidence,
+    rubric: rubric,
+    score: String(score),
+    evaluatorVersion: evaluatorVersion,
+    requestId: requestId
   };
 }
 

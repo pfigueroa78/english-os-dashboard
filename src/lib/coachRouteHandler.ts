@@ -28,7 +28,9 @@ import { createCoachSessionContract, legacyActiveClass, legacyActiveUnit } from 
 import { transitionCoachSession } from "@/modules/coach-session/stateMachine";
 import { resolveCoachClassTarget } from "@/modules/coach-target/application";
 import { resolveApprovedClassAdvancement } from "@/modules/coach-advancement/application";
+import { callCoachModel, callCompleteCoachModel, coachModelName, getOutputText, usage } from "@/modules/coach-route/modelClient";
 import {
+  globalClassFromLocalClass,
   resolveUnitTarget,
 } from "@/modules/coach-target/resolve";
 import {
@@ -49,10 +51,6 @@ import {
 
 const ENGLISH_OS_BASE_URL = process.env.ENGLISH_OS_BASE_URL;
 const ENGLISH_OS_TOKEN = process.env.ENGLISH_OS_TOKEN;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_COACH_MODEL = process.env.OPENAI_COACH_MODEL || "gpt-5.4-mini";
-const OPENAI_COACH_MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_COACH_MAX_OUTPUT_TOKENS || 8000);
-const OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS || 12000);
 
 type CoachMessage = { role: "user" | "coach"; content: string };
 type CoachImageAttachment = { dataUrl: string; mimeType?: string; name?: string };
@@ -69,40 +67,6 @@ function isReviewQuestion(message: string) {
 }
 function unitGuideKind(message: string): "grammar" | "vocabulary" | null {
   return unitGuideIntentKind(message);
-}
-
-function getOutputText(openaiResponse: any): string {
-  if (typeof openaiResponse?.output_text === "string") return openaiResponse.output_text.trim();
-  const output = openaiResponse?.output;
-  if (!Array.isArray(output)) return "";
-  return output
-    .flatMap((item: any) => (Array.isArray(item?.content) ? item.content : []))
-    .map((content: any) => content?.text || "")
-    .filter(Boolean)
-    .join("\n")
-    .trim();
-}
-
-function usage(openaiResponse: any) {
-  const u = openaiResponse?.usage || {};
-  return {
-    inputTokens: Number(u.input_tokens ?? u.prompt_tokens ?? 0) || 0,
-    outputTokens: Number(u.output_tokens ?? u.completion_tokens ?? 0) || 0,
-    totalTokens: Number(u.total_tokens ?? 0) || 0,
-  };
-}
-
-function assertCompleteModelResponse(data: any, reply: string) {
-  const reason = data?.incomplete_details?.reason || data?.incompleteDetails?.reason || "";
-  if (data?.status === "incomplete" || reason === "max_output_tokens") {
-    throw new Error("The coach response reached its output limit before the class was complete. Please retry the class request.");
-  }
-  if (!reply.trim()) throw new Error("The coach returned an empty response.");
-}
-
-function modelResponseNeedsRetry(data: any, reply: string) {
-  const reason = data?.incomplete_details?.reason || data?.incompleteDetails?.reason || "";
-  return data?.status === "incomplete" || reason === "max_output_tokens" || !reply.trim();
 }
 
 async function callEnglishOSAction(action: string, params: Record<string, string>) {
@@ -360,37 +324,6 @@ async function buildUnitGuideInput(params: {
   ];
 }
 
-async function callCoachModel(input: any[], maxOutputTokens = OPENAI_COACH_MAX_OUTPUT_TOKENS) {
-  if (!OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY.");
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: OPENAI_COACH_MODEL, input, max_output_tokens: maxOutputTokens }),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data?.error?.message || "OpenAI request failed.");
-  return data;
-}
-
-async function callCompleteCoachModel(input: any[]) {
-  let data = await callCoachModel(input);
-  let reply = getOutputText(data);
-
-  if (modelResponseNeedsRetry(data, reply)) {
-    console.warn("[coach] incomplete model response; retrying", {
-      status: data?.status || "unknown",
-      reason: data?.incomplete_details?.reason || data?.incompleteDetails?.reason || "empty_output",
-      outputTokens: usage(data).outputTokens,
-      retryMaxOutputTokens: OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS,
-    });
-    data = await callCoachModel(input, OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS);
-    reply = getOutputText(data);
-  }
-
-  assertCompleteModelResponse(data, reply);
-  return { data, reply };
-}
-
 export async function coachPost(request: Request) {
   const identity = await getApiLearnerIdentity(request);
   if (!identity.authenticated) return NextResponse.json({ ok: false, error: "Authentication required." }, { status: 401 });
@@ -457,7 +390,7 @@ export async function coachPost(request: Request) {
       session,
       source: "Ephemeral Visual Vocabulary Analysis",
       sessionEvents: sessionEventsFor(session, "visual_vocabulary", "Ephemeral Visual Vocabulary Analysis"),
-      usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
+      usage: { model: coachModelName(), inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
   }
 
@@ -558,7 +491,7 @@ export async function coachPost(request: Request) {
       sessionEvents: sessionEventsFor(session, "class_advancement", "Approved Class Advancement + Local Class Pack"),
       deterministicIdentity: true,
       classProgress,
-      usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
+      usage: { model: coachModelName(), inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
   }
 
@@ -649,7 +582,7 @@ export async function coachPost(request: Request) {
       sessionEvents: sessionEventsFor(session, "class", "Local Class Pack + Pedagogy Prompt"),
       deterministicIdentity: true,
       classProgress,
-      usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
+      usage: { model: coachModelName(), inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
   }
 
@@ -678,7 +611,7 @@ export async function coachPost(request: Request) {
         : createClassProgress({ unit, localClass, displayClass, identity }),
       identity,
     );
-    const globalClass = (unit - 1) * 7 + localClass;
+    const globalClass = globalClassFromLocalClass(localClass, unit) || displayClass;
     const deterministicTurn = resolveClassProgressBeforeModel({
       progress,
       learnerMessage: message,
@@ -692,6 +625,11 @@ export async function coachPost(request: Request) {
           classId: deterministicTurn.approvalEvaluation.classId,
           approvalEvidence: JSON.stringify(deterministicTurn.approvalEvaluation.approvalEvidence),
           rubric: JSON.stringify(deterministicTurn.approvalEvaluation.rubric),
+          approvalScore: String(deterministicTurn.approvalEvaluation.score),
+          evaluationGateCompleted: String(deterministicTurn.approvalEvaluation.evaluationGateCompleted),
+          evaluatorVersion: deterministicTurn.approvalEvaluation.evaluatorVersion,
+          policyId: deterministicTurn.approvalEvaluation.policyId,
+          requestId: `${deterministicTurn.approvalEvaluation.classId}-${Date.now()}`,
         }).catch(() => null);
       }
       const session = sessionFor({
@@ -747,6 +685,11 @@ export async function coachPost(request: Request) {
         classId: resolvedProgressTurn.approvalEvaluation.classId,
         approvalEvidence: JSON.stringify(resolvedProgressTurn.approvalEvaluation.approvalEvidence),
         rubric: JSON.stringify(resolvedProgressTurn.approvalEvaluation.rubric),
+        approvalScore: String(resolvedProgressTurn.approvalEvaluation.score),
+        evaluationGateCompleted: String(resolvedProgressTurn.approvalEvaluation.evaluationGateCompleted),
+        evaluatorVersion: resolvedProgressTurn.approvalEvaluation.evaluatorVersion,
+        policyId: resolvedProgressTurn.approvalEvaluation.policyId,
+        requestId: `${resolvedProgressTurn.approvalEvaluation.classId}-${Date.now()}`,
       }).catch(() => null);
     }
     const u = usage(openaiData);
@@ -768,7 +711,7 @@ export async function coachPost(request: Request) {
       source: "Local Class Pack + Class Progress State",
       sessionEvents: sessionEventsFor(session, "class_continuation", "Local Class Pack + Class Progress State"),
       deterministicIdentity: true,
-      usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
+      usage: { model: coachModelName(), inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
   }
 
@@ -807,7 +750,7 @@ export async function coachPost(request: Request) {
       source: "Seven Local Teaching Contracts + Review Pedagogy Prompt",
       sessionEvents: sessionEventsFor(session, "review", "Seven Local Teaching Contracts + Review Pedagogy Prompt"),
       deterministicIdentity: true,
-      usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
+      usage: { model: coachModelName(), inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
   }
 
@@ -847,7 +790,7 @@ export async function coachPost(request: Request) {
       source: `Seven Local Teaching Contracts + ${guideKind} Guide Prompt`,
       sessionEvents: sessionEventsFor(session, "guide", `Seven Local Teaching Contracts + ${guideKind} Guide Prompt`),
       deterministicIdentity: true,
-      usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
+      usage: { model: coachModelName(), inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
     });
   }
 
@@ -861,7 +804,7 @@ export async function coachPost(request: Request) {
     reply,
     session,
     sessionEvents: sessionEventsFor(session, "conversation", "General Coach Prompt"),
-    usage: { model: OPENAI_COACH_MODEL, inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
+    usage: { model: coachModelName(), inputTokens: u.inputTokens, outputTokens: u.outputTokens, totalTokens: u.totalTokens, estimatedCostUSD: 0 },
   });
 }
 

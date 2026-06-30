@@ -1,5 +1,6 @@
 import { ENGLISH_OS_COACH_BEHAVIOR_PROMPT } from "@/lib/englishOsCoachPrompt";
 import { PASSAGES_TEACHER_STYLE_GUIDANCE } from "@/lib/passagesTeacherStyle";
+import { courseStructureRepository } from "@/modules/coach-config/pedagogyConfig";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_PASSAGES_VECTOR_STORE_ID = process.env.OPENAI_PASSAGES_VECTOR_STORE_ID;
@@ -139,7 +140,8 @@ function extractRequestedLocalClasses(message: string): number[] {
 }
 
 function buildClassPackReference(unit: number, localClass: number) {
-  const globalClass = (unit - 1) * 7 + localClass;
+  const globalClass = courseStructureRepository().currentClass(unit, localClass)?.globalClass || 0;
+  if (!globalClass) return null;
   return {
     unit,
     localClass,
@@ -149,6 +151,12 @@ function buildClassPackReference(unit: number, localClass: number) {
     globalClassAlias: `GLOBAL_CLASS_${globalClass}`,
     classPackFilename: `unit-${pad2(unit)}-local-class-${pad2(localClass)}-global-class-${pad2(globalClass)}-class-pack-unit-${pad2(unit)}-class-${pad2(globalClass)}.md`,
   };
+}
+
+type ClassPackReference = NonNullable<ReturnType<typeof buildClassPackReference>>;
+
+function isClassPackReference(value: ReturnType<typeof buildClassPackReference>): value is ClassPackReference {
+  return Boolean(value);
 }
 
 export function hasPassagesKnowledgeBase() {
@@ -195,14 +203,17 @@ export function buildPassagesKnowledgeInput(params: {
   const requestedClass = Number(classIndex.classNumber || params.classContent?.classNumber || bookContent?.classNumber || learningState.currentClass || 0) || 0;
   const unitNumber = Number(requestedUnit || 0);
   const globalClassNumber = Number(requestedClass || 0);
-  const fallbackLocalClassNumber = unitNumber && globalClassNumber ? globalClassNumber - (unitNumber - 1) * 7 : 0;
+  const fallbackLocalClassNumber =
+    unitNumber && globalClassNumber
+      ? courseStructureRepository().allClasses().find((item) => item.unit === unitNumber && item.globalClass === globalClassNumber)?.localClass || 0
+      : 0;
 
   const explicitLocalClasses = extractRequestedLocalClasses(params.message);
   const allClassReferences =
     unitNumber && explicitLocalClasses.length > 1
-      ? explicitLocalClasses.map((localClass) => buildClassPackReference(unitNumber, localClass))
+      ? explicitLocalClasses.map((localClass) => buildClassPackReference(unitNumber, localClass)).filter(isClassPackReference)
       : unitNumber && (fallbackLocalClassNumber || explicitLocalClasses[0])
-        ? [buildClassPackReference(unitNumber, explicitLocalClasses[0] || fallbackLocalClassNumber)]
+        ? [buildClassPackReference(unitNumber, explicitLocalClasses[0] || fallbackLocalClassNumber)].filter(isClassPackReference)
         : [];
 
   const multiClassMode = allClassReferences.length > 1;

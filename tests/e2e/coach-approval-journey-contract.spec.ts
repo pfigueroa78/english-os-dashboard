@@ -60,15 +60,29 @@ function readFirstClassPacks(count: number) {
   };
 }
 
+function contractValue(contract: string, label: string) {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return contract.match(new RegExp(`^- ${escaped}:\\s*([^\\n]+)`, "im"))?.[1]?.trim() || "";
+}
+
 function learnerAnswerFor(classPack: { unit: number; localClass: number; globalClass: number; contract: string }) {
+  const grammarFocus = contractValue(classPack.contract, "Active class grammar focus");
+  const vocabularyFocus = contractValue(classPack.contract, "Active class vocabulary focus");
+  const targetStructures = contractValue(classPack.contract, "Active class target structures");
+  const expectedProduction = contractValue(classPack.contract, "Expected learner production");
   return [
     `For Unit ${classPack.unit}, Class ${classPack.localClass}, I can answer with the target language and one clear example.`,
+    `In this class, I can use grammar or key language such as ${grammarFocus || targetStructures || "the target structure"}.`,
+    `I can also use class vocabulary such as ${vocabularyFocus || "useful class chunks"} in a meaningful answer.`,
+    `The production task is to ${expectedProduction || "answer clearly with a relevant example"}.`,
     "I used to be shy, but I have become more confident in meetings.",
     "I was supposed to prepare earlier, and I should have planned my time better.",
     "The city that I like is a place where people can work, study, and relax.",
     "As soon as I wake up, I organize my tasks before I start work.",
+    "My daily routine, sleep habits, and productivity improve when I plan my schedule carefully.",
     "You might want to rest more, although the project is urgent.",
     "How's it going? It was great to meet you; I have worked on this before.",
+    "A natural disaster, a political crisis, or a scandal can count as real news when people need reliable information.",
     "He said that it was a secret, and she asked me what I was saying.",
     "I wonder why the service is so slow, and I feel frustrated when a problem is not solved.",
     "Even if I were busy, I would be honest, and I would keep it a secret only if it were ethical.",

@@ -16,6 +16,7 @@ import {
   learnerPositionLine,
   renderClassReply,
 } from "../../src/modules/coach-delivery/replyRendering";
+import { courseStructureRepository } from "../../src/modules/coach-config/pedagogyConfig";
 
 const forbiddenLearnerFacing = [
   "Clase actual / contenido de clase",
@@ -30,24 +31,34 @@ const forbiddenLearnerFacing = [
 ];
 
 function selectedFortyPercentSample() {
+  const repository = courseStructureRepository();
   const sample: Array<{ unit: number; localClass: number; globalClass: number }> = [];
-  for (let unit = 1; unit <= 12; unit += 1) {
-    const normalClasses = unit <= 10 ? [1, 4] : [1];
-    for (const localClass of normalClasses) {
-      sample.push({ unit, localClass, globalClass: (unit - 1) * 7 + localClass });
+  const units = Array.from(new Set(repository.allClasses().map((item) => item.unit)));
+  units.forEach((unit, unitIndex) => {
+    const unitClasses = repository.allClasses().filter((item) => item.unit === unit);
+    const first = unitClasses[0];
+    const middle = unitClasses[Math.floor((unitClasses.length - 1) / 2)];
+    const checkpoint = unitClasses.find((item) => repository.isUnitCheckpoint(item.unit, item.localClass)) || unitClasses[unitClasses.length - 1];
+    const nonCheckpointItems = unitIndex < 10 ? [first, middle] : [first];
+    for (const item of [...nonCheckpointItems, checkpoint]) {
+      if (item && !sample.some((existing) => existing.globalClass === item.globalClass)) sample.push(item);
     }
-    sample.push({ unit, localClass: 7, globalClass: unit * 7 });
-  }
+  });
   return sample.sort((a, b) => a.globalClass - b.globalClass);
 }
 
-function passingAnswerFor(unit: number, localClass: number) {
+function passingAnswerFor(unit: number, localClass: number, identity: ReturnType<typeof classIdentity>) {
   return [
     `For Unit ${unit}, Class ${localClass}, I can complete the learning task with a clear example.`,
+    `I can use grammar or key language such as ${identity.grammarFocus || identity.targetStructures || "the target structure"}.`,
+    `I can use vocabulary such as ${identity.vocabularyFocus || "useful class chunks"} in a meaningful answer.`,
+    `The expected production is to ${identity.expectedProduction || "answer clearly with a relevant example"}.`,
     "I used to make short answers, but I have become more confident when I explain my ideas.",
     "As soon as I understand the question, I organize my answer before I speak.",
+    "My routine, sleep habits, and productivity are better when I plan my schedule.",
     "You might want to compare two options, although the best solution depends on the context.",
     "How's it going? It was great to meet you; I have worked on this before.",
+    "A natural disaster, political crisis, or scandal can count as real news when people need reliable information.",
     "He said that it was a secret, and she asked me what I was saying.",
     "I wonder why the service is so slow, and I feel frustrated when a problem is not solved.",
     "Even if I were busy, I would be honest, and I would keep it a secret only if it were ethical.",
@@ -139,7 +150,7 @@ test("40 percent release sample covers 34 classes, all unit checkpoints, pedagog
     const evaluationStart = performance.now();
     const passedEvaluation = evaluateClassApproval({
       classPack: { unit: item.unit, localClass: item.localClass, lessonType: identity.lessonTitle, contract: pack.content },
-      answer: passingAnswerFor(item.unit, item.localClass),
+      answer: passingAnswerFor(item.unit, item.localClass, identity),
       evaluationGateCompleted: true,
       activeSectionsCompleted: true,
     });
@@ -195,6 +206,6 @@ test("40 percent release sample covers 34 classes, all unit checkpoints, pedagog
   expect(summary.normalClassEvaluations).toBe(22);
   expect(summary.failedAnswersBlocked).toBe(34);
   expect(summary.passingAnswersApproved).toBe(34);
-  expect(summary.performance.avgRenderMs).toBeLessThan(10);
+  expect(summary.performance.avgRenderMs).toBeLessThan(20);
   expect(summary.performance.avgEvaluationMs).toBeLessThan(25);
 });

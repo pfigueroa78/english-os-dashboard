@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "policyId": "default-class-approval",
+  "description": "Default evidence-based approval policy for English OS classes.",
+  "requiresEvaluationGate": true,
+  "requiresActiveSectionsCompleted": true,
+  "passingScore": 8,
+  "reviewScore": 6,
+  "criteria": [
+    {
+      "id": "grammar",
+      "label": "Grammar or key language",
+      "points": 2,
+      "required": true,
+      "evidence": ["target-language-match", "no-blocking-grammar-error"]
+    },
+    {
+      "id": "vocabulary",
+      "label": "Vocabulary or useful chunks",
+      "points": 2,
+      "required": true,
+      "evidence": ["vocabulary-match", "class-relevant-wording"]
+    },
+    {
+      "id": "communicativeGoal",
+      "label": "Communicative goal",
+      "points": 2,
+      "required": true,
+      "evidence": ["answers-task", "clear-intention"]
+    },
+    {
+      "id": "production",
+      "label": "Production quality",
+      "points": 2,
+      "required": true,
+      "evidence": ["complete-response", "enough-detail-for-task"]
+    },
+    {
+      "id": "personalConnection",
+      "label": "Personal or realistic connection",
+      "points": 2,
+      "required": false,
+      "evidence": ["personal-example", "realistic-context"]
+    }
+  ],
+  "responsePolicies": {
+    "expectedProductionEvidenceStrategy": "task-or-target-evidence",
+    "minimumSentencesByProductionType": {
+      "short-answer": 1,
+      "speaking": 2,
+      "discussion": 2,
+      "dialogue": 4,
+      "paragraph": 2,
+      "checkpoint": 4
+    },
+    "minimumContentWordsByProductionType": {
+      "short-answer": 6,
+      "speaking": 12,
+      "discussion": 14,
+      "dialogue": 18,
+      "paragraph": 18,
+      "checkpoint": 30
+    }
+  }
+}

@@ -68,6 +68,7 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   const publicRoute = readFile("src/app/api/english-os/coach/route.ts");
   const route = readFile("src/app/api/english-os/coach-pedagogy/route.ts");
   const handler = readFile("src/lib/coachRouteHandler.ts");
+  const modelClient = readFile("src/modules/coach-route/modelClient.ts");
   const replyRendering = readFile("src/modules/coach-delivery/replyRendering.ts");
   const teachingContracts = readFile("src/modules/coach-delivery/teachingContracts.ts");
   const targetApplication = readFile("src/modules/coach-target/application.ts");
@@ -94,11 +95,11 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(handler).toContain("renderClassReply");
   expect(handler).toContain("renderReviewReply");
   expect(replyRendering).toContain("stripModelOwnedIdentity");
-  expect(handler).toContain("assertCompleteModelResponse");
-  expect(handler).toContain("OPENAI_COACH_MAX_OUTPUT_TOKENS || 8000");
-  expect(handler).toContain("OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS || 12000");
+  expect(modelClient).toContain("assertCompleteModelResponse");
+  expect(modelClient).toContain("OPENAI_COACH_MAX_OUTPUT_TOKENS || 8000");
+  expect(modelClient).toContain("OPENAI_COACH_RETRY_MAX_OUTPUT_TOKENS || 12000");
   expect(handler).toContain("callCompleteCoachModel");
-  expect(handler).toContain("incomplete model response; retrying");
+  expect(modelClient).toContain("incomplete model response; retrying");
   expect(handler).toContain("request failed");
   expect(handler).toContain("using development-only learner context");
   expect(handler).toContain("localValidationMode: true");
@@ -498,8 +499,8 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(rendererSource).toContain("function lessonRoadmap");
   expect(rendererSource).toContain("Ruta de clase:");
   expect(rendererSource).toContain("Bloque 1 de ${learningBlocks.length}");
-  expect(readFile("src/modules/coach-delivery/pedagogicalDeliveryPolicy.ts")).toContain("Before watching");
-  expect(readFile("src/modules/coach-delivery/pedagogicalDeliveryPolicy.ts")).toContain("While/After watching");
+  expect(readFile("knowledge/pedagogy/lesson-steps/default.json")).toContain("Before watching");
+  expect(readFile("knowledge/pedagogy/lesson-steps/default.json")).toContain("While/After watching");
   expect(readFile("src/modules/coach-delivery/pedagogicalDeliveryPolicy.ts")).toContain("lessonBlockRoadmap");
   expect(renderer).toContain('Focus: **${formattedSkillFocus}**');
   expect(renderer).toContain("Empezamos con un bloque docente");

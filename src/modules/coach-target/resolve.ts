@@ -4,6 +4,7 @@ import {
   hasExplicitClassCoordinates,
   isActiveClassRequest,
 } from "@/lib/coachIntent";
+import { courseStructureRepository } from "@/modules/coach-config/pedagogyConfig";
 
 export type CoachClassCoordinates = {
   unit: number | null;
@@ -26,17 +27,16 @@ export function firstNumericValue(...values: unknown[]) {
 
 export function localClassFromAnyClassNumber(value: number | null, unit: number | null) {
   if (!value) return null;
-  if (value >= 1 && value <= 7) return value;
-  if (unit && value > 7) {
-    const local = value - (unit - 1) * 7;
-    if (local >= 1 && local <= 7) return local;
-  }
+  const repository = courseStructureRepository();
+  if (unit && repository.currentClass(unit, value)) return value;
+  const globalMatch = repository.allClasses().find((item) => item.globalClass === value);
+  if (globalMatch && (!unit || globalMatch.unit === unit)) return globalMatch.localClass;
   return null;
 }
 
 export function globalClassFromLocalClass(localClass: number | null, unit: number | null) {
   if (!unit || !localClass) return null;
-  return (unit - 1) * 7 + localClass;
+  return courseStructureRepository().currentClass(unit, localClass)?.globalClass || null;
 }
 
 export function normalizeClassNumberForUnit(value: number | null, unit: number | null): CoachClassCoordinates {
@@ -131,7 +131,7 @@ export function resolveClassCoordinatesFromPayload(value: unknown, fallbackUnit:
     localClassFromAnyClassNumber(localByKey, resolvedUnit) ||
     localClassFromAnyClassNumber(globalByKey, resolvedUnit) ||
     localClassFromAnyClassNumber(classFromText, resolvedUnit);
-  const globalClass = resolvedUnit && localClass ? (resolvedUnit - 1) * 7 + localClass : null;
+  const globalClass = globalClassFromLocalClass(localClass, resolvedUnit);
   return { unit: resolvedUnit, localClass, globalClass };
 }
 
@@ -174,7 +174,7 @@ export function mergeClassTargetWithPayload(target: CoachClassTarget, payload: u
   const activeCoordinates = resolveClassCoordinatesFromPayload(payload, target.unit);
   const unit = activeCoordinates.unit || target.unit;
   const localClass = activeCoordinates.localClass || target.localClass;
-  const globalClass = activeCoordinates.globalClass || (unit && localClass ? (unit - 1) * 7 + localClass : null);
+  const globalClass = activeCoordinates.globalClass || globalClassFromLocalClass(localClass, unit);
   return {
     ...target,
     unit,

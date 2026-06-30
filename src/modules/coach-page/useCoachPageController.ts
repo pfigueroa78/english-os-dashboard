@@ -35,13 +35,11 @@ import {
   prepareAgentMessageTurn,
 } from "@/modules/coach-agents/application";
 import { runCoachDiagnostics, type CoachDiagnosticTelemetry } from "@/modules/coach-diagnostics/application";
-import { toCoachAgentClientContracts } from "@/modules/coach-integrations/agentsContract";
 import {
   createCoachErrorMessage,
   createDemoCoachTurn,
   prepareCoachMessageTurn,
   resolveCoachResponseState,
-  type CoachStudyMode,
 } from "@/modules/coach-message/application";
 import {
   chooseMediaRecorderMimeType,
@@ -69,7 +67,7 @@ import {
   saveCoachConversation,
   saveCoachPreferences,
 } from "@/modules/coach-persistence/coachPersistence";
-import { renderClientPrompt, type ClientPromptId } from "@/modules/coach-prompts/clientPromptRegistry";
+import { renderClientPrompt } from "@/modules/coach-prompts/clientPromptRegistry";
 import { loadCoachResources, type CoachResource } from "@/modules/coach-resources/application";
 import {
   focusTextareaSoon,
@@ -103,99 +101,19 @@ import { createCoachWorkbook } from "@/modules/coach-workbooks/application";
 import type { CoachWorkbookContract } from "@/modules/coach-integrations/workbookContract";
 import type { CoachPageDispatch } from "./pageViewModel";
 import { presentCoachPage } from "./presenter";
-
-type Message = {
-  role: "user" | "coach";
-  content: string;
-  image?: {
-    dataUrl: string;
-    name?: string;
-  };
-  usage?: {
-    model: string;
-    inputTokens: number;
-    outputTokens: number;
-    totalTokens: number;
-    estimatedCostUSD: number;
-  };
-};
-
-type AgentId = "grammar_corrector" | "speaking_partner" | "english_evaluator";
-type StudyMode = CoachStudyMode;
-
-type SpecialistAgent = {
-  id: AgentId;
-  name: string;
-  shortName: string;
-  description: string;
-  defaultPromptId: ClientPromptId;
-};
-
-const E2E_DEMO = process.env.NEXT_PUBLIC_E2E_DEMO === "1";
-const DEMO_UNIT = "Unit 1";
-const DEMO_LESSON = "Business advice speaking practice";
-
-const SPECIALIST_AGENTS: SpecialistAgent[] = [
-  {
-    id: "grammar_corrector",
-    name: "Corrector de gramatica",
-    shortName: "Gramatica",
-    description: "Corrige estructura, articulos, preposiciones y naturalidad.",
-    defaultPromptId: "agents.grammarCorrector.default",
-  },
-  {
-    id: "speaking_partner",
-    name: "Companero de speaking",
-    shortName: "Speaking",
-    description: "Practica conversacion, fluidez y respuestas profesionales.",
-    defaultPromptId: "agents.speakingPartner.default",
-  },
-  {
-    id: "english_evaluator",
-    name: "Evaluador B1/B2",
-    shortName: "Evaluar",
-    description: "Evalua CEFR, precision, vocabulario y proximos pasos.",
-    defaultPromptId: "agents.englishEvaluator.default",
-  },
-];
-
-const SPECIALIST_AGENT_CONTRACTS = toCoachAgentClientContracts(SPECIALIST_AGENTS);
-
-function initialCoachMessages(): Message[] {
-  return buildInitialCoachMessages({
-    e2eDemo: E2E_DEMO,
-    demoUnit: DEMO_UNIT,
-    demoLesson: DEMO_LESSON,
-    demoLearnerName: "Pedro",
-  });
-}
-
-function replaceInitialCoachGreeting(messages: Message[], freshInitialMessage: string) {
-  const shouldReplaceLoading =
-    messages.length === 1 &&
-    messages[0]?.role === "coach" &&
-    messages[0]?.content.includes("Loading your English OS class plan");
-  if (shouldReplaceLoading) return [{ role: "coach" as const, content: freshInitialMessage }];
-
-  const first = messages[0];
-  const firstLooksLikeInitialGreeting =
-    first?.role === "coach" &&
-    first.content.includes("Soy tu profesor de English OS") &&
-    first.content.includes("Unidad activa:");
-
-  if (firstLooksLikeInitialGreeting) {
-    return [{ ...first, content: freshInitialMessage }, ...messages.slice(1)];
-  }
-
-  return messages;
-}
-
-function studyModeLabel(mode: StudyMode) {
-  if (mode === "review") return "Repaso";
-  if (mode === "guide") return "Guia";
-  if (mode === "class") return "Clase";
-  return "Actual";
-}
+import {
+  DEMO_LESSON,
+  DEMO_UNIT,
+  E2E_DEMO,
+  SPECIALIST_AGENTS,
+  SPECIALIST_AGENT_CONTRACTS,
+  initialCoachMessages,
+  replaceInitialCoachGreeting,
+  studyModeLabel,
+  type AgentId,
+  type CoachPageMessage as Message,
+  type StudyMode,
+} from "./controllerConfig";
 
 export function useCoachPageController() {
   const { isLoaded, isSignedIn, user } = useUser();

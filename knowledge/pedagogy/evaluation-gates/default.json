@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "defaultGate": {
+    "title": "Evaluation gate",
+    "instructions": "Complete the final checkpoint with grammar/key language, vocabulary, communication goal, and one personal or realistic example.",
+    "requiredEvidence": ["grammar", "vocabulary", "communicativeGoal", "production"]
+  },
+  "unitCheckpointGate": {
+    "title": "Unit checkpoint",
+    "instructions": "Integrate the unit language before advancing to the next unit.",
+    "requiredEvidence": ["grammar", "vocabulary", "communicativeGoal", "production", "personalConnection"]
+  }
+}

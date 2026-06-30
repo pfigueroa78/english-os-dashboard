@@ -1,5 +1,6 @@
 import type { CoachClassProgressState } from "@/modules/coach-class-progress/application";
 import type { CoachSessionState } from "@/modules/coach-session/types";
+import { courseStructureRepository } from "@/modules/coach-config/pedagogyConfig";
 
 export type CoachAdvancementIntent = "next_class" | "next_unit";
 
@@ -27,12 +28,9 @@ export function resolveApprovedClassAdvancement(params: {
   intent: CoachAdvancementIntent;
   classProgress: CoachClassProgressState | null;
   session?: CoachSessionState | null;
-  maxUnits?: number;
-  classesPerUnit?: number;
 }): CoachAdvancementDecision {
-  const classesPerUnit = params.classesPerUnit || 7;
-  const maxUnits = params.maxUnits || 12;
   const progress = params.classProgress;
+  const course = courseStructureRepository();
 
   if (!progress) {
     return {
@@ -61,8 +59,6 @@ export function resolveApprovedClassAdvancement(params: {
   const next = nextClassTarget({
     unit: progress.unit,
     localClass: progress.localClass,
-    classesPerUnit,
-    maxUnits,
     forceNextUnit: params.intent === "next_unit",
   });
 
@@ -82,7 +78,7 @@ export function resolveApprovedClassAdvancement(params: {
     kind: "advance",
     target: next,
     replyPrefix: [
-      progress.localClass === classesPerUnit
+      course.isUnitCheckpoint(progress.localClass)
         ? `✅ Unit ${progress.unit} checkpoint approved. Moving to the next unit.`
         : `✅ Class ${progress.displayClass} approved. Moving to the next class.`,
       "",
@@ -94,31 +90,20 @@ export function resolveApprovedClassAdvancement(params: {
 export function nextClassTarget(params: {
   unit: number;
   localClass: number;
-  classesPerUnit?: number;
-  maxUnits?: number;
   forceNextUnit?: boolean;
 }): CoachAdvancementTarget | null {
-  const classesPerUnit = params.classesPerUnit || 7;
-  const maxUnits = params.maxUnits || 12;
-  const currentUnit = params.unit;
-  const currentLocalClass = params.localClass;
-  const forceNextUnit = Boolean(params.forceNextUnit);
+  const course = courseStructureRepository();
+  const next = params.forceNextUnit
+    ? course.nextUnit(params.unit)
+    : course.nextClass(params.unit, params.localClass);
 
-  const nextUnit = forceNextUnit || currentLocalClass >= classesPerUnit
-    ? currentUnit + 1
-    : currentUnit;
-  const nextLocalClass = forceNextUnit || currentLocalClass >= classesPerUnit
-    ? 1
-    : currentLocalClass + 1;
+  if (!next) return null;
 
-  if (nextUnit > maxUnits) return null;
-
-  const globalClass = (nextUnit - 1) * classesPerUnit + nextLocalClass;
   return {
-    unit: nextUnit,
-    localClass: nextLocalClass,
-    globalClass,
-    displayClass: globalClass,
-    reason: nextUnit > currentUnit ? "next_unit" : "next_class",
+    unit: next.unit,
+    localClass: next.localClass,
+    globalClass: next.globalClass,
+    displayClass: next.globalClass,
+    reason: next.unit > params.unit ? "next_unit" : "next_class",
   };
 }

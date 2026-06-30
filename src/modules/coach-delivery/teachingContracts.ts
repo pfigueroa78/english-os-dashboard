@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import passagesUnitTitles from "../../../knowledge/passages-unit-titles.json";
+import { courseStructureRepository } from "@/modules/coach-config/pedagogyConfig";
 import { openingLearningBlockInstruction } from "@/modules/coach-delivery/pedagogicalDeliveryPolicy";
 
 export type ClassIdentity = {
@@ -27,12 +28,14 @@ export function pad2(value: number | string) {
 }
 
 export function classPackFilename(unit: number, localClass: number) {
-  const globalClass = (unit - 1) * 7 + localClass;
+  const globalClass = courseStructureRepository().currentClass(unit, localClass)?.globalClass;
+  if (!globalClass) return "";
   return `unit-${pad2(unit)}-local-class-${pad2(localClass)}-global-class-${pad2(globalClass)}-class-pack-unit-${pad2(unit)}-class-${pad2(globalClass)}.md`;
 }
 
 export function loadClassPack(unit: number, localClass: number) {
   const filename = classPackFilename(unit, localClass);
+  if (!filename) return { filename: "", content: "" };
   const fullPath = path.join(process.cwd(), "knowledge", "class-packs-lesson-vision", filename);
   if (!fs.existsSync(fullPath)) return { filename, content: "" };
   return { filename, content: fs.readFileSync(fullPath, "utf8") };
@@ -91,8 +94,7 @@ export function openingSectionInstruction(sectionList: string) {
 }
 
 export function loadUnitTeachingContracts(unit: number): UnitTeachingContract[] {
-  return Array.from({ length: 7 }, (_, index) => {
-    const localClass = index + 1;
+  return courseStructureRepository().allClasses().filter((item) => item.unit === unit).map(({ localClass }) => {
     const pack = loadClassPack(unit, localClass);
     return {
       localClass,

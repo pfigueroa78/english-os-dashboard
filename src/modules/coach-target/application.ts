@@ -1,4 +1,5 @@
 import {
+  globalClassFromLocalClass,
   mergeClassTargetWithPayload,
   resolveClassTargetFromMessage,
   type CoachClassTarget,
@@ -60,7 +61,7 @@ export async function resolveCoachClassTarget(params: {
 
   const unit = target.unit;
   const localClass = target.localClass;
-  const globalClass = target.globalClass || (unit - 1) * 7 + localClass;
+  const globalClass = target.globalClass || globalClassFromLocalClass(localClass, unit) || localClass;
   const displayClass = globalClass || localClass;
   return {
     kind: "resolved",

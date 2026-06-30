@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { courseStructureRepository } from "@/modules/coach-config/pedagogyConfig";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_PASSAGES_VECTOR_STORE_ID = process.env.OPENAI_PASSAGES_VECTOR_STORE_ID;
@@ -84,7 +85,7 @@ function extractFileSearchResults(data: any) {
 }
 
 function buildExpected(unit: number, localClass: number) {
-  const globalClass = (unit - 1) * 7 + localClass;
+  const globalClass = courseStructureRepository().currentClass(unit, localClass)?.globalClass || 0;
   return {
     unit,
     localClass,

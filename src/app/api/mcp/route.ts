@@ -16,6 +16,7 @@ import {
   hasScopes,
 } from "@/lib/mcpOAuth";
 import { canWriteClassApproval } from "@/modules/coach-approval/application";
+import { courseStructureRepository } from "@/modules/coach-config/pedagogyConfig";
 
 export const runtime = "nodejs";
 
@@ -179,7 +180,7 @@ function resolveGlobalClass(unit: number, args: any) {
   const localClass = optionalNumber(args, "localClass");
   if (!unit || !localClass) return 0;
 
-  return (unit - 1) * 7 + localClass;
+  return courseStructureRepository().currentClass(unit, localClass)?.globalClass || 0;
 }
 
 async function callEnglishOSAction(action: string, params: Record<string, string>) {
@@ -464,6 +465,11 @@ async function callTool(name: string, args: any, request: Request) {
       classId: args.evaluation.classId,
       approvalEvidence: args.evaluation.approvalEvidence,
       rubric: args.evaluation.rubric,
+      approvalScore: String(args.evaluation.score),
+      evaluationGateCompleted: String(args.evaluation.evaluationGateCompleted),
+      evaluatorVersion: args.evaluation.evaluatorVersion,
+      policyId: args.evaluation.policyId,
+      requestId: `${args.evaluation.classId}-${Date.now()}`,
     });
     return textToolResult(pretty(data), data);
   }

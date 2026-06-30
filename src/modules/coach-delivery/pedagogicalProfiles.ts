@@ -1,3 +1,6 @@
+import rolesConfig from "../../../knowledge/pedagogy/roles/default.json";
+import profilesConfig from "../../../knowledge/pedagogy/profiles/default.json";
+
 export type PedagogicalRole =
   | "student-book-block"
   | "grammar-plus"
@@ -45,333 +48,31 @@ export type LanguageFamilyProfile = {
   commonMistakes?: string[];
 };
 
-export const PEDAGOGICAL_ROLE_PROFILES: readonly PedagogicalRoleProfile[] = [
-  {
-    role: "checkpoint",
-    priority: 100,
-    signals: ["checkpoint", "unit review", "review class"],
-  },
-  {
-    role: "video",
-    priority: 90,
-    signals: ["video", "before watching", "while watching", "after watching"],
-  },
-  {
-    role: "grammar-plus",
-    priority: 80,
-    signals: ["grammar plus", "practice lab", "grammar consolidation"],
-  },
-  {
-    role: "listening",
-    priority: 70,
-    signals: ["listening", "audio", "while listening"],
-    firstSectionSignals: ["listening", "audio", "while listening"],
-  },
-  {
-    role: "role-play",
-    priority: 60,
-    signals: ["role play", "role-play"],
-    firstSectionSignals: ["role play", "role-play"],
-  },
-  {
-    role: "writing",
-    priority: 50,
-    signals: ["writing", "paragraph", "outline"],
-    firstSectionSignals: ["writing", "paragraph", "outline"],
-  },
-  {
-    role: "discussion",
-    priority: 40,
-    signals: ["discussion"],
-    firstSectionSignals: ["discussion"],
-  },
-  {
-    role: "student-book-block",
-    priority: 0,
-    signals: [],
-  },
-];
+export const PEDAGOGICAL_ROLE_PROFILES: readonly PedagogicalRoleProfile[] = loadRoleProfiles();
+export const LANGUAGE_FAMILY_PROFILES: readonly LanguageFamilyProfile[] = loadLanguageFamilyProfiles();
 
-export const LANGUAGE_FAMILY_PROFILES: readonly LanguageFamilyProfile[] = [
-  {
-    family: "small-talk",
-    priority: 100,
-    fullSignals: [
-      "conversation opener",
-      "conversation closer",
-      "small talk",
-      "how's it going",
-      "weather",
-      "keep a conversation going",
-      "close a conversation",
-    ],
-    coreConcept: "Start, continue, and close small talk naturally.",
-    warmupHeading: "Warm-up: making small talk",
-    explanationHeading: "Teacher explanation: conversation moves",
-    modelExamples: [
-      "Conversation openers: How's it going? / Can you believe this weather?",
-      "Conversation closers: It was great to meet you. / I should get going.",
-      "A: Hi. How's it going? / B: Pretty good. Do you know many people here?",
-      "A: Well, it was great to meet you. I should get going.",
-    ],
-    controlledPractice: [
-      "Opener: Hi, how's it going?",
-      "Follow-up: Do you know many people here?",
-      "Closer: It was great to meet you. I should get going.",
-    ],
-    guidedProduction:
-      "Write a 4-6 line dialogue. Include one opener, one follow-up question, one short answer, and one polite closer.",
-  },
-  {
-    family: "social-behavior",
-    priority: 95,
-    fullSignals: [
-      "appropriate",
-      "inappropriate",
-      "rude",
-      "bad form",
-      "gerund phrase",
-      "infinitive phrase",
-      "polite to",
-      "impolite",
-      "offensive",
-      "compliment",
-      "insult",
-    ],
-    coreConcept: "Comment on social behavior using infinitive and gerund phrases.",
-    warmupHeading: "Warm-up: types of conversationalists",
-    explanationHeading: "Teacher explanation: Infinitive and gerund phrases",
-    spanishSupport: [
-      "It's + adjective + to + verb y Gerund + is + adjective pueden expresar la misma idea con distinto estilo.",
-    ],
-    modelExamples: [
-      "It's rude to ignore your conversation partner.",
-      "Ignoring your conversation partner is rude.",
-      "It's a good idea to try different topics.",
-      "Trying different topics is a good idea.",
-    ],
-    controlledPractice: [
-      "It's polite to ______.",
-      "______ is rude because ______.",
-      "It's inappropriate to ______ when ______.",
-    ],
-    guidedProduction:
-      "What kind of conversationalist are you? Write 3-5 sentences about social behavior. Use one infinitive phrase, one gerund phrase, and two behavior words.",
-  },
-  {
-    family: "time-clauses",
-    priority: 90,
-    primarySignals: [
-      "reduced time",
-      "after finishing",
-      "while taking",
-      "time clause",
-      "as soon as",
-      "whenever",
-      "ever since",
-      "before i",
-      "after i",
-      "until i",
-    ],
-    coreConcept:
-      "Use time clauses to describe when actions happen in your routine, and reduce clauses only when it sounds natural.",
-    warmupHeading: "Warm-up: notice the language",
-    explanationHeading: "Teacher explanation: time clauses",
-    spanishSupport: [
-      "En español solemos decir la idea completa; en inglés puedes acortar after/while/before cuando el sujeto es el mismo.",
-      "As soon as, until, whenever y ever since normalmente se mantienen como cláusulas completas.",
-    ],
-    controlledPractice: [
-      "Rewrite: After I finish work, I check my messages. → After finishing work, I check my messages.",
-      "Complete: As soon as I ______, I ______.",
-      "Complete: Whenever I ______, I ______.",
-    ],
-    grammarPlusPractice: [
-      "Can this clause be reduced? After I finish work, I check my messages.",
-      "Can this clause be reduced? As soon as I wake up, I check my calendar.",
-      "Before I ______, I ______.",
-    ],
-    guidedProduction:
-      "Write 4-5 sentences about your routine: two reduced time clauses, one full time clause, and one energy-pattern vocabulary chunk.",
-    modelExamples: [
-      "As soon as I wake up, I check my schedule and decide what needs the most attention.",
-      "Whenever I feel tired in the afternoon, I take a short break before I continue working.",
-    ],
-    grammarPlusProduction:
-      "Write 5 short items: decide which clauses you can reduce, rewrite two reduced clauses, keep one full time clause, and explain one choice.",
-    commonMistakes: [
-      "Do not use will after time linkers: As soon as I get up, not As soon as I will get up.",
-      "Do not reduce every time clause. As soon as I wake up is natural; As soon as waking up is not.",
-    ],
-  },
-  {
-    family: "condition-clauses",
-    priority: 85,
-    primarySignals: [
-      "even if",
-      "considering that",
-      "as long as",
-      "unless",
-      "just in case",
-      "only if",
-      "provided that",
-      "providing that",
-      "whether or not",
-      "now that",
-    ],
-    coreConcept: "Explain sleep, energy, and habits with reason and condition clauses.",
-    warmupHeading: "Warm-up: notice the language",
-    explanationHeading: "Teacher explanation: reason and condition clauses",
-    spanishSupport: [
-      "even if = incluso si / aunque; la condición no cambia el resultado.",
-      "as long as = siempre que / con tal de que; expresa una condición necesaria.",
-      "unless = a menos que / si no; cuidado con duplicar negativos.",
-    ],
-    controlledPractice: [
-      "As long as I ______, I ______.",
-      "Complete: I feel exhausted even if ______.",
-      "Complete: I do not sleep well unless ______.",
-    ],
-    guidedProduction:
-      "Write 4 sentences about your sleep or energy habits using two vocabulary chunks and two reason/condition clauses.",
-    modelExamples: [
-      "Even if I am tired, I try not to check my phone right before bed.",
-      "Unless I get enough sleep, I find it difficult to stay focused the next morning.",
-    ],
-    commonMistakes: ["Do not combine unless with not unless you really need a negative meaning."],
-  },
-  {
-    family: "certainty-modals",
-    priority: 82,
-    fullSignals: [
-      "must have",
-      "might have",
-      "could have",
-      "can't have",
-      "may have",
-      "modals of certainty",
-      "certainty",
-      "uncertainty",
-      "possibility",
-      "mystery",
-    ],
-    coreConcept: "Speculate about possible explanations using modals of certainty and uncertainty.",
-    warmupHeading: "Warm-up: notice the language",
-    explanationHeading: "Teacher explanation: modals of certainty and uncertainty",
-    modelExamples: [
-      "He must have planned it carefully because nobody saw him arrive.",
-      "It might have been a mistake, but nobody is completely sure.",
-    ],
-    controlledPractice: [
-      "He must have ______ because ______.",
-      "It might have ______, but ______.",
-      "Nobody is sure, but it could have ______.",
-    ],
-    guidedProduction:
-      "Write 3-5 sentences explaining a mystery. Use one strong certainty modal and one uncertainty modal.",
-  },
-  {
-    family: "dream-speculation",
-    priority: 80,
-    fullSignals: ["dream", "flying", "falling", "chased", "losing teeth", "stands for", "symbolize"],
-    coreConcept: "Describe dreams and speculate about possible meanings without presenting interpretations as facts.",
-    warmupHeading: "Warm-up: listening purpose",
-    explanationHeading: "Teacher explanation: gist and details",
-    modelExamples: [
-      "I think a dream about falling might mean that someone feels out of control.",
-      "Being chased in a dream could connect to stress or pressure.",
-      "A dream about flying could stand for freedom or confidence.",
-    ],
-    controlledPractice: [
-      "The main idea is ______.",
-      "One detail is ______.",
-      "I think the dream might mean ______.",
-    ],
-    guidedProduction:
-      "Write 3-4 sentences: predict the listening topic, mention two dream words, and speculate with might / could / sounds like.",
-  },
-  {
-    family: "stress-advice",
-    priority: 75,
-    fullSignals: [
-      "stress",
-      "fatigue",
-      "lack of energy",
-      "vent",
-      "massage",
-      "yoga",
-      "hot bath",
-      "too many responsibilities",
-      "soft advice",
-      "advice expression",
-    ],
-    coreConcept: "Identify stress or energy problems and give practical advice politely.",
-    warmupHeading: "Warm-up: listening purpose",
-    explanationHeading: "Teacher explanation: advice language",
-    spanishSupport: [
-      "Para sonar amable, usa You might want to... o It might not be a bad idea to..., no solo You must...",
-    ],
-    controlledPractice: [
-      "Cause: I feel stressed because I have too many responsibilities.",
-      "Advice: You might want to ______.",
-      "Soft advice: It might not be a bad idea to ______.",
-    ],
-    guidedProduction:
-      "Write a 4-6 line advice dialogue. Include one cause of stress, one soft advice expression, and one practical solution.",
-    modelExamples: [
-      "A: I feel exhausted because I have too many responsibilities this week. / B: Have you ever thought of calling a friend and venting your feelings?",
-      "It might not be a bad idea to take a hot bath and listen to music tonight.",
-      "You might want to take a short walk after lunch, but keep it short so you do not lose momentum.",
-      "It might not be a bad idea to call a friend when you need to vent your feelings.",
-    ],
-    commonMistakes: ["After should / could / might, use the base verb: should rest, not should to rest."],
-  },
-  {
-    family: "vocabulary-speaking",
-    priority: 45,
-    fullSignals: [
-      "vocabulary",
-      "chunks",
-      "collocation",
-      "word power",
-      "deal with a problem",
-      "ignore a problem",
-      "solve a problem",
-      "aggravate a problem",
-    ],
-    coreConcept: "Build useful vocabulary chunks and use them in a short spoken answer.",
-    warmupHeading: "Warm-up: activate the topic",
-    explanationHeading: "Teacher explanation: vocabulary in chunks",
-    modelExamples: [
-      "I usually deal with a problem by identifying the cause first.",
-      "Ignoring a problem can aggravate the situation.",
-    ],
-    controlledPractice: [
-      "Use one vocabulary chunk in a complete sentence.",
-      "Add one reason with because.",
-      "Give one short personal example.",
-    ],
-    guidedProduction:
-      "Write 3-5 sentences using two vocabulary chunks, one reason, and one personal example.",
-  },
-  {
-    family: "writing",
-    priority: 50,
-    fullSignals: ["writing", "paragraph", "outline", "topic sentence", "supporting sentence", "concluding sentence"],
-    coreConcept: "Organize a short written answer around one clear main idea and supporting details.",
-    warmupHeading: "Warm-up: writing purpose",
-    explanationHeading: "Teacher explanation: organize before writing",
-    modelExamples: [
-      "Topic sentence: My main point is clear and specific.",
-      "Supporting detail: For example, one habit can make the routine easier.",
-    ],
-    guidedProduction:
-      "Write one short paragraph of 4-5 sentences. Include one clear topic sentence and one supporting example.",
-  },
-  {
-    family: "general",
-    priority: 0,
-    coreConcept: "Use this lesson language in a clear real-life answer.",
-    guidedProduction: "Write 3-5 sentences using the target language, useful vocabulary, and one personal example.",
-  },
-];
+function loadRoleProfiles() {
+  const value = rolesConfig as { schemaVersion?: number; roles?: PedagogicalRoleProfile[] };
+  if (value.schemaVersion !== 1 || !Array.isArray(value.roles)) {
+    throw new Error("Invalid pedagogical role profile configuration.");
+  }
+  value.roles.forEach((profile) => {
+    if (!profile.role || typeof profile.priority !== "number" || !Array.isArray(profile.signals)) {
+      throw new Error(`Invalid pedagogical role profile: ${profile.role || "unknown"}`);
+    }
+  });
+  return value.roles;
+}
+
+function loadLanguageFamilyProfiles() {
+  const value = profilesConfig as { schemaVersion?: number; profiles?: LanguageFamilyProfile[] };
+  if (value.schemaVersion !== 1 || !Array.isArray(value.profiles)) {
+    throw new Error("Invalid language family profile configuration.");
+  }
+  value.profiles.forEach((profile) => {
+    if (!profile.family || typeof profile.priority !== "number" || !profile.coreConcept || !profile.guidedProduction) {
+      throw new Error(`Invalid language family profile: ${profile.family || "unknown"}`);
+    }
+  });
+  return value.profiles;
+}

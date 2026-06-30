@@ -66,6 +66,11 @@ knowledge/passages-level-1-students-book-page-map.md
 !knowledge/class-packs-lesson-vision/
 !knowledge/class-packs-lesson-vision/*.md
 !knowledge/class-packs-lesson-vision/.gitkeep
+!knowledge/pedagogy/
+!knowledge/pedagogy/**/
+!knowledge/pedagogy/**/*.json
+!knowledge/course-structure/
+!knowledge/course-structure/*.json
 
 # clerk configuration (can include secrets)
 /.clerk/

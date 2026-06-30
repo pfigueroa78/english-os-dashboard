@@ -296,7 +296,7 @@ test("pre-model deterministic gate closes a visible evaluation gate even when st
   });
 
   expect(resolved).not.toBeNull();
-  expect(resolved?.source).toBe("deterministic_evaluation_gate");
+  expect(resolved?.source).toBe("structured_evaluation_gate_event");
   expect(resolved?.progress.status).toBe("approved");
   expect(resolved?.reply).toContain("Class 30 approved");
   expect(resolved?.reply).toContain("Class approved");
@@ -314,7 +314,7 @@ test("pre-model deterministic progress advances a learner production answer with
   });
 
   expect(resolved).not.toBeNull();
-  expect(resolved?.source).toBe("deterministic_learning_block");
+  expect(resolved?.source).toBe("structured_learning_block_event");
   expect(resolved?.progress.currentStepIndex).toBe(1);
   expect(resolved?.reply).toContain("You completed Paso 1 de 3");
   expect(resolved?.reply).toContain("Next block: Paso 2 de 3 - Production");

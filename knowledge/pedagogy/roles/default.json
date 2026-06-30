@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "roles": [
+    { "role": "checkpoint", "priority": 100, "signals": ["checkpoint", "unit review", "review class"] },
+    { "role": "video", "priority": 90, "signals": ["video", "before watching", "while watching", "after watching"] },
+    { "role": "grammar-plus", "priority": 80, "signals": ["grammar plus", "practice lab", "grammar consolidation"] },
+    { "role": "listening", "priority": 70, "signals": ["listening", "audio", "while listening"], "firstSectionSignals": ["listening", "audio", "while listening"] },
+    { "role": "role-play", "priority": 60, "signals": ["role play", "role-play"], "firstSectionSignals": ["role play", "role-play"] },
+    { "role": "writing", "priority": 50, "signals": ["writing", "paragraph", "outline"], "firstSectionSignals": ["writing", "paragraph", "outline"] },
+    { "role": "discussion", "priority": 40, "signals": ["discussion"], "firstSectionSignals": ["discussion"] },
+    { "role": "student-book-block", "priority": 0, "signals": [] }
+  ]
+}

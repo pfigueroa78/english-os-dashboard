@@ -6,6 +6,11 @@ import {
   canWriteClassApproval,
   evaluateClassApproval,
 } from "../../src/modules/coach-approval/application";
+import {
+  courseStructureRepository,
+  getApprovalPolicyConfig,
+  getGrammarRuleSetConfig,
+} from "../../src/modules/coach-config/pedagogyConfig";
 
 function readWorkspaceFile(relativePath: string) {
   return readFileSync(path.join(process.cwd(), relativePath), "utf8");
@@ -43,6 +48,9 @@ test("class approval evaluation can approve non-business class evidence", async 
 
   expect(evaluation.classId).toBe("unit-05-class-01");
   expect(evaluation.canApproveClass).toBe(true);
+  expect(evaluation.score).toBeGreaterThanOrEqual(getApprovalPolicyConfig().passingScore);
+  expect(evaluation.evaluatorVersion).toBeTruthy();
+  expect(evaluation.policyId).toBe(getApprovalPolicyConfig().policyId);
   expect(evaluation.grammarApproved).toBe(true);
   expect(evaluation.vocabularyApproved).toBe(true);
   expect(evaluation.productionApproved).toBe(true);
@@ -115,4 +123,41 @@ test("v02 approval route does not contain Unit 4 business-advice hardcoded appro
   expect(source).not.toContain("This would help the team recover");
   expect(source).toContain("canWriteClassApproval");
   expect(source).toContain("Class approval requires evaluated evidence");
+});
+
+test("approval thresholds and blocking grammar rules are loaded from configuration", async () => {
+  const policy = getApprovalPolicyConfig();
+  const grammarRules = getGrammarRuleSetConfig();
+
+  expect(policy.policyId).toBe("default-class-approval");
+  expect(policy.passingScore).toBe(8);
+  expect(policy.responsePolicies.minimumSentencesByProductionType.checkpoint).toBeGreaterThan(1);
+  expect(grammarRules.rules.map((rule) => rule.id)).toContain("modal-should-base-verb");
+
+  const approvalSource = readWorkspaceFile("src/modules/coach-approval/application.ts");
+  expect(approvalSource).toContain("getApprovalPolicyConfig");
+  expect(approvalSource).toContain("getGrammarRuleSetConfig");
+  expect(approvalSource).not.toContain("should\\s+to");
+  expect(approvalSource).not.toContain("answer.length >=");
+  expect(approvalSource).not.toContain("answer.split(/\\s+/).length >=");
+});
+
+test("course structure repository resolves next classes from configuration order", async () => {
+  const repository = courseStructureRepository();
+
+  expect(repository.nextClass(4, 7)).toEqual({ unit: 5, localClass: 1, globalClass: 29 });
+  expect(repository.nextClass(12, 7)).toBeNull();
+  expect(repository.isUnitCheckpoint(7)).toBe(true);
+});
+
+test("Apps Script class approval write requires evidence, rubric, score, gate and evaluator version", async () => {
+  const source = readWorkspaceFile("apps-script/15_LearningState.js");
+
+  expect(source).toContain("validateApprovalEvidence_");
+  expect(source).toContain("'Approval Evidence'");
+  expect(source).toContain("'Approval Rubric'");
+  expect(source).toContain("'Approval Score'");
+  expect(source).toContain("'Approval Gate Completed'");
+  expect(source).toContain("'Approval Evaluator Version'");
+  expect(source).toContain("approvalScore must be at least 8");
 });

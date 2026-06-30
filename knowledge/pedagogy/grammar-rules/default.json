@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "ruleSetId": "default-blocking-grammar-rules",
+  "description": "Configurable blocking grammar rules used by the approval evaluator.",
+  "rules": [
+    {
+      "id": "modal-should-base-verb",
+      "family": "modals",
+      "severity": "blocking",
+      "pattern": "\\bshould\\s+to\\s+\\w+",
+      "message": "Use should + base verb, not should to + verb."
+    },
+    {
+      "id": "ought-to-base-verb",
+      "family": "modals",
+      "severity": "blocking",
+      "pattern": "\\bought\\s+to\\s+(giving|improving|working|taking)\\b",
+      "message": "Use ought to + base verb."
+    },
+    {
+      "id": "despite-noun-phrase",
+      "family": "contrast",
+      "severity": "blocking",
+      "pattern": "\\bdespite\\s+\\w+\\s+(is|are|was|were|has|have|can|should|must)\\b",
+      "message": "Use despite + noun phrase, or although + subject + verb."
+    },
+    {
+      "id": "focus-on-gerund",
+      "family": "gerunds",
+      "severity": "blocking",
+      "pattern": "\\bfocus\\s+on\\s+(improve|work|speak|learn)\\b",
+      "message": "After focus on, use a noun or gerund."
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import type { ClassIdentity } from "@/modules/coach-delivery/teachingContracts";
 import { buildTeachingContractV2, type TeachingContractV2 } from "@/modules/coach-delivery/teachingContractV2";
 import type { PedagogicalRole } from "@/modules/coach-delivery/pedagogicalProfiles";
+import lessonStepsConfig from "../../../knowledge/pedagogy/lesson-steps/default.json";
 
 export type OpeningBlockPolicy = {
   kind: "video" | "checkpoint" | "guided_block";
@@ -15,11 +16,9 @@ const ROLE_KIND: Partial<Record<PedagogicalRole, OpeningBlockPolicy["kind"]>> = 
   checkpoint: "checkpoint",
 };
 
-const ROADMAP_BY_KIND: Record<OpeningBlockPolicy["kind"], string[]> = {
-  video: ["Before watching", "While/After watching", "Speaking", "Evaluation gate"],
-  checkpoint: ["Checkpoint briefing", "Integrated checkpoint", "Evaluation gate"],
-  guided_block: ["Learn & practice", "Production", "Evaluation gate"],
-};
+const ROADMAP_BY_KIND = (lessonStepsConfig as {
+  roadmaps: Record<OpeningBlockPolicy["kind"] | "guided_block_without_production", string[]>;
+}).roadmaps;
 
 const POLICY_BY_KIND: Record<OpeningBlockPolicy["kind"], Omit<OpeningBlockPolicy, "sections">> = {
   video: {
@@ -86,7 +85,7 @@ export function lessonBlockRoadmap(identity: ClassIdentity, localClass?: number 
   const sections = classSections(identity.sections);
   const hasProduction = sections.some((section) => containsAny(section, ["speaking", "discussion", "role play", "writing", "conversation"]));
   return policy.kind === "guided_block" && !hasProduction
-    ? ["Learn & practice", "Evaluation gate"]
+    ? ROADMAP_BY_KIND.guided_block_without_production
     : ROADMAP_BY_KIND[policy.kind];
 }
 

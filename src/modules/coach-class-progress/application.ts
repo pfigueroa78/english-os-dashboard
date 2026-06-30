@@ -42,8 +42,21 @@ export type ResolvedClassProgressTurn = {
 };
 
 export type PreModelClassProgressTurn = ResolvedClassProgressTurn & {
-  source: "deterministic_evaluation_gate" | "deterministic_learning_block";
+  source: "structured_evaluation_gate_event" | "structured_learning_block_event";
 };
+
+export type ClassProgressEvent =
+  | {
+      type: "learning_step_evaluated";
+      approved: boolean;
+      evidence: string[];
+      retryPrompt?: string;
+    }
+  | {
+      type: "evaluation_gate_evaluated";
+      approved: boolean;
+      evaluation: ClassApprovalEvaluation;
+    };
 
 export function classProgressKey(email: string | null | undefined) {
   return email ? `english-os-class-progress:${email}` : "";
@@ -222,6 +235,53 @@ export function advanceClassProgressFromReply(
   };
 }
 
+export function applyClassProgressEvent(
+  progress: CoachClassProgressState,
+  event: ClassProgressEvent,
+  nowIso = new Date().toISOString(),
+): ResolvedClassProgressTurn {
+  if (event.type === "evaluation_gate_evaluated") {
+    if (event.approved) {
+      const approved = approveClassProgress(progress, nowIso);
+      return {
+        reply: buildClassApprovedReply(progress, event.evaluation),
+        progress: approved,
+        repaired: true,
+        approvalEvaluation: event.evaluation,
+      };
+    }
+    return {
+      reply: buildFocusedRetryReply(event.evaluation),
+      progress: {
+        ...progress,
+        status: "needs_retry",
+        updatedAt: nowIso,
+      },
+      repaired: true,
+      approvalEvaluation: event.evaluation,
+    };
+  }
+
+  if (event.approved) {
+    const advanced = approveCurrentStep(progress, nowIso);
+    return {
+      reply: buildStructuredStepApprovalReply(progress, advanced, event.evidence),
+      progress: advanced,
+      repaired: true,
+    };
+  }
+
+  return {
+    reply: buildStructuredStepRetryReply(progress, event.retryPrompt || "Use the class language more clearly before we move on."),
+    progress: {
+      ...progress,
+      status: "needs_retry",
+      updatedAt: nowIso,
+    },
+    repaired: true,
+  };
+}
+
 export function resolveClassProgressTurn(params: {
   progress: CoachClassProgressState;
   learnerMessage: string;
@@ -251,35 +311,14 @@ export function resolveClassProgressTurn(params: {
     }
   }
 
-  if (isFalseLanguageRetry(reply, learnerMessage)) {
-    const advanced = approveCurrentStep(progress, nowIso);
-    return {
-      reply: buildDeterministicApprovalReply(progress, advanced),
-      progress: advanced,
-      repaired: true,
-    };
-  }
+  const learningStepEvent = evaluateLearningStepEvent(progress, learnerMessage);
+  if (learningStepEvent) return applyClassProgressEvent(progress, learningStepEvent, nowIso);
 
-  const nextProgress = advanceClassProgressFromReply(progress, reply, nowIso);
-
-  if (nextProgress.status === "needs_retry" || nextProgress.status === "approved") {
-    return { reply: enforceVideoResourceFirst(nextProgress, reply, learnerMessage), progress: nextProgress, repaired: false };
-  }
-
-  if (nextProgress.currentStepIndex > progress.currentStepIndex) {
-    return repairApprovedReplyIfNeeded(progress, nextProgress, reply);
-  }
-
-  const repeatedCurrentStep = announcesStepAtOrBefore(reply, progress.currentStepIndex + 1);
-  const repeatsVideoSimulation = isVideoWhileWatching(progress) && hasTeacherSimulation(reply);
-  if ((repeatedCurrentStep || repeatsVideoSimulation) && isLikelyLearnerProduction(learnerMessage)) {
-    const advanced = approveCurrentStep(progress, nowIso);
-    return {
-      reply: buildDeterministicApprovalReply(progress, advanced),
-      progress: advanced,
-      repaired: true,
-    };
-  }
+  const nextProgress = {
+    ...progress,
+    status: "awaiting_answer" as const,
+    updatedAt: nowIso,
+  };
 
   if (isVideoWhileWatching(progress) && hasTeacherSimulation(reply) && !learnerRequestedFallback(learnerMessage)) {
     return {
@@ -329,35 +368,22 @@ export function resolveClassProgressBeforeModel(params: {
       evaluationGateCompleted: true,
       activeSectionsCompleted: true,
     });
-    if (evaluation.canApproveClass) {
-      const approved = approveClassProgress(gateProgress, nowIso);
-      return {
-        reply: buildClassApprovedReply(gateProgress, evaluation),
-        progress: approved,
-        repaired: true,
-        approvalEvaluation: evaluation,
-        source: "deterministic_evaluation_gate",
-      };
-    }
+    const event: ClassProgressEvent = {
+      type: "evaluation_gate_evaluated",
+      approved: evaluation.canApproveClass,
+      evaluation,
+    };
     return {
-      reply: buildFocusedRetryReply(evaluation),
-      progress: {
-        ...gateProgress,
-        status: "needs_retry",
-        updatedAt: nowIso,
-      },
-      repaired: true,
-      approvalEvaluation: evaluation,
-      source: "deterministic_evaluation_gate",
+      ...applyClassProgressEvent(gateProgress, event, nowIso),
+      source: "structured_evaluation_gate_event",
     };
   }
 
-  const advanced = approveCurrentStep(progress, nowIso);
+  const event = evaluateLearningStepEvent(progress, learnerMessage);
+  if (!event) return null;
   return {
-    reply: buildDeterministicApprovalReply(progress, advanced),
-    progress: advanced,
-    repaired: true,
-    source: "deterministic_learning_block",
+    ...applyClassProgressEvent(progress, event, nowIso),
+    source: "structured_learning_block_event",
   };
 }
 
@@ -429,6 +455,32 @@ function buildDeterministicApprovalReply(
     `You completed Paso ${previous.currentStepIndex + 1} de ${previous.steps.length} - ${currentStepName(previous)}.`,
     "",
     buildCurrentStepTask(next),
+  ].join("\n");
+}
+
+function buildStructuredStepApprovalReply(
+  previous: CoachClassProgressState,
+  next: CoachClassProgressState,
+  evidence: string[],
+) {
+  return [
+    "👍 Good answer. This learning block is approved.",
+    "",
+    `You completed Paso ${previous.currentStepIndex + 1} de ${previous.steps.length} - ${currentStepName(previous)}.`,
+    evidence.length ? `Evidence: ${evidence.slice(0, 2).join("; ")}.` : "",
+    "",
+    buildCurrentStepTask(next),
+  ].filter(Boolean).join("\n");
+}
+
+function buildStructuredStepRetryReply(progress: CoachClassProgressState, retryPrompt: string) {
+  return [
+    "Almost there. Let's strengthen this before moving on.",
+    "",
+    `Focused retry for Paso ${progress.currentStepIndex + 1} de ${progress.steps.length} - ${currentStepName(progress)}:`,
+    retryPrompt,
+    "",
+    "Send only the improved answer.",
   ].join("\n");
 }
 
@@ -626,6 +678,29 @@ function approvalRubricSourceFromProgress(progress: CoachClassProgressState) {
   ];
 }
 
+function evaluateLearningStepEvent(progress: CoachClassProgressState, learnerMessage: string): ClassProgressEvent | null {
+  if (isEvaluationGateStep(progress)) return null;
+  if (isCommandLikeMessage(learnerMessage)) return null;
+  const evaluation = evaluateClassApproval({
+    answer: learnerMessage,
+    classPack: approvalRubricSourceFromProgress(progress),
+    evaluationGateCompleted: true,
+    activeSectionsCompleted: true,
+  });
+  const approved =
+    evaluation.blockingErrors.length === 0 &&
+    evaluation.scores.production === "approved" &&
+    evaluation.score >= 6 &&
+    (evaluation.scores.grammar === "approved" || evaluation.scores.vocabulary === "approved");
+
+  return {
+    type: "learning_step_evaluated",
+    approved,
+    evidence: evaluation.approvalEvidence,
+    retryPrompt: approved ? "" : evaluation.retryPrompt,
+  };
+}
+
 function previousStepsCompleted(progress: CoachClassProgressState) {
   const required = progress.steps
     .map((_, index) => index)
@@ -711,6 +786,10 @@ function looksLikeEnglishProduction(text: string) {
 function isLikelyLearnerProduction(text: string) {
   const words = text.split(/\s+/).filter(Boolean);
   return words.length >= 8 && !/^(dame|continua|continuemos|sigue|ok|listo|empecemos)\b/i.test(text.trim());
+}
+
+function isCommandLikeMessage(text: string) {
+  return /^(dame|continua|continuemos|sigue|ok|listo|empecemos|start|continue|next)\b/i.test(String(text || "").trim());
 }
 
 function isClassProgressStatus(value: unknown): value is CoachClassProgressStatus {

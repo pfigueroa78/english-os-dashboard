@@ -2,6 +2,7 @@ import type { ClassIdentity } from "@/modules/coach-delivery/teachingContracts";
 import { buildTeachingContractV2, type TeachingContractV2 } from "@/modules/coach-delivery/teachingContractV2";
 import type { PedagogicalRole } from "@/modules/coach-delivery/pedagogicalProfiles";
 import lessonStepsConfig from "../../../knowledge/pedagogy/lesson-steps/default.json";
+import deliveryPolicyConfig from "../../../knowledge/pedagogy/delivery-policies/default.json";
 
 export type OpeningBlockPolicy = {
   kind: "video" | "checkpoint" | "guided_block";
@@ -9,6 +10,49 @@ export type OpeningBlockPolicy = {
   sections: string[];
   requiredSignals: string[];
   instruction: string;
+};
+
+type TeacherOpeningViewModel = {
+  sectionKind: TeacherSectionKind;
+  activeSection: string;
+  objective: string;
+  mission: string;
+  context: string;
+  focus: string;
+  usefulLanguage: string[];
+  teacherExplanation: string[];
+  spanishSupport: string[];
+  modelExamples: string[];
+  controlledPractice: string[];
+  learnerTask: string;
+};
+
+type TeacherSectionKind =
+  | "grammar"
+  | "vocabulary"
+  | "listening"
+  | "reading"
+  | "writing"
+  | "discussion"
+  | "rolePlay"
+  | "video"
+  | "grammarPlus"
+  | "checkpoint";
+
+type DeliveryPolicyConfig = {
+  openingRules: {
+    minimumWords: number;
+    maximumLearnerTasks: number;
+    requiredSignals: string[];
+    forbiddenPhrases: string[];
+  };
+  sectionKinds: Record<TeacherSectionKind, string[]>;
+};
+
+type SectionTeacherAdapter = {
+  kind: TeacherSectionKind;
+  canHandle(teaching: TeachingContractV2): boolean;
+  create(teaching: TeachingContractV2): TeacherOpeningViewModel;
 };
 
 const ROLE_KIND: Partial<Record<PedagogicalRole, OpeningBlockPolicy["kind"]>> = {
@@ -20,47 +64,40 @@ const ROADMAP_BY_KIND = (lessonStepsConfig as {
   roadmaps: Record<OpeningBlockPolicy["kind"] | "guided_block_without_production", string[]>;
 }).roadmaps;
 
+const DELIVERY_POLICY = deliveryPolicyConfig as DeliveryPolicyConfig;
+
 const POLICY_BY_KIND: Record<OpeningBlockPolicy["kind"], Omit<OpeningBlockPolicy, "sections">> = {
   video: {
     kind: "video",
     title: "Video preparation block",
-    requiredSignals: ["Video Class", "Before watching", "model", "Your turn"],
+    requiredSignals: ["Learning objective", "Communication mission", "Before watching", "Your turn"],
     instruction: [
-      "OPENING LEARNING BLOCK: Video preparation.",
-      "Do not behave like a question-only evaluator.",
-      "First explain the video purpose, give useful Unit language, and provide one or two model answers.",
-      "Then ask one compact prediction/preparation task.",
-      "Do not invent a transcript, scenes, or answer key.",
+      "OPENING LEARNING BLOCK: teacher-led video preparation.",
+      "Teach the purpose of the video step, give useful unit language, provide two model answers, and ask one compact prediction task.",
+      "Do not invent a transcript or expose approval criteria.",
     ].join(" "),
   },
   checkpoint: {
     kind: "checkpoint",
     title: "Unit checkpoint briefing",
-    requiredSignals: ["checkpoint", "rubric", "model", "Your turn"],
+    requiredSignals: ["Learning objective", "Communication mission", "checkpoint", "Your turn"],
     instruction: [
-      "OPENING LEARNING BLOCK: Unit checkpoint briefing.",
-      "Do not start by asking questions immediately.",
-      "First summarize what the checkpoint evaluates, show the approval criteria, and give a compact model.",
-      "Then ask one integrated checkpoint response.",
+      "OPENING LEARNING BLOCK: teacher-led checkpoint preparation.",
+      "Briefly explain what the checkpoint integrates, provide a model, and ask one integrated response.",
+      "Do not show point rubrics in the opening.",
     ].join(" "),
   },
   guided_block: {
     kind: "guided_block",
-    title: "Learn & practice block",
-    requiredSignals: ["Warm-up", "Teacher explanation", "Examples", "Controlled practice"],
+    title: "Teacher-led opening block",
+    requiredSignals: ["Learning objective", "Communication mission", "Your turn"],
     instruction: [
-      "OPENING LEARNING BLOCK: Learn & practice.",
+      "OPENING LEARNING BLOCK: teacher-led class opening.",
       "Teach the first learning block, not only the first heading.",
-      "Use this rhythm: brief situation -> key language or grammar -> vocabulary/useful chunks -> controlled practice -> one integrated learner task.",
-      "Ask only once at the end of the block.",
-      "Do not include the final evaluation gate, approval, recap, score, or session log yet.",
+      "Use this order: class objective, communication mission, real context, active teaching, two model examples, one learner task.",
+      "Do not include approval scoring, final evaluation gate, recap, score, or session log yet.",
     ].join(" "),
   },
-};
-
-type RenderSection = {
-  heading: string;
-  lines: string[];
 };
 
 export function classSections(sectionList: string) {
@@ -94,156 +131,296 @@ export function hasSufficientOpeningBlock(reply: string, identity: ClassIdentity
   const policy = openingBlockPolicy(identity, localClass);
   const normalized = normalize(text);
   const wordCount = text.split(/\s+/).filter(Boolean).length;
-  const signalHits = policy.requiredSignals.filter((signal) => normalized.includes(normalize(signal))).length;
+  const requiredHits = DELIVERY_POLICY.openingRules.requiredSignals
+    .filter((signal) => normalized.includes(normalize(signal))).length;
+  const forbiddenHit = DELIVERY_POLICY.openingRules.forbiddenPhrases
+    .some((phrase) => normalized.includes(normalize(phrase)));
 
-  return wordCount >= 110
+  return wordCount >= DELIVERY_POLICY.openingRules.minimumWords
+    && !forbiddenHit
     && hasSingleClearLearnerTask(text)
-    && signalHits >= 2
+    && requiredHits >= Math.min(2, DELIVERY_POLICY.openingRules.requiredSignals.length)
     && policySpecificEvidence(policy.kind, normalized);
 }
 
 export function guidedOpeningFallback(reply: string, identity: ClassIdentity, localClass?: number | null) {
   if (hasSufficientOpeningBlock(reply, identity, localClass)) return String(reply || "").trim();
-  return renderOpeningFallback(identity, openingBlockPolicy(identity, localClass));
+  return renderTeacherOpening(buildTeacherOpeningViewModel(identity, localClass));
 }
 
 export function openingLearningBlockInstruction(identity: ClassIdentity, localClass?: number | null) {
   return openingBlockPolicy(identity, localClass).instruction;
 }
 
-function renderOpeningFallback(identity: ClassIdentity, policy: OpeningBlockPolicy) {
+export function buildTeacherOpeningViewModel(identity: ClassIdentity, _localClass?: number | null): TeacherOpeningViewModel {
   const teaching = buildTeachingContractV2(identity);
-  const sections = openingSections(policy, teaching);
-  return sections
-    .map((section) => [`## ${section.heading}`, "", ...section.lines].join("\n"))
-    .join("\n\n");
+  return selectSectionTeacherAdapter(teaching).create(teaching);
 }
 
-function openingSections(policy: OpeningBlockPolicy, teaching: TeachingContractV2): RenderSection[] {
-  const common = commonLearningSections(teaching);
-  const variants: Record<OpeningBlockPolicy["kind"], RenderSection[]> = {
-    video: [
-      {
-        heading: "Video Class - Before watching",
-        lines: [
-          "First, we prepare your mind for the video. We will not invent the video transcript.",
-          "",
-          ...common.language,
-          "",
-          ...common.examples,
-          "",
-          "Your turn: write 2-3 sentences in English. Predict the main idea and include one useful word, chunk, or structure from this class.",
-        ],
-      },
-    ],
-    checkpoint: [
-      {
-        heading: "Unit checkpoint briefing",
-        lines: [
-          "This checkpoint checks whether you can use the unit language in a real answer, not just recognize it.",
-          "",
-          ...common.criteria,
-          "",
-          ...common.language,
-          "",
-          ...common.examples,
-          "",
-          "Your turn: write 4-6 short sentences in English. Show the grammar, vocabulary, and communication skill from this unit.",
-        ],
-      },
-    ],
-    guided_block: [
-      {
-        heading: teaching.presentation.warmupHeading,
-        lines: [
-          teaching.coreConcept,
-          "We will follow a simple teaching path: first notice the language, then practice it safely, and finally use it in your own answer.",
-        ],
-      },
-      {
-        heading: "Key vocabulary and chunks",
-        lines: common.language,
-      },
-      {
-        heading: teaching.presentation.explanationHeading,
-        lines: [
-          "Use the target language to communicate one clear idea, one reason, and one example.",
-          ...common.spanishSupport,
-          "",
-          ...common.examples,
-        ].filter(Boolean),
-      },
-      {
-        heading: "Controlled practice",
-        lines: common.practice,
-      },
-      {
-        heading: teaching.presentation.productionHeading,
-        lines: [
-          learnerTask(teaching.guidedProduction),
-          "",
-          ...common.criteria,
-        ],
-      },
-    ],
-  };
-  return variants[policy.kind];
+function selectSectionTeacherAdapter(teaching: TeachingContractV2) {
+  return SECTION_TEACHER_ADAPTERS.find((adapter) => adapter.canHandle(teaching)) || SECTION_TEACHER_ADAPTERS[SECTION_TEACHER_ADAPTERS.length - 1];
 }
 
-function commonLearningSections(teaching: TeachingContractV2) {
+const SECTION_TEACHER_ADAPTERS: SectionTeacherAdapter[] = [
+  teacherAdapter("checkpoint", (teaching) => teaching.pedagogicalRole === "checkpoint", checkpointOpening),
+  teacherAdapter("video", (teaching) => teaching.pedagogicalRole === "video", videoOpening),
+  teacherAdapter("grammarPlus", (teaching) => teaching.pedagogicalRole === "grammar-plus", grammarPlusOpening),
+  teacherAdapter("listening", (teaching) => teaching.pedagogicalRole === "listening", listeningOpening),
+  teacherAdapter("rolePlay", (teaching) => teaching.pedagogicalRole === "role-play", rolePlayOpening),
+  teacherAdapter("writing", (teaching) => teaching.pedagogicalRole === "writing", writingOpening),
+  teacherAdapter("discussion", (teaching) => teaching.pedagogicalRole === "discussion", discussionOpening),
+  teacherAdapter("vocabulary", (teaching) => containsAny(sourceText(teaching), DELIVERY_POLICY.sectionKinds.vocabulary), vocabularyOpening),
+  teacherAdapter("grammar", (teaching) => containsAny(sourceText(teaching), DELIVERY_POLICY.sectionKinds.grammar), grammarOpening),
+  teacherAdapter("discussion", () => true, discussionOpening),
+];
+
+function teacherAdapter(
+  kind: TeacherSectionKind,
+  canHandle: SectionTeacherAdapter["canHandle"],
+  create: (teaching: TeachingContractV2) => TeacherOpeningViewModel,
+): SectionTeacherAdapter {
+  return { kind, canHandle, create };
+}
+
+function baseOpening(teaching: TeachingContractV2, sectionKind: TeacherSectionKind): TeacherOpeningViewModel {
   return {
-    language: renderLanguage(teaching),
-    spanishSupport: renderSpanishSupport(teaching),
-    examples: renderExamples(teaching),
-    practice: renderPractice(teaching),
-    criteria: renderCriteria(teaching),
+    sectionKind,
+    activeSection: selectActiveSection(teaching, sectionKind),
+    objective: learningObjective(teaching),
+    mission: communicationMission(teaching, sectionKind),
+    context: realContext(teaching, sectionKind),
+    focus: teaching.coreConcept,
+    usefulLanguage: usefulLanguage(teaching),
+    teacherExplanation: specificExplanation(teaching, sectionKind),
+    spanishSupport: teaching.spanishSupport.slice(0, 3),
+    modelExamples: modelExamples(teaching),
+    controlledPractice: controlledPractice(teaching, sectionKind),
+    learnerTask: learnerTask(teaching, sectionKind),
   };
 }
 
-function renderLanguage(teaching: TeachingContractV2) {
-  const items = [
+function grammarOpening(teaching: TeachingContractV2) {
+  return baseOpening(teaching, "grammar");
+}
+
+function grammarPlusOpening(teaching: TeachingContractV2) {
+  return {
+    ...baseOpening(teaching, "grammarPlus"),
+    context: "This is a consolidation class. We slow down, notice the form, and use it accurately before moving back to freer speaking.",
+  };
+}
+
+function vocabularyOpening(teaching: TeachingContractV2) {
+  return baseOpening(teaching, "vocabulary");
+}
+
+function listeningOpening(teaching: TeachingContractV2) {
+  return {
+    ...baseOpening(teaching, "listening"),
+    teacherExplanation: [
+      "For listening, do not try to catch every word first. Listen for the main idea, then listen again for one or two useful details.",
+      "If the audio resource is available, use it. If it is not available, I can give you a short teacher-created listening practice and I will label it clearly.",
+    ],
+  };
+}
+
+function rolePlayOpening(teaching: TeachingContractV2) {
+  return {
+    ...baseOpening(teaching, "rolePlay"),
+    teacherExplanation: [
+      "A good role play needs a clear situation, natural turns, and one useful phrase from the lesson.",
+      "Keep the first version short. We can make it more natural after you try.",
+    ],
+  };
+}
+
+function writingOpening(teaching: TeachingContractV2) {
+  return {
+    ...baseOpening(teaching, "writing"),
+    teacherExplanation: [
+      "For writing, first decide your main idea. Then add one supporting detail and one example.",
+      "A short, clear paragraph is better than a long paragraph with many mixed ideas.",
+    ],
+  };
+}
+
+function discussionOpening(teaching: TeachingContractV2) {
+  return baseOpening(teaching, "discussion");
+}
+
+function videoOpening(teaching: TeachingContractV2) {
+  return {
+    ...baseOpening(teaching, "video"),
+    activeSection: "Before watching",
+    context: "Before watching, we prepare the language you will need. The goal is not to understand every word immediately; first, predict the topic and notice useful unit language.",
+    teacherExplanation: [
+      "Prediction prepares your brain for the video. Say what you expect to see, then name the words or structures you expect to use.",
+      "We will not invent the transcript. We will use your prediction to move into the next video step.",
+    ],
+  };
+}
+
+function checkpointOpening(teaching: TeachingContractV2) {
+  return {
+    ...baseOpening(teaching, "checkpoint"),
+    context: "This checkpoint integrates the unit. First, we prepare the answer; later, I will evaluate whether you can use the unit language accurately enough to advance.",
+    learnerTask: "Write 4-6 short sentences that combine the unit grammar, useful vocabulary, and one personal example.",
+  };
+}
+
+function renderTeacherOpening(opening: TeacherOpeningViewModel) {
+  return [
+    `**Learning objective:** ${ensurePeriod(opening.objective)}`,
+    `**Communication mission:** ${ensurePeriod(opening.mission)}`,
+    "",
+    `## ${ensurePeriod(opening.activeSection)}`,
+    opening.context,
+    "",
+    `**Today's first focus:** ${ensurePeriod(opening.focus)}`,
+    "",
+    opening.usefulLanguage.length ? ["**Useful language:**", ...opening.usefulLanguage.map((item) => `- ${item}`)].join("\n") : "",
+    "",
+    "**Teacher explanation:**",
+    ...opening.teacherExplanation.map((line) => ensurePeriod(line)),
+    "",
+    opening.spanishSupport.length ? ["**Spanish support:**", ...opening.spanishSupport.map((item) => `- ${ensurePeriod(item)}`)].join("\n") : "",
+    "",
+    "**Two model answers:**",
+    ...opening.modelExamples.slice(0, 2).map((item) => `> ${ensurePeriod(item)}`),
+    "",
+    opening.controlledPractice.length ? ["**Controlled practice:**", ...opening.controlledPractice.map((item) => `- ${ensurePeriod(item)}`)].join("\n") : "",
+    "",
+    "**Your turn:**",
+    ensurePeriod(opening.learnerTask),
+  ].filter(Boolean).join("\n");
+}
+
+function learningObjective(teaching: TeachingContractV2) {
+  return `Use ${shortLanguageFocus(teaching)} in a clear B1/B2 answer`;
+}
+
+function communicationMission(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
+  const functions = teaching.targetLanguage.functions[0] || teaching.bookAnchor.skillFocus || teaching.coreConcept;
+  if (sectionKind === "writing") return "Write a short, organized answer with one clear main idea";
+  if (sectionKind === "rolePlay") return "Handle a short conversation naturally and politely";
+  if (sectionKind === "listening") return "Understand the main idea and respond with useful lesson language";
+  if (sectionKind === "video") return "Prepare to understand and discuss the video topic using unit language";
+  return ensurePeriod(functions).replace(/\.$/, "");
+}
+
+function realContext(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
+  const topic = lessonTopic(teaching);
+  if (sectionKind === "grammar" || sectionKind === "grammarPlus") {
+    return `Imagine you need to use the topic "${topic}" in a real conversation. Grammar helps you connect ideas clearly instead of listing them mechanically.`;
+  }
+  if (sectionKind === "listening") {
+    return `Imagine you hear a short conversation about "${topic}". Your first job is to catch the main idea, then reuse useful language in your own answer.`;
+  }
+  if (sectionKind === "writing") {
+    return `Imagine you need to write a short comment about "${topic}". The goal is to sound clear, organized, and natural.`;
+  }
+  if (sectionKind === "rolePlay") {
+    return `Imagine you are speaking with another person in a realistic situation. You need natural phrases, short turns, and a polite ending.`;
+  }
+  return `Imagine you are using this topic in daily life or at work. You need a clear idea, one reason, and one natural example.`;
+}
+
+function lessonTopic(teaching: TeachingContractV2) {
+  return String(teaching.bookAnchor.lessonTitle || "this topic")
+    .replace(/[.!?]+$/g, "")
+    .trim() || "this topic";
+}
+
+function usefulLanguage(teaching: TeachingContractV2) {
+  return uniqueTeachingItems([
     ...teaching.targetLanguage.patterns,
     ...teaching.targetLanguage.vocabulary,
     ...teaching.targetLanguage.functions,
-  ].filter(Boolean).slice(0, 10);
-  const rendered = items.length ? items.map((item) => `- **${item}**`) : ["- **useful language from this class**"];
-  return ["Useful patterns and chunks:", "", ...rendered];
+  ]).slice(0, 7);
 }
 
-function renderSpanishSupport(teaching: TeachingContractV2) {
-  return teaching.spanishSupport.length
-    ? ["Spanish support:", "", ...teaching.spanishSupport.map((item) => `- ${item}`)]
-    : [];
+function uniqueTeachingItems(items: string[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = normalize(item);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
-function renderExamples(teaching: TeachingContractV2) {
-  const examples = teaching.modelExamples.length
-    ? teaching.modelExamples
-    : [
-        "A strong answer gives one clear idea, one reason, and one simple example.",
-        "Use one useful chunk from the class and connect it to your own experience.",
-      ];
-  return ["Model examples / Model dialogue / Model paragraph:", "", ...examples.slice(0, 4).map((item) => `> ${item}`)];
-}
-
-function renderPractice(teaching: TeachingContractV2) {
-  const items = teaching.controlledPractice.length
-    ? teaching.controlledPractice.map((item, index) => `${index + 1}. ${item}`)
-    : ["1. Write one sentence with the target pattern.", "2. Add one useful chunk from the lesson."];
-  return ["Complete this mini-dialogue or controlled item:", "", ...items];
-}
-
-function renderCriteria(teaching: TeachingContractV2) {
+function specificExplanation(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
+  if (sectionKind === "grammar" || sectionKind === "grammarPlus") {
+    return [
+      `${teaching.coreConcept}`,
+      "Notice the form first, then use it in a short personal sentence. Accuracy matters more than length in this first step.",
+    ];
+  }
+  if (sectionKind === "vocabulary") {
+    return [
+      "Vocabulary is easier to remember as chunks, not isolated words.",
+      "Use one chunk in a complete sentence and add a reason with because.",
+    ];
+  }
   return [
-    "To approve this class later, your final answer should:",
-    "",
-    ...teaching.evaluationCriteria.slice(0, 4).map((item) => `- ${item}`),
+    `${teaching.coreConcept}`,
+    "Start with a simple answer, then add one reason or example so it sounds more complete.",
   ];
 }
 
-function learnerTask(task: string) {
-  const value = String(task || "").trim() || "write 3-5 sentences in English using the target language.";
-  return `Your turn: ${value.replace(/^write\b/i, "write")}`;
+function modelExamples(teaching: TeachingContractV2) {
+  const examples = teaching.modelExamples.filter(Boolean);
+  if (examples.length >= 2) return examples;
+  return [
+    "I can explain my idea clearly with one useful phrase from the lesson.",
+    "I can add one short reason so my answer sounds more natural.",
+  ];
+}
+
+function controlledPractice(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
+  const items = teaching.controlledPractice.filter(Boolean).slice(0, 3);
+  if (items.length) return items;
+  if (sectionKind === "rolePlay") {
+    return [
+      "A: ______",
+      "B: ______",
+      "Add one follow-up question and one polite closing.",
+    ];
+  }
+  if (sectionKind === "writing") {
+    return [
+      "Topic sentence: ______",
+      "Supporting example: ______",
+    ];
+  }
+  if (sectionKind === "video" || sectionKind === "listening") {
+    return [
+      "The main idea is ______.",
+      "One useful detail is ______.",
+    ];
+  }
+  return [
+    "Complete one short sentence with the target language before writing your full answer.",
+  ];
+}
+
+function learnerTask(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
+  const task = String(teaching.guidedProduction || "").trim();
+  if (task) return task;
+  if (sectionKind === "video") return "Write two short predictions about the video. Use one useful word or structure from the unit.";
+  if (sectionKind === "writing") return "Write 4-5 sentences with one clear topic sentence and one supporting example.";
+  if (sectionKind === "rolePlay") return "Write a 4-6 line dialogue using one opener, one follow-up, and one polite closing.";
+  return "Write 3-5 sentences using the target language and one personal example.";
+}
+
+function shortLanguageFocus(teaching: TeachingContractV2) {
+  return (
+    teaching.targetLanguage.patterns[0] ||
+    teaching.targetLanguage.grammar[0] ||
+    teaching.targetLanguage.vocabulary[0] ||
+    teaching.coreConcept ||
+    "the class language"
+  );
 }
 
 function selectOpeningSections(teaching: TeachingContractV2, kind: OpeningBlockPolicy["kind"]) {
@@ -254,24 +431,46 @@ function selectOpeningSections(teaching: TeachingContractV2, kind: OpeningBlockP
   return selected.length ? selected : [teaching.bookAnchor.lessonTitle || "Starting point"];
 }
 
+function selectActiveSection(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
+  if (sectionKind === "video") return "Before watching";
+  if (sectionKind === "checkpoint") return "Unit checkpoint";
+  return selectOpeningSections(teaching, openingBlockPolicyKind(teaching))[0] || teaching.presentation.warmupHeading || "Starting point";
+}
+
+function openingBlockPolicyKind(teaching: TeachingContractV2): OpeningBlockPolicy["kind"] {
+  return ROLE_KIND[teaching.pedagogicalRole] || "guided_block";
+}
+
 function hasSingleClearLearnerTask(text: string) {
   const normalized = normalize(text);
-  const signals = ["your turn", "now your turn", "answer in english", "write", "complete", "try"];
-  const hits = signals.filter((signal) => normalized.includes(signal)).length;
-  return hits >= 1 && hits <= 4;
+  const hits = ["your turn", "now your turn"].filter((signal) => normalized.includes(signal)).length;
+  return hits === 1;
 }
 
 function policySpecificEvidence(kind: OpeningBlockPolicy["kind"], normalized: string) {
   const requirements: Record<OpeningBlockPolicy["kind"], string[]> = {
     video: ["before watching", "prediction", "video"],
-    checkpoint: ["criteria", "rubric", "approve", "checkpoint"],
-    guided_block: ["teacher explanation", "controlled practice", "vocabulary", "key vocabulary", "useful chunks"],
+    checkpoint: ["checkpoint", "unit", "your turn"],
+    guided_block: ["teacher explanation", "two model", "useful language"],
   };
   const required = requirements[kind];
-  return required.filter((signal) => normalized.includes(signal)).length >= (kind === "guided_block" ? 2 : 1);
+  return required.filter((signal) => normalized.includes(normalize(signal))).length >= (kind === "guided_block" ? 2 : 1);
 }
 
-function containsAny(value: string, signals: string[]) {
+function sourceText(teaching: TeachingContractV2) {
+  return [
+    teaching.pedagogicalRole,
+    teaching.languageFamily,
+    teaching.bookAnchor.sections.join(" "),
+    teaching.bookAnchor.skillFocus,
+    teaching.targetLanguage.grammar.join(" "),
+    teaching.targetLanguage.patterns.join(" "),
+    teaching.targetLanguage.vocabulary.join(" "),
+    teaching.targetLanguage.functions.join(" "),
+  ].join(" ");
+}
+
+function containsAny(value: string, signals: readonly string[]) {
   const normalized = normalize(value);
   return signals.some((signal) => normalized.includes(normalize(signal)));
 }
@@ -282,4 +481,10 @@ function sameText(left: string, right: string) {
 
 function normalize(value: string) {
   return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function ensurePeriod(value: string) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return /[.!?)]$/.test(text) ? text : `${text}.`;
 }

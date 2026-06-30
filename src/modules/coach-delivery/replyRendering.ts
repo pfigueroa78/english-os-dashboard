@@ -314,7 +314,7 @@ export function renderClassReply(params: {
     params.localClass,
   );
   const reference = [
-    `class ${params.displayClass || params.localClass}`,
+    `class ${params.localClass}`,
     displayLesson,
   ].filter(Boolean).join(" · ");
   const header = [

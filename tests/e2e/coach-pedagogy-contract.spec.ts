@@ -574,8 +574,9 @@ test("Grammar Plus fallback hides internal source-safety wording from learners",
     },
   });
 
-  expect(reply).toContain("Warm-up");
   expect(reply).toContain("Teacher explanation");
+  expect(reply).toContain("Controlled practice");
+  expect(reply).toContain("Your turn");
   expect(reply).not.toContain("Recycle confirmed");
   expect(reply).not.toContain("confirmed Unit");
   expect(reply).not.toContain("Use only target structures confirmed");
@@ -617,16 +618,14 @@ test("normal class opening teaches a full learning block before asking once", as
 
   expect(reply).toContain("Bloque 1 de 3 - Learn & practice");
   expect(reply).toContain("Empezamos con un bloque docente");
-  expect(reply).toContain("## Warm-up");
-  expect(reply).toContain("## Key vocabulary");
-  expect(reply).toContain("## Teacher explanation");
-  expect(reply).toContain("## Controlled practice");
-  expect(reply).toContain("## Speaking practice");
-  expect(reply).toContain("Infinitive and gerund phrases");
+  expect(reply).toContain("Teacher explanation");
+  expect(reply).toContain("Useful language");
+  expect(reply).toContain("Controlled practice");
+  expect(reply).toContain("Two model answers");
+  expect(reply).toContain("infinitive and gerund phrases");
   expect(reply).toContain("It's + adjective/noun + infinitive phrase");
-  expect(reply).toContain("It's rude to ignore your conversation partner");
-  expect(reply).toContain("Ignoring your conversation partner is rude");
-  expect(reply).toContain("What kind of conversationalist are you");
+  expect(reply).toContain("appropriate");
+  expect(reply).toContain("Your turn");
   expectNoPoorTeachingTemplate(reply);
   expect(reply.match(/Your turn/gi)?.length).toBe(1);
 });
@@ -643,9 +642,10 @@ test("teacher-led delivery is driven by Teaching Contract v2 instead of unit-spe
   expect(contractV2).toContain("guidedProduction");
   expect(contractV2).toContain("evaluationCriteria");
   expect(policy).toContain("buildTeachingContractV2(identity)");
-  expect(policy).toContain("commonLearningSections");
-  expect(policy).toContain("renderSpanishSupport");
-  expect(policy).toContain("renderCriteria");
+  expect(policy).toContain("TeacherOpeningViewModel");
+  expect(policy).toContain("SectionTeacherAdapter");
+  expect(policy).toContain("renderTeacherOpening");
+  expect(policy).toContain("controlledPractice");
   expect(policy).not.toMatch(/Unit\s+4\s+Class\s+27|unit\s*===\s*4|localClass\s*===\s*(?:22|23|24|25|26|27|28)/i);
 });
 
@@ -690,9 +690,10 @@ test("Teaching Contract v2 adds selective Spanish support and measurable product
   expect(reply).toContain("Spanish support");
   expect(reply).toContain("unless =");
   expect(reply).toContain("as long as =");
+  expect(reply).toContain("Controlled practice");
   expect(reply.toLowerCase()).toContain("write 4 sentences about your sleep or energy habits");
-  expect(reply).toContain("To approve this class later");
-  expect(reply).toContain("uses the target language accurately");
+  expect(reply).not.toContain("To approve this class later");
+  expect(reply).not.toContain("2 pts");
   expectNoPoorTeachingTemplate(reply);
 });
 
@@ -725,6 +726,34 @@ test("Teaching Contract v2 prioritizes the primary grammar family over secondary
   expect(reply.toLowerCase()).toContain("write 4-5 sentences about your routine");
   expect(reply).not.toContain("Write a 4-6 line advice dialogue");
   expectNoPoorTeachingTemplate(reply);
+});
+
+test("class reply displays the local unit class instead of the global class number", async () => {
+  const reply = renderClassReply({
+    body: "Thin answer.",
+    position: "Pedro, trabajaremos con **Unit 4, Class 1**.",
+    unit: 4,
+    localClass: 1,
+    displayClass: 22,
+    identity: {
+      lessonTitle: "It's about time!",
+      bookPages: "",
+      pdfPages: "",
+      sections: "Starting point + Discussion + Grammar",
+      skillFocus: "speaking, discussion, grammar practice",
+      grammarFocus: "Reduced time clauses: before, after, while; other time clauses with ever since, as soon as, until, whenever, from the moment",
+      vocabularyFocus: "morning person; late riser; night owl; burn out; calm down; doze off; perk up",
+      functions: "define boldfaced words; talk about routines and energy",
+      targetStructures: "After finishing my workout; While taking my lunch break; As soon as I get up; Until I've had my coffee",
+      expectedProduction: "answer questions about routines and energy patterns using time clauses and unit vocabulary",
+    },
+  });
+
+  expect(reply).toContain("Hoy trabajaremos **class 1");
+  expect(reply).not.toContain("Hoy trabajaremos **class 22");
+  expect(reply).toContain("Teacher explanation");
+  expect(reply).toContain("Controlled practice");
+  expect(reply.match(/Your turn/gi)?.length).toBe(1);
 });
 
 test("Grammar Plus openings emphasize accuracy decisions instead of repeating introductory production", async () => {
@@ -779,12 +808,13 @@ test("small talk class opening teaches openers, closers, and a dialogue before a
     },
   });
 
-  expect(reply).toContain("## Warm-up: making small talk");
+  expect(reply).toContain("## Role Play");
   expect(reply).toContain("Conversation openers");
   expect(reply).toContain("Conversation closers");
   expect(reply).toContain("How's it going?");
   expect(reply).toContain("It was great to meet you.");
-  expect(reply).toContain("Model dialogue");
+  expect(reply).toContain("Two model answers");
+  expect(reply).toContain("Controlled practice");
   expect(reply).toContain("one polite closer");
   expectNoPoorTeachingTemplate(reply);
   expect(reply.match(/Your turn/gi)?.length).toBe(1);
@@ -822,7 +852,7 @@ test("Unit 4 openings use concrete pedagogy instead of mechanical fallback sente
         targetStructures: "As soon as I...; After I...; Before I...; Until I...; Whenever I...; Ever since I...",
         expectedProduction: "write sentences about routines using time clauses",
       },
-      expected: ["As soon as I wake up", "Whenever I feel tired", "Before I ______, I ______"],
+      expected: ["As soon as I wake up", "Whenever I feel tired", "Controlled practice"],
     },
     {
       name: "sleep condition clauses",
@@ -838,7 +868,7 @@ test("Unit 4 openings use concrete pedagogy instead of mechanical fallback sente
         targetStructures: "even if I'm really tired; considering that most people need eight hours; as long as I take a nap during the day; Unless I get a good night's sleep",
         expectedProduction: "describe sleep habits using reason and condition clauses",
       },
-      expected: ["Even if I am tired", "Unless I get enough sleep", "As long as I ______, I ______"],
+      expected: ["Even if I am tired", "Unless I get enough sleep", "Controlled practice"],
     },
     {
       name: "dream listening",
@@ -854,7 +884,7 @@ test("Unit 4 openings use concrete pedagogy instead of mechanical fallback sente
         targetStructures: "I think that means...; It sounds like...; The balloon probably stands for...",
         expectedProduction: "predict and discuss dream meanings using dream vocabulary",
       },
-      expected: ["dream about falling", "being chased", "The main idea is"],
+      expected: ["dream about falling", "Being chased", "The main idea is"],
     },
   ];
 
@@ -891,7 +921,7 @@ test("generic pedagogical profiles produce rich openings without unit-specific h
         targetStructures: "must have + past participle; might have + past participle; can't have + past participle",
         expectedProduction: "complete sentences using modals and discuss possible explanations",
       },
-      expected: ["## Warm-up: notice the language", "Useful patterns", "must have + past participle", "## Controlled practice"],
+      expected: ["## Starting point", "Useful language", "must have + past participle", "Controlled practice"],
     },
     {
       name: "vocabulary-speaking",
@@ -907,7 +937,7 @@ test("generic pedagogical profiles produce rich openings without unit-specific h
         targetStructures: "I usually... because...; One solution is...",
         expectedProduction: "use problem-solving vocabulary in a short spoken answer",
       },
-      expected: ["## Warm-up: activate the topic", "Key vocabulary and chunks", "deal with a problem", "## Speaking practice"],
+      expected: ["## Vocabulary & Speaking", "Useful language", "deal with a problem", "Controlled practice"],
     },
     {
       name: "listening",
@@ -923,7 +953,7 @@ test("generic pedagogical profiles produce rich openings without unit-specific h
         targetStructures: "The main idea is...; One detail is...",
         expectedProduction: "answer gist and detail questions after listening",
       },
-      expected: ["## Warm-up: listening purpose", "Gist", "Details", "The main idea is"],
+      expected: ["Teacher explanation", "main idea", "details", "The main idea is"],
     },
     {
       name: "role-play",
@@ -939,7 +969,7 @@ test("generic pedagogical profiles produce rich openings without unit-specific h
         targetStructures: "A: ... / B: ...; follow-up question + short answer",
         expectedProduction: "write and perform a short dialogue",
       },
-      expected: ["## Warm-up: role-play situation", "Model dialogue", "Complete this mini-dialogue", "4-6 line dialogue"],
+      expected: ["## Role Play", "Two model answers", "Controlled practice", "4-6 line dialogue"],
     },
     {
       name: "writing",
@@ -955,7 +985,7 @@ test("generic pedagogical profiles produce rich openings without unit-specific h
         targetStructures: "topic sentence; supporting sentences; concluding sentence",
         expectedProduction: "write a paragraph with a clear main idea",
       },
-      expected: ["## Warm-up: writing purpose", "Topic sentence", "Model paragraph", "write one short paragraph"],
+      expected: ["Teacher explanation", "Topic sentence", "Controlled practice", "Write one short paragraph"],
     },
     {
       name: "discussion",
@@ -971,7 +1001,7 @@ test("generic pedagogical profiles produce rich openings without unit-specific h
         targetStructures: "I think... because...; In my opinion...; For example...",
         expectedProduction: "give an opinion with a reason and example",
       },
-      expected: ["## Warm-up: opinion and reason", "I think", "For example", "Give your opinion"],
+      expected: ["Teacher explanation", "I think", "For example", "Give your opinion"],
     },
   ];
 

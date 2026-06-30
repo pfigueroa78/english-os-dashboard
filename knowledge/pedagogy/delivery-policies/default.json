@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "policyId": "teacher-led-opening-v1",
+  "description": "Controls the first teacher-led class turn. The opening teaches one real section, gives models, asks one learner task, and never exposes approval rubrics.",
+  "openingRules": {
+    "minimumWords": 95,
+    "maximumLearnerTasks": 1,
+    "requiredSignals": [
+      "Learning objective",
+      "Communication mission",
+      "Your turn"
+    ],
+    "forbiddenPhrases": [
+      "To approve this class later",
+      "2 pts",
+      "Use the target language to communicate one clear idea",
+      "We will follow a simple teaching path",
+      "Model examples / Model dialogue / Model paragraph",
+      "Evaluation gate",
+      "Session logged"
+    ]
+  },
+  "sectionKinds": {
+    "grammar": ["grammar", "time clause", "modal", "gerund", "infinitive", "condition", "reported", "passive"],
+    "vocabulary": ["vocabulary", "chunks", "word power"],
+    "listening": ["listening", "audio", "while listening"],
+    "reading": ["reading", "article", "text"],
+    "writing": ["writing", "paragraph", "outline", "topic sentence"],
+    "discussion": ["discussion", "opinion", "speaking"],
+    "rolePlay": ["role play", "role-play", "dialogue"],
+    "video": ["video", "before watching", "while watching", "after watching"],
+    "grammarPlus": ["grammar plus", "practice lab"],
+    "checkpoint": ["checkpoint", "unit review"]
+  }
+}

@@ -1,24 +1,13 @@
 import type { ClassIdentity } from "@/modules/coach-delivery/teachingContracts";
+import {
+  LANGUAGE_FAMILY_PROFILES,
+  PEDAGOGICAL_ROLE_PROFILES,
+  type LanguageFamilyProfile,
+  type LessonLanguageFamily,
+  type PedagogicalRole,
+} from "@/modules/coach-delivery/pedagogicalProfiles";
 
-export type PedagogicalRole =
-  | "student-book-block"
-  | "grammar-plus"
-  | "listening"
-  | "role-play"
-  | "writing"
-  | "video"
-  | "checkpoint"
-  | "discussion";
-
-export type LessonLanguageFamily =
-  | "time-clauses"
-  | "condition-clauses"
-  | "stress-advice"
-  | "dream-speculation"
-  | "small-talk"
-  | "social-behavior"
-  | "writing"
-  | "general";
+export type { LessonLanguageFamily, PedagogicalRole } from "@/modules/coach-delivery/pedagogicalProfiles";
 
 export type TeachingContractV2 = {
   bookAnchor: {
@@ -29,6 +18,11 @@ export type TeachingContractV2 = {
   pedagogicalRole: PedagogicalRole;
   languageFamily: LessonLanguageFamily;
   coreConcept: string;
+  presentation: {
+    warmupHeading: string;
+    explanationHeading: string;
+    productionHeading: string;
+  };
   targetLanguage: {
     grammar: string[];
     vocabulary: string[];
@@ -36,11 +30,55 @@ export type TeachingContractV2 = {
     patterns: string[];
   };
   spanishSupport: string[];
+  modelExamples: string[];
   controlledPractice: string[];
   guidedProduction: string;
   evaluationCriteria: string[];
   commonMistakes: string[];
 };
+
+const VARIANT_ROLE_BY_NAME: Partial<Record<PedagogicalRole, "grammarPlus">> = {
+  "grammar-plus": "grammarPlus",
+};
+
+const DEFAULT_WARMUP_HEADING_BY_ROLE: Partial<Record<PedagogicalRole, string>> = {
+  listening: "Warm-up: listening purpose",
+  "role-play": "Warm-up: role-play situation",
+  writing: "Warm-up: writing purpose",
+  discussion: "Warm-up: opinion and reason",
+};
+
+const DEFAULT_EXPLANATION_HEADING_BY_ROLE: Partial<Record<PedagogicalRole, string>> = {
+  listening: "Teacher explanation: Gist and Details",
+  writing: "Teacher explanation: organize before writing",
+  "role-play": "Teacher explanation: conversation moves",
+};
+
+const DEFAULT_PRODUCTION_HEADING_BY_ROLE: Partial<Record<PedagogicalRole, string>> = {
+  writing: "Writing practice",
+};
+
+const DEFAULT_GUIDED_PRODUCTION_BY_ROLE: Partial<Record<PedagogicalRole, string>> = {
+  discussion: "Give your opinion in 3-5 sentences. Include one reason and one example.",
+  "role-play": "Write a 4-6 line dialogue. Include an opening, one follow-up question, one short response, and a natural closing.",
+  writing: "Write one short paragraph of 4-5 sentences. Include one clear topic sentence and one supporting example.",
+};
+
+const EXPECTED_PRODUCTION_FIRST_FAMILIES = new Set<LessonLanguageFamily>(["general"]);
+
+type SourceLens = {
+  primary: string;
+  full: string;
+  firstSection: string;
+};
+
+type MatchScore = {
+  score: number;
+  priority: number;
+};
+
+const CONTRACT_CACHE_LIMIT = 256;
+const teachingContractCache = new Map<string, TeachingContractV2>();
 
 export function splitTeachingItems(value: string, limit = 24) {
   const text = String(value || "");
@@ -62,17 +100,27 @@ export function learnerSafeTeachingCue(value: string) {
 }
 
 export function buildTeachingContractV2(identity: ClassIdentity): TeachingContractV2 {
-  const sections = String(identity.sections || "")
-    .split("+")
-    .map((section) => learnerSafeTeachingCue(section))
-    .filter(Boolean);
+  const cacheKey = teachingContractCacheKey(identity);
+  const cached = teachingContractCache.get(cacheKey);
+  if (cached) return cached;
+  const contract = createTeachingContractV2(identity);
+  teachingContractCache.set(cacheKey, contract);
+  if (teachingContractCache.size > CONTRACT_CACHE_LIMIT) {
+    const oldestKey = teachingContractCache.keys().next().value;
+    if (oldestKey) teachingContractCache.delete(oldestKey);
+  }
+  return contract;
+}
+
+function createTeachingContractV2(identity: ClassIdentity): TeachingContractV2 {
+  const sections = parseSections(identity.sections);
   const grammar = splitTeachingItems(identity.grammarFocus, 12);
   const vocabulary = splitTeachingItems(identity.vocabularyFocus, 24);
   const functions = splitTeachingItems(identity.functions || identity.skillFocus, 12);
   const patterns = splitTeachingItems(identity.targetStructures || identity.grammarFocus, 16);
-  const role = pedagogicalRoleFor(identity, sections);
-  const family = languageFamilyFor(identity, sections, grammar, vocabulary, functions, patterns);
-  const source = [...grammar, ...vocabulary, ...functions, ...patterns, identity.lessonTitle, identity.expectedProduction].join(" ").toLowerCase();
+  const source = buildSourceLens(identity, sections, grammar, vocabulary, functions, patterns);
+  const role = selectPedagogicalRole(source);
+  const profile = selectLanguageFamilyProfile(source);
 
   return {
     bookAnchor: {
@@ -81,45 +129,68 @@ export function buildTeachingContractV2(identity: ClassIdentity): TeachingContra
       skillFocus: learnerSafeTeachingCue(identity.skillFocus),
     },
     pedagogicalRole: role,
-    languageFamily: family,
-    coreConcept: coreConceptFor(family, functions, identity.lessonTitle),
+    languageFamily: profile.family,
+    coreConcept: buildCoreConcept(profile, functions, identity.lessonTitle),
+    presentation: {
+      warmupHeading: profile.warmupHeading || defaultWarmupHeading(role),
+      explanationHeading: profile.explanationHeading || defaultExplanationHeading(role),
+      productionHeading: profile.productionHeading || defaultProductionHeading(role),
+    },
     targetLanguage: {
       grammar,
       vocabulary,
       functions,
       patterns,
     },
-    spanishSupport: spanishSupportFor(family),
-    controlledPractice: controlledPracticeFor(family, role),
-    guidedProduction: guidedProductionFor(family, role, identity.expectedProduction),
-    evaluationCriteria: evaluationCriteriaFor(family, source),
-    commonMistakes: commonMistakesFor(family, source),
+    spanishSupport: (profile.spanishSupport || []).slice(0, 3),
+    modelExamples: (profile.modelExamples || []).slice(0, 4),
+    controlledPractice: selectPractice(profile, role),
+    guidedProduction: selectGuidedProduction(profile, role, identity.expectedProduction),
+    evaluationCriteria: evaluationCriteriaFor(profile.family, source.full),
+    commonMistakes: commonMistakesFor(profile, source.full),
   };
 }
 
-function pedagogicalRoleFor(identity: ClassIdentity, sections: string[]): PedagogicalRole {
-  const sectionText = sections.join(" ").toLowerCase();
-  const source = [identity.lessonTitle, identity.sections, identity.skillFocus, identity.expectedProduction].join(" ").toLowerCase();
-  const firstSection = sections[0]?.toLowerCase() || "";
-
-  if (/checkpoint|unit review|review class/.test(source)) return "checkpoint";
-  if (/video|before watching|while watching|after watching/.test(sectionText)) return "video";
-  if (/grammar plus|practice lab/.test(sectionText) || /grammar consolidation|grammar plus/.test(source)) return "grammar-plus";
-  if (/listening|audio|while listening/.test(firstSection)) return "listening";
-  if (/role play|role-play/.test(firstSection) || /role-play|role play/.test(source)) return "role-play";
-  if (/writing|paragraph|outline/.test(firstSection) || /writing|paragraph|outline/.test(source)) return "writing";
-  if (/discussion/.test(firstSection)) return "discussion";
-  return "student-book-block";
+function teachingContractCacheKey(identity: ClassIdentity) {
+  return [
+    identity.lessonTitle,
+    identity.sections,
+    identity.skillFocus,
+    identity.grammarFocus,
+    identity.vocabularyFocus,
+    identity.functions,
+    identity.targetStructures,
+    identity.expectedProduction,
+  ].map((value) => String(value || "").trim()).join("\u001f");
 }
 
-function languageFamilyFor(
+function defaultWarmupHeading(role: PedagogicalRole) {
+  return DEFAULT_WARMUP_HEADING_BY_ROLE[role] || "Warm-up: real communication situation";
+}
+
+function defaultExplanationHeading(role: PedagogicalRole) {
+  return DEFAULT_EXPLANATION_HEADING_BY_ROLE[role] || "Teacher explanation";
+}
+
+function defaultProductionHeading(role: PedagogicalRole) {
+  return DEFAULT_PRODUCTION_HEADING_BY_ROLE[role] || "Speaking practice";
+}
+
+function parseSections(value: string) {
+  return String(value || "")
+    .split("+")
+    .map((section) => learnerSafeTeachingCue(section))
+    .filter(Boolean);
+}
+
+function buildSourceLens(
   identity: ClassIdentity,
   sections: string[],
   grammar: string[],
   vocabulary: string[],
   functions: string[],
   patterns: string[],
-): LessonLanguageFamily {
+): SourceLens {
   const primary = [
     identity.lessonTitle,
     sections.join(" "),
@@ -128,157 +199,105 @@ function languageFamilyFor(
     identity.expectedProduction,
   ].join(" ").toLowerCase();
   const full = [primary, vocabulary.join(" "), functions.join(" "), identity.skillFocus].join(" ").toLowerCase();
-
-  if (/conversation opener|conversation closer|small talk|how's it going|weather|keep a conversation going|close a conversation/.test(full)) {
-    return "small-talk";
-  }
-  if (/appropriate|inappropriate|rude|bad form|gerund phrase|infinitive phrase|polite to|impolite|offensive|compliment|insult/.test(full)) {
-    return "social-behavior";
-  }
-  if (/reduced time|after finishing|while taking|time clause|as soon as|whenever|ever since|before i|after i|until i/.test(primary)) {
-    return "time-clauses";
-  }
-  if (/even if|considering that|as long as|unless|just in case|only if|provided that|providing that|whether or not|now that/.test(primary)) {
-    return "condition-clauses";
-  }
-  if (/dream|flying|falling|chased|losing teeth|stands for|symbolize/.test(full)) {
-    return "dream-speculation";
-  }
-  if (/stress|fatigue|lack of energy|vent|massage|yoga|hot bath|too many responsibilities|soft advice|advice expression/.test(full)) {
-    return "stress-advice";
-  }
-  if (/writing|paragraph|outline|topic sentence|supporting sentence|concluding sentence/.test(full)) {
-    return "writing";
-  }
-  return "general";
+  return {
+    primary,
+    full,
+    firstSection: (sections[0] || "").toLowerCase(),
+  };
 }
 
-function coreConceptFor(family: LessonLanguageFamily, functions: string[], lessonTitle: string) {
-  const safeLesson = learnerSafeTeachingCue(lessonTitle);
-  if (family === "time-clauses") {
-    return "Use time clauses to describe when actions happen in your routine, and reduce clauses only when it sounds natural.";
-  }
-  if (family === "condition-clauses") {
-    return "Explain sleep, energy, and habits with reason and condition clauses.";
-  }
-  if (family === "stress-advice") {
-    return "Identify stress or energy problems and give practical advice politely.";
-  }
-  if (family === "dream-speculation") {
-    return "Describe dreams and speculate about possible meanings without presenting interpretations as facts.";
-  }
-  if (family === "small-talk") {
-    return "Start, continue, and close small talk naturally.";
-  }
-  if (family === "social-behavior") {
-    return "Comment on social behavior using infinitive and gerund phrases.";
-  }
+function selectPedagogicalRole(source: SourceLens): PedagogicalRole {
+  const best = PEDAGOGICAL_ROLE_PROFILES
+    .map((profile) => ({
+      profile,
+      match: scoreSignals(source.full, profile.signals, profile.priority, source.firstSection, profile.firstSectionSignals),
+    }))
+    .sort((left, right) => compareMatches(right.match, left.match))[0];
+  return best?.match.score ? best.profile.role : "student-book-block";
+}
+
+function selectLanguageFamilyProfile(source: SourceLens): LanguageFamilyProfile {
+  const fallback = LANGUAGE_FAMILY_PROFILES[LANGUAGE_FAMILY_PROFILES.length - 1];
+  const best = LANGUAGE_FAMILY_PROFILES
+    .map((profile) => ({
+      profile,
+      match: scoreLanguageProfile(source, profile),
+    }))
+    .sort((left, right) => compareMatches(right.match, left.match))[0];
+  return best?.match.score ? best.profile : fallback;
+}
+
+function scoreLanguageProfile(source: SourceLens, profile: LanguageFamilyProfile): MatchScore {
+  const primaryScore = countSignalHits(source.primary, profile.primarySignals || []) * 2;
+  const fullScore = countSignalHits(source.full, profile.fullSignals || []);
+  const score = primaryScore + fullScore;
+  return {
+    score,
+    priority: score > 0 ? profile.priority : 0,
+  };
+}
+
+function scoreSignals(
+  text: string,
+  signals: readonly string[],
+  priority: number,
+  firstSection: string,
+  firstSectionSignals: readonly string[] = [],
+): MatchScore {
+  const score = countSignalHits(text, signals) + countSignalHits(firstSection, firstSectionSignals) * 2;
+  return {
+    score,
+    priority: score > 0 ? priority : 0,
+  };
+}
+
+function countSignalHits(text: string, signals: readonly string[]) {
+  return signals.reduce((count, signal) => count + (containsSignal(text, signal) ? 1 : 0), 0);
+}
+
+function containsSignal(text: string, signal: string) {
+  return normalizeForMatching(text).includes(normalizeForMatching(signal));
+}
+
+function normalizeForMatching(value: string) {
+  return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function compareMatches(left: MatchScore, right: MatchScore) {
+  if (left.score !== right.score) return left.score - right.score;
+  return left.priority - right.priority;
+}
+
+function buildCoreConcept(profile: LanguageFamilyProfile, functions: string[], lessonTitle: string) {
   const purpose = functions.find(Boolean);
+  if (profile.family !== "general") return profile.coreConcept;
+  const safeLesson = learnerSafeTeachingCue(lessonTitle);
   return purpose ? `Use this lesson language to ${purpose}.` : `Use the language from ${safeLesson || "this lesson"} in a clear real-life answer.`;
 }
 
-function spanishSupportFor(family: LessonLanguageFamily) {
-  const support: string[] = [];
-  if (family === "time-clauses") {
-    support.push("En español solemos decir la idea completa; en inglés puedes acortar after/while/before cuando el sujeto es el mismo.");
-    support.push("As soon as, until, whenever y ever since normalmente se mantienen como cláusulas completas.");
-  }
-  if (family === "condition-clauses") {
-    support.push("even if = incluso si / aunque; la condición no cambia el resultado.");
-    support.push("as long as = siempre que / con tal de que; expresa una condición necesaria.");
-    support.push("unless = a menos que / si no; cuidado con duplicar negativos.");
-  }
-  if (family === "social-behavior") {
-    support.push("It's + adjective + to + verb y Gerund + is + adjective pueden expresar la misma idea con distinto estilo.");
-  }
-  if (family === "stress-advice") {
-    support.push("Para sonar amable, usa You might want to... o It might not be a bad idea to..., no solo You must...");
-  }
-  return support.slice(0, 3);
-}
-
-function controlledPracticeFor(family: LessonLanguageFamily, role: PedagogicalRole) {
-  if (family === "time-clauses" && role === "grammar-plus") {
-    return [
-      "Can this clause be reduced? After I finish work, I check my messages.",
-      "Can this clause be reduced? As soon as I wake up, I check my calendar.",
-      "Rewrite only if natural: While I am waiting for the meeting, I review my notes.",
-    ];
-  }
-  if (family === "time-clauses") {
-    return [
-      "Rewrite: After I finish work, I check my messages. → After finishing work, I check my messages.",
-      "Complete: As soon as I ______, I ______.",
-      "Complete: Whenever I ______, I ______.",
-    ];
-  }
-  if (family === "condition-clauses") {
-    return [
-      "Complete: I can stay productive as long as ______.",
-      "Complete: I feel exhausted even if ______.",
-      "Complete: I do not sleep well unless ______.",
-    ];
-  }
-  if (family === "stress-advice") {
-    return [
-      "Cause: I feel stressed because I have too many responsibilities.",
-      "Advice: You might want to ______.",
-      "Soft advice: It might not be a bad idea to ______.",
-    ];
-  }
-  if (family === "dream-speculation") {
-    return [
-      "The main idea is ______.",
-      "One detail is ______.",
-      "I think the dream might mean ______.",
-    ];
-  }
-  if (family === "small-talk") {
-    return [
-      "Opener: Hi, how's it going?",
-      "Follow-up: Do you know many people here?",
-      "Closer: It was great to meet you. I should get going.",
-    ];
-  }
-  if (role === "role-play") {
-    return [
-      "A: ______",
-      "B: ______",
-      "A: ______",
-      "B: ______",
-    ];
-  }
-  return [
+function selectPractice(profile: LanguageFamilyProfile, role: PedagogicalRole) {
+  const variant = variantRole(role);
+  const practice = variant === "grammarPlus" && profile.grammarPlusPractice?.length
+    ? profile.grammarPlusPractice
+    : profile.controlledPractice;
+  return (practice || [
     "Write one sentence with the target pattern.",
     "Add one useful word or chunk from the lesson.",
     "Give one short personal example.",
-  ];
+  ]).slice(0, 3);
 }
 
-function guidedProductionFor(family: LessonLanguageFamily, role: PedagogicalRole, expectedProduction: string) {
+function selectGuidedProduction(profile: LanguageFamilyProfile, role: PedagogicalRole, expectedProduction: string) {
   const expected = learnerSafeTeachingCue(expectedProduction);
-  if (family === "time-clauses" && role === "grammar-plus") {
-    return "Write 5 short items: decide which clauses you can reduce, rewrite two reduced clauses, keep one full time clause, and explain one choice.";
-  }
-  if (family === "stress-advice") {
-    return "Write a 4-6 line advice dialogue. Include one cause of stress, one soft advice expression, and one practical solution.";
-  }
-  if (family === "dream-speculation") {
-    return "Write 3-4 sentences: predict the listening topic, mention two dream words, and speculate with might / could / sounds like.";
-  }
-  if (family === "time-clauses") {
-    return "Write 4-5 sentences about your routine: two reduced time clauses, one full time clause, and one energy-pattern vocabulary chunk.";
-  }
-  if (family === "condition-clauses") {
-    return "Write 4 sentences about your sleep or energy habits using two vocabulary chunks and two reason/condition clauses.";
-  }
-  if (family === "small-talk" || role === "role-play") {
-    return "Write a 4-6 line dialogue. Include one opener, one follow-up question, one short answer, and one natural closing.";
-  }
-  if (family === "writing" || role === "writing") {
-    return "Write one short paragraph of 4-5 sentences. Include one clear topic sentence and one supporting example.";
-  }
-  return expected || "Write 3-5 sentences using the target language, useful vocabulary, and one personal example.";
+  if (variantRole(role) === "grammarPlus" && profile.grammarPlusProduction) return profile.grammarPlusProduction;
+  if (!EXPECTED_PRODUCTION_FIRST_FAMILIES.has(profile.family) && profile.guidedProduction) return profile.guidedProduction;
+  if (DEFAULT_GUIDED_PRODUCTION_BY_ROLE[role]) return DEFAULT_GUIDED_PRODUCTION_BY_ROLE[role];
+  if (EXPECTED_PRODUCTION_FIRST_FAMILIES.has(profile.family) && expected) return expected;
+  return profile.guidedProduction || expected || "Write 3-5 sentences using the target language, useful vocabulary, and one personal example.";
+}
+
+function variantRole(role: PedagogicalRole) {
+  return VARIANT_ROLE_BY_NAME[role] || "default";
 }
 
 function evaluationCriteriaFor(family: LessonLanguageFamily, source: string) {
@@ -288,25 +307,28 @@ function evaluationCriteriaFor(family: LessonLanguageFamily, source: string) {
     "2 pts - gives complete answers with a clear idea",
     "2 pts - sounds natural for B1/B2 communication",
   ];
-  if (family === "small-talk" || /professional|work|meeting|productivity|schedule|responsibilities/.test(source)) {
-    criteria.push("2 pts - connects the answer to a realistic social, work, or daily-life situation");
-  } else {
-    criteria.push("2 pts - includes one personal example");
-  }
+  const socialWorkOrDailySituation = ["small-talk", "social-behavior"].includes(family)
+    || containsAnySignal(source, ["professional", "work", "meeting", "productivity", "schedule", "responsibilities"]);
+  criteria.push(
+    socialWorkOrDailySituation
+      ? "2 pts - connects the answer to a realistic social, work, or daily-life situation"
+      : "2 pts - includes one personal example",
+  );
   criteria.push("Pass: 8/10. Review: 6-7/10. Repeat: below 6/10.");
   return criteria;
 }
 
-function commonMistakesFor(family: LessonLanguageFamily, source: string) {
-  const mistakes: string[] = [];
-  if (family === "time-clauses" || /as soon as|when|before|after|until|whenever/.test(source)) {
-    mistakes.push("Do not use will after time linkers: As soon as I get up, not As soon as I will get up.");
-  }
-  if (family === "time-clauses" || /reduced time|after finishing|while taking/.test(source)) {
-    mistakes.push("Do not reduce every time clause. As soon as I wake up is natural; As soon as waking up is not.");
-  }
-  if (family === "condition-clauses" || /unless/.test(source)) mistakes.push("Do not combine unless with not unless you really need a negative meaning.");
-  if (/should|ought to|might want to/.test(source)) mistakes.push("After should / could / might, use the base verb: should rest, not should to rest.");
-  if (/gerund|infinitive/.test(source)) mistakes.push("After prefer for habits, prefer + -ing is often natural: I prefer working early.");
-  return mistakes.slice(0, 3);
+function commonMistakesFor(profile: LanguageFamilyProfile, source: string) {
+  const profileMistakes = profile.commonMistakes || [];
+  const modalMistake = containsAnySignal(source, ["should", "ought to", "might want to"])
+    ? ["After should / could / might, use the base verb: should rest, not should to rest."]
+    : [];
+  const gerundMistake = containsAnySignal(source, ["gerund", "infinitive"])
+    ? ["After prefer for habits, prefer + -ing is often natural: I prefer working early."]
+    : [];
+  return [...profileMistakes, ...modalMistake, ...gerundMistake].slice(0, 3);
+}
+
+function containsAnySignal(text: string, signals: readonly string[]) {
+  return signals.some((signal) => containsSignal(text, signal));
 }

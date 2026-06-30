@@ -642,10 +642,27 @@ test("teacher-led delivery is driven by Teaching Contract v2 instead of unit-spe
   expect(contractV2).toContain("guidedProduction");
   expect(contractV2).toContain("evaluationCriteria");
   expect(policy).toContain("buildTeachingContractV2(identity)");
-  expect(policy).toContain("teachingPurposeLine");
-  expect(policy).toContain("spanishSupportBlock");
-  expect(policy).toContain("contractEvaluationPreview");
+  expect(policy).toContain("commonLearningSections");
+  expect(policy).toContain("renderSpanishSupport");
+  expect(policy).toContain("renderCriteria");
   expect(policy).not.toMatch(/Unit\s+4\s+Class\s+27|unit\s*===\s*4|localClass\s*===\s*(?:22|23|24|25|26|27|28)/i);
+});
+
+test("Teaching Contract v2 uses a profile registry instead of pedagogical if-chains", async () => {
+  const contractV2 = readFile("src/modules/coach-delivery/teachingContractV2.ts");
+  const profiles = readFile("src/modules/coach-delivery/pedagogicalProfiles.ts");
+
+  expect(contractV2).toContain("LANGUAGE_FAMILY_PROFILES");
+  expect(contractV2).toContain("PEDAGOGICAL_ROLE_PROFILES");
+  expect(profiles).toContain("LanguageFamilyProfile");
+  expect(profiles).toContain("PedagogicalRoleProfile");
+
+  expect(contractV2).not.toMatch(/family\s*===/);
+  expect(contractV2).not.toMatch(/role\s*===/);
+  expect(contractV2).not.toMatch(/localClass\s*===/);
+  expect(contractV2).not.toMatch(/\/[^/\n]+\/[a-z]*\.test\(source\)/);
+  expect(contractV2).not.toMatch(/if\s*\(\s*family\b/);
+  expect(contractV2).not.toMatch(/if\s*\(\s*role\b/);
 });
 
 test("Teaching Contract v2 adds selective Spanish support and measurable production", async () => {

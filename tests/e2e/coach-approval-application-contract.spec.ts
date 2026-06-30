@@ -168,6 +168,7 @@ test("Apps Script class approval write requires evidence, rubric, score, gate an
   expect(source).toContain("canApproveClass must be true");
   expect(source).toContain("evaluationGateCompleted must be explicit");
   expect(source).toContain("blockingErrors must be empty");
+  expect(source).toContain("classId does not match the active class");
   expect(source).not.toContain("Utilities.getUuid()).trim()");
   expect(source).not.toContain("|| 'true'");
 });
@@ -198,5 +199,7 @@ test("class progress module does not export text-driven advancement", async () =
 
   expect(source).not.toContain("export function advanceClassProgressFromReply");
   expect(source).not.toContain("function isMicroStepApproved");
+  expect(source).not.toContain("repairApprovedReplyIfNeeded");
+  expect(source).not.toContain("buildDeterministicApprovalReply");
   expect(source).not.toContain("This (?:learning block|micro-step) is approved");
 });

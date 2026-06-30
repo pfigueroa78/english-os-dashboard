@@ -350,49 +350,6 @@ export function saveStoredClassProgress(
   storage.setItem(storageKey, JSON.stringify(progress));
 }
 
-function repairApprovedReplyIfNeeded(
-  previous: CoachClassProgressState,
-  next: CoachClassProgressState,
-  reply: string,
-): ResolvedClassProgressTurn {
-  const announcedNextStep =
-    announcedStepNumber(reply, "Next block") ?? announcedStepNumber(reply, "Next micro-step");
-  const staleAnnouncement = Boolean(announcedNextStep && announcedNextStep <= previous.currentStepIndex + 1);
-  const staleCurrentStep = announcesStepAtOrBefore(reply, previous.currentStepIndex + 1);
-  const illegalVideoSimulation = isVideoWhileWatching(next) && hasTeacherSimulation(reply);
-  const genericEvaluationGate = next.status === "evaluation_ready" && /3-5 short items|target grammar, vocabulary|one personal example/i.test(reply);
-  if (!staleAnnouncement && !staleCurrentStep && !illegalVideoSimulation && !genericEvaluationGate) {
-    return { reply: enforceVideoResourceFirst(next, reply, ""), progress: next, repaired: false };
-  }
-  if (staleCurrentStep || illegalVideoSimulation) {
-    return {
-      reply: buildDeterministicApprovalReply(previous, next),
-      progress: next,
-      repaired: true,
-    };
-  }
-  const approvedPart =
-    reply.split(/Next (?:block|micro-step):/i)[0].trim() || "This learning block is approved.";
-  return {
-    reply: `${approvedPart}\n\n${buildCurrentStepTask(next)}`.trim(),
-    progress: next,
-    repaired: true,
-  };
-}
-
-function buildDeterministicApprovalReply(
-  previous: CoachClassProgressState,
-  next: CoachClassProgressState,
-) {
-  return [
-    "👍 Good answer. This learning block is approved.",
-    "",
-    `You completed Paso ${previous.currentStepIndex + 1} de ${previous.steps.length} - ${currentStepName(previous)}.`,
-    "",
-    buildCurrentStepTask(next),
-  ].join("\n");
-}
-
 function buildStructuredStepApprovalReply(
   previous: CoachClassProgressState,
   next: CoachClassProgressState,
@@ -523,17 +480,6 @@ function approveClassProgress(progress: CoachClassProgressState, nowIso: string)
     lastApprovedStepIndex: progress.steps.length - 1,
     updatedAt: nowIso,
   };
-}
-
-function enforceVideoResourceFirst(
-  progress: CoachClassProgressState,
-  reply: string,
-  learnerMessage: string,
-) {
-  if (!isVideoWhileWatching(progress) || !hasTeacherSimulation(reply) || learnerRequestedFallback(learnerMessage)) {
-    return reply;
-  }
-  return buildCurrentStepTask(progress);
 }
 
 function buildEvaluationGateTask(progress: CoachClassProgressState, heading: string) {
@@ -670,15 +616,6 @@ function sanitizeEvaluationProfile(value: unknown): CoachClassEvaluationProfile 
   return Object.keys(profile).length ? profile : undefined;
 }
 
-function announcedStepNumber(text: string, label: string) {
-  return Number(new RegExp(`${label}:\\s*Paso\\s+(\\d{1,2})\\s+de`, "i").exec(text)?.[1] || 0);
-}
-
-function announcesStepAtOrBefore(text: string, oneBasedStep: number) {
-  const matches = [...text.matchAll(/(?:Next block:|Next micro-step:|We(?:'|’)re at|Estamos en|Paso)\s*(?:Paso\s*)?(\d{1,2})\s+de/gi)];
-  return matches.some((match) => Number(match[1]) <= oneBasedStep);
-}
-
 function currentStepName(progress: CoachClassProgressState) {
   return progress.steps[progress.currentStepIndex] || "current step";
 }
@@ -697,21 +634,6 @@ function learnerRequestedFallback(text: string) {
 
 function isEvaluationGateStep(progress: CoachClassProgressState) {
   return /evaluation gate|checkpoint/i.test(currentStepName(progress)) || progress.status === "evaluation_ready";
-}
-
-function isFalseLanguageRetry(reply: string, learnerMessage: string) {
-  return /need it in English|write your answer in English|now write your answer in English|not in English/i.test(reply) &&
-    isLikelyLearnerProduction(learnerMessage) &&
-    looksLikeEnglishProduction(learnerMessage);
-}
-
-function looksLikeEnglishProduction(text: string) {
-  const words = text.toLowerCase().split(/\s+/).filter(Boolean);
-  const commonEnglish = words.filter((word) =>
-    /^(i|am|is|are|the|a|an|and|because|before|after|as|soon|when|whenever|prefer|work|working|energy|morning|night|day|my|to|in|with|more|feel|focused|productive)$/.test(word.replace(/[^\w']/g, ""))
-  ).length;
-  const hasTargetLanguage = /\b(as soon as|whenever|before|after|while|prefer|because|morning person|night owl|early bird)\b/i.test(text);
-  return commonEnglish >= 6 && hasTargetLanguage;
 }
 
 function isLikelyLearnerProduction(text: string) {

@@ -178,7 +178,7 @@ function approveCurrentClassExercises_(ss, params) {
   const userEmail = normalizeEmail_(params.userEmail || '');
   const learnerId = String(params.learnerId || userEmail).trim();
   const state = getLearningState_(ss, params).learningState;
-  const validation = validateApprovalEvidence_(params);
+  const validation = validateApprovalEvidence_(params, state);
 
   if (!validation.ok) {
     return {
@@ -215,7 +215,7 @@ function approveCurrentClassExercises_(ss, params) {
   };
 }
 
-function validateApprovalEvidence_(params) {
+function validateApprovalEvidence_(params, state) {
   const evidence = String(params.approvalEvidence || '').trim();
   const rubric = String(params.rubric || '').trim();
   const score = Number(params.approvalScore || params.score || 0);
@@ -230,6 +230,17 @@ function validateApprovalEvidence_(params) {
 
   if (!classId || !/^unit-\d{2}-class-\d{2}$/i.test(classId)) {
     return { ok: false, error: 'Approval rejected: explicit classId is required.' };
+  }
+  const classIdMatch = classId.match(/^unit-(\d{2})-class-(\d{2})$/i);
+  const classIdUnit = classIdMatch ? String(Number(classIdMatch[1])) : '';
+  const classIdClass = classIdMatch ? String(Number(classIdMatch[2])) : '';
+  const activeUnit = String(state && state.currentUnit || '').trim();
+  const activeClass = String(state && state.currentClass || '').trim();
+  if (classIdUnit !== activeUnit || classIdClass !== activeClass) {
+    return {
+      ok: false,
+      error: 'Approval rejected: classId does not match the active class.'
+    };
   }
   if (!policyId) {
     return { ok: false, error: 'Approval rejected: policyId is required.' };

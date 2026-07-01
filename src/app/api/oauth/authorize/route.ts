@@ -63,7 +63,7 @@ function renderConsentPage(request: Request, message = "") {
       <form method="GET" action="/api/oauth/authorize">
         ${hiddenInputs}
         <label for="learner_email">Learner email</label>
-        <input id="learner_email" name="learner_email" type="email" placeholder="pfigueroamiranda@gmail.com" autocomplete="email" />
+        <input id="learner_email" name="learner_email" type="email" placeholder="Learner email" autocomplete="email" />
         <label for="access_code">English OS authorization code</label>
         <input id="access_code" name="access_code" type="password" autocomplete="one-time-code" required autofocus />
         <button type="submit">Authorize ChatGPT</button>

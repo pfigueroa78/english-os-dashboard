@@ -13,8 +13,12 @@ export function extractRequestedUnitNumber(message: string): number | null {
   return match?.[1] ? Number(match[1]) : null;
 }
 
+const CLASS_WORD_PATTERN = "(?:clase|class|lesson|leccion|sesion|session|calse|clsae|clasee|clas)";
+const CLASS_WORD_REGEX = new RegExp(`\\b${CLASS_WORD_PATTERN}\\b`);
+const CLASS_NUMBER_REGEX = new RegExp(`\\b${CLASS_WORD_PATTERN}\\s+(\\d{1,2})\\b`);
+
 export function extractRequestedClassNumber(message: string): number | null {
-  const match = normalizeCoachMessage(message).match(/(?:clase|class|lesson)\s+(\d{1,2})/);
+  const match = normalizeCoachMessage(message).match(CLASS_NUMBER_REGEX);
   return match?.[1] ? Number(match[1]) : null;
 }
 
@@ -49,7 +53,7 @@ function hasAny(normalized: string, pattern: RegExp) {
 
 function inferActiveClassRequest(normalized: string) {
   const reasons: string[] = [];
-  const hasClassWord = hasAny(normalized, /\b(clase|class|lesson|sesion|session)\b/);
+  const hasClassWord = CLASS_WORD_REGEX.test(normalized);
   const classModeRequest = hasAny(normalized, /\b(?:modo clase|modo de clase|class mode|lesson mode)\b/);
   const studyAction = hasAny(normalized, /\b(dame|dar|quiero|quisiera|vamos|dale|toca|abre|abrir|empez\w*|empiez\w*|empec\w*|inici\w*|comenz\w*|arranc\w*|arranqu\w*|contin\w*|sig\w*|retom\w*|ensename|ensenar|estudiar|estudiemos|trabajar|trabajemos|practicar|practiquemos|start|open|continue|resume|teach|study|practice|work)\b/);
   const currentSignal = hasAny(normalized, /\b(mi|mis|actual|activa|hoy|guardada|posicion|posicionada|donde|voy|quede|quedamos|today|current|saved)\b/);
@@ -85,7 +89,7 @@ export function classifyCoachIntent(message: string): CoachIntent {
   const asksSpeaking = hasAny(normalized, /\b(speaking|hablar|conversacion|conversation|role play|pronunciacion|pronunciation)\b/);
   const asksHint = hasAny(normalized, /\b(pista|hint|ayuda corta|help me answer)\b/);
   const asksNextUnit = hasAny(normalized, /\b(?:next unit|siguiente unidad|unidad siguiente|move to the next unit|continue to the next unit|pasar a la siguiente unidad|pasemos a la siguiente unidad)\b/);
-  const asksNextClass = hasAny(normalized, /\b(?:next class|next lesson|siguiente clase|clase siguiente|siguiente leccion|leccion siguiente|dame la clase siguiente|go next|avancemos|avanzar|advance|pasemos a la siguiente|continuar a la siguiente)\b/);
+  const asksNextClass = hasAny(normalized, /\b(?:next class|next lesson|siguiente clase|clase siguiente|siguiente calse|calse siguiente|siguiente clsae|clsae siguiente|siguiente leccion|leccion siguiente|dame la clase siguiente|dame la calse siguiente|go next|avancemos|avanzar|advance|pasemos a la siguiente|continuar a la siguiente)\b/);
 
   if (asksNextUnit) {
     return { kind: "next_unit", confidence: "high", unit, classNumber, reasons: ["explicit next-unit wording"] };

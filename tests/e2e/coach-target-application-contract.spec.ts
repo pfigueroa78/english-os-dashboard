@@ -26,13 +26,13 @@ test("coach target application honors explicit class coordinates without current
       unit: 5,
       localClass: 1,
       globalClass: 29,
-      displayClass: 29,
+      displayClass: 1,
       explicitClassRequest: true,
     });
   }
 });
 
-test("coach target application displays global class for explicit global class requests", async () => {
+test("coach target application keeps local class as the learner-facing display class", async () => {
   const result = await resolveCoachClassTarget({
     message: "Dame la clase 31 de la unidad 5",
     currentUnit: "Unit 4",
@@ -46,7 +46,37 @@ test("coach target application displays global class for explicit global class r
       unit: 5,
       localClass: 3,
       globalClass: 31,
-      displayClass: 31,
+      displayClass: 3,
+      explicitClassRequest: true,
+    });
+  }
+});
+
+test("coach target application treats typo explicit requests as canonical class coordinates", async () => {
+  let lookupCount = 0;
+  const result = await resolveCoachClassTarget({
+    message: "dame la calse 2 de la unidad 5",
+    currentUnit: "Unit 4",
+    context: {
+      recommendedCurrentPosition: {
+        currentUnit: "Unit 5",
+        classNumber: 29,
+      },
+    },
+    readCurrentClassContent: async () => {
+      lookupCount += 1;
+      return {};
+    },
+  });
+
+  expect(lookupCount).toBe(0);
+  expect(result.kind).toBe("resolved");
+  if (result.kind === "resolved") {
+    expect(result.target).toMatchObject({
+      unit: 5,
+      localClass: 2,
+      globalClass: 30,
+      displayClass: 2,
       explicitClassRequest: true,
     });
   }
@@ -91,7 +121,7 @@ test("coach target application canonicalizes equivalent active-class starters th
         unit: 4,
         localClass: 7,
         globalClass: 28,
-        displayClass: 28,
+        displayClass: 7,
         explicitClassRequest: false,
       });
     }
@@ -119,7 +149,7 @@ test("coach target application falls back to saved active class if canonical loo
       unit: 4,
       localClass: 7,
       globalClass: 28,
-      displayClass: 28,
+      displayClass: 7,
       explicitClassRequest: false,
     });
   }
@@ -143,12 +173,12 @@ test("coach target application enriches ambiguous requests from English OS curre
   expect(result.kind).toBe("resolved");
   if (result.kind === "resolved") {
     expect(result.target).toMatchObject({
-      unit: 4,
-      localClass: 2,
-      globalClass: 23,
-      displayClass: 23,
-      explicitClassRequest: false,
-    });
+        unit: 4,
+        localClass: 2,
+        globalClass: 23,
+        displayClass: 2,
+        explicitClassRequest: false,
+      });
     expect(result.activeClassContent).toMatchObject({
       context: {
         currentClassIndex: {

@@ -201,7 +201,7 @@ function learnerFriendlyLessonFlow(identity: ClassIdentity, localClass?: number 
     "Primero verás la explicación, ejemplos y una práctica guiada.",
     hasLaterTeachingBlock
       ? "Después continuaremos con una producción más completa según tu respuesta."
-      : "Después harás una sola evaluación integrada.",
+      : "Después practicarás con una tarea integrada.",
   ].join(" ");
 }
 

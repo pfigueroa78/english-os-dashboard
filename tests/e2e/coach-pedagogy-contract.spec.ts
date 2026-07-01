@@ -365,6 +365,11 @@ test("coach intent resolver classifies natural request families instead of exact
 
   const specificClassRequests = [
     "Dame la clase 1 de la unidad 5",
+    "Dame la calse 2 de la unidad 5",
+    "Dame la clsae 7 de la unidad 5",
+    "Dame la clasee 3 de la unidad 5",
+    "Abre la clas 4 de la unidad 5",
+    "Abre la leccion 5 de la unidad 5",
     "Start Unit 5, Lesson 1",
     "Cambiemos a Unit 2 Class 3",
   ];

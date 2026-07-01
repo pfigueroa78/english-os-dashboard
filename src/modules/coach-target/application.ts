@@ -62,7 +62,7 @@ export async function resolveCoachClassTarget(params: {
   const unit = target.unit;
   const localClass = target.localClass;
   const globalClass = target.globalClass || globalClassFromLocalClass(localClass, unit) || localClass;
-  const displayClass = globalClass || localClass;
+  const displayClass = localClass;
   return {
     kind: "resolved",
     target: {

@@ -103,8 +103,11 @@ import type { CoachPageDispatch } from "./pageViewModel";
 import { presentCoachPage } from "./presenter";
 import {
   DEMO_LESSON,
+  DEMO_LEARNER_EMAIL,
+  DEMO_LEARNER_NAME,
   DEMO_UNIT,
   E2E_DEMO,
+  COACH_REPORT_RECIPIENT_EMAIL,
   SPECIALIST_AGENTS,
   SPECIALIST_AGENT_CONTRACTS,
   initialCoachMessages,
@@ -120,8 +123,8 @@ export function useCoachPageController() {
   const [authTimedOut, setAuthTimedOut] = useState(false);
   const authReady = isLoaded || authTimedOut || E2E_DEMO;
   const signedIn = isSignedIn || E2E_DEMO;
-  const email = user?.primaryEmailAddress?.emailAddress || (E2E_DEMO ? "demo@english-os.local" : "");
-  const learnerName = getLearnerDisplayName(user) || (E2E_DEMO ? "Pedro" : "");
+  const email = user?.primaryEmailAddress?.emailAddress || (E2E_DEMO ? DEMO_LEARNER_EMAIL : "");
+  const learnerName = getLearnerDisplayName(user) || (E2E_DEMO ? DEMO_LEARNER_NAME : "");
 
   const [messages, setMessages] = useState<Message[]>(initialCoachMessages);
   const [input, setInput] = useState("");
@@ -644,6 +647,7 @@ export function useCoachPageController() {
       index,
       activeLocationLabel,
       email,
+      recipientEmail: COACH_REPORT_RECIPIENT_EMAIL,
       studyModeLabel: studyModeLabel(studyMode),
       href: window.location.href,
       nowIso: new Date().toISOString(),

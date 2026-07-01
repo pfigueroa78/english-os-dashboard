@@ -351,7 +351,8 @@ test("resource players are width-contained and load on demand", async () => {
   expect(messageListViewModel).toContain('icon: "flag"');
   expect(pageController).toContain("reportMessage");
   expect(messageListViewModel).toContain("Reportar error en esta respuesta");
-  expect(actions).toContain("mailto:info@citizen-life.com");
+  expect(actions).toContain("recipientEmail");
+  expect(pageController).toContain("COACH_REPORT_RECIPIENT_EMAIL");
   expect(pageController).toContain("buildProgressSnapshot");
   expect(contextController).toContain("Avance:");
   expect(pageController).toContain("toggleMessageFeedback");

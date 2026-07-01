@@ -11,6 +11,7 @@ export type CoachReportParams = {
   index: number;
   activeLocationLabel: string;
   email: string;
+  recipientEmail?: string;
   studyModeLabel: string;
   href?: string;
   nowIso: string;
@@ -75,7 +76,8 @@ export function buildCoachReportMailto(params: CoachReportParams) {
     .filter(Boolean)
     .join("\n");
 
-  return `mailto:info@citizen-life.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.slice(0, 6000))}`;
+  const recipient = String(params.recipientEmail || "").replace(/[?\r\n]/g, "").trim();
+  return `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body.slice(0, 6000))}`;
 }
 
 export function buildCoachResourcePracticeMessage(params: CoachResourcePracticeInput) {

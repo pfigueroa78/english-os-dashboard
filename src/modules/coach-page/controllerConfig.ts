@@ -33,6 +33,9 @@ export type SpecialistAgent = {
 export const E2E_DEMO = process.env.NEXT_PUBLIC_E2E_DEMO === "1";
 export const DEMO_UNIT = "Unit 1";
 export const DEMO_LESSON = "Business advice speaking practice";
+export const DEMO_LEARNER_NAME = "Demo learner";
+export const DEMO_LEARNER_EMAIL = "demo-learner";
+export const COACH_REPORT_RECIPIENT_EMAIL = process.env.NEXT_PUBLIC_ENGLISH_OS_SUPPORT_EMAIL || "";
 
 export const SPECIALIST_AGENTS: SpecialistAgent[] = [
   {
@@ -65,7 +68,7 @@ export function initialCoachMessages(): CoachPageMessage[] {
     e2eDemo: E2E_DEMO,
     demoUnit: DEMO_UNIT,
     demoLesson: DEMO_LESSON,
-    demoLearnerName: "Pedro",
+    demoLearnerName: DEMO_LEARNER_NAME,
   });
 }
 

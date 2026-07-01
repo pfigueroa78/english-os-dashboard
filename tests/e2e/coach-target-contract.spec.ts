@@ -26,6 +26,34 @@ test("coach target resolver honors explicit unit/class requests over saved posit
   });
 });
 
+test("coach target resolver tolerates common class-word typos and still honors explicit coordinates", async () => {
+  const context = {
+    recommendedCurrentPosition: {
+      currentUnit: "Unit 5",
+      classNumber: 29,
+    },
+  };
+
+  const typoRequests = [
+    ["dame la calse 2 de la unidad 5", 2, 30],
+    ["dame la clsae 7 de la unidad 5", 7, 35],
+    ["dame la clasee 3 de la unidad 5", 3, 31],
+    ["abre la clas 4 de la unidad 5", 4, 32],
+    ["start unit 5 lesson 6", 6, 34],
+    ["abre la leccion 5 de la unidad 5", 5, 33],
+  ] as const;
+
+  for (const [message, localClass, globalClass] of typoRequests) {
+    expect(resolveClassTargetFromMessage(message, "Unit 4", context), message).toMatchObject({
+      unit: 5,
+      localClass,
+      globalClass,
+      explicitClassRequest: true,
+      needsCurrentClassLookup: false,
+    });
+  }
+});
+
 test("coach target resolver accepts global class numbers inside an explicit unit", async () => {
   expect(resolveClassTargetFromMessage("Dame la clase 31 de la unidad 5", "Unit 4", {})).toMatchObject({
     unit: 5,

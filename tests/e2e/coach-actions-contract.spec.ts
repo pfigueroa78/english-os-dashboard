@@ -19,12 +19,13 @@ test("coach actions build report mailto with bounded encoded content", () => {
     index: 3,
     activeLocationLabel: "Unit 4 · Class 2",
     email: "learner@example.com",
+    recipientEmail: "support-address",
     studyModeLabel: "Clase",
     href: "https://example.com/coach",
     nowIso: "2026-06-21T10:00:00.000Z",
   });
 
-  expect(mailto).toContain("mailto:info@citizen-life.com");
+  expect(mailto).toContain("mailto:support-address");
   expect(decodeURIComponent(mailto)).toContain("English OS error report · Unit 4 · Class 2");
   expect(decodeURIComponent(mailto)).toContain("Mensaje #: 4");
   expect(decodeURIComponent(mailto)).toContain("Teacher answer");

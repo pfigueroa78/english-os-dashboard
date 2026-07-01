@@ -488,7 +488,8 @@ test("application-owned identity precedes model-authored teaching", async () => 
 
   expect(renderer).toContain("guidedOpeningFallback");
   expect(renderer).toContain("stripClassConfirmationDetours(stripPrematureClassClosure(stripModelOwnedIdentity(params.body)))");
-  expect(renderer).toContain('return readableMarkdownPunctuation(sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]');
+  expect(renderer).toContain("learnerLocalClassPosition(params.position, params.unit, params.localClass, displayLesson)");
+  expect(renderer).toContain('return readableMarkdownPunctuation(sanitizeLearnerFacingReply([position, "", ...header, "", teachingBody]');
   expect(renderer).toContain('`# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`');
   expect(rendererSource).toContain("export function readableMarkdownPunctuation");
   expect(rendererSource).toContain("export function ensureTerminalPeriod");
@@ -539,7 +540,8 @@ test("video class roadmap starts with the learner action, not the wrapper sectio
     body: "Learning objective: predict ideas before watching.\n\nCommunication mission: use Unit language.\n\nYour turn: Write two predictions.",
     position: "Pedro, encontré tu clase activa en English OS: **Unit 4, Class 28**.",
     unit: 4,
-    localClass: 28,
+    localClass: 7,
+    displayClass: 28,
     identity: {
       lessonTitle: "Video Class",
       sections: "Video Class + Before watching + While watching + After watching + Speaking",
@@ -549,7 +551,10 @@ test("video class roadmap starts with the learner action, not the wrapper sectio
 
   expect(reply).toContain("Ruta de clase: **Bloque 1 de 4");
   expect(reply).toContain("Before watching");
-  expect(reply).toContain("Después: While/After watching");
+  expect(reply).toContain("Luego seguiremos con While/After watching");
+  expect(reply).not.toContain("Evaluation gate");
+  expect(reply).toContain("Unit 4, Class 7: Video Class");
+  expect(reply).not.toContain("Unit 4, Class 28");
   expect(reply).not.toContain("Paso 1 de 6");
 });
 
@@ -751,8 +756,44 @@ test("class reply displays the local unit class instead of the global class numb
 
   expect(reply).toContain("Hoy trabajaremos **class 1");
   expect(reply).not.toContain("Hoy trabajaremos **class 22");
+  expect(reply).toContain("Unit 4, Class 1: It's about time");
+  expect(reply).not.toContain("Unit 4, Class 22");
+  expect(reply).not.toContain("Evaluation gate");
+  expect(reply).not.toContain("Use After finishing my workout, I head to the office");
+  expect(reply).toContain("Use time clauses to describe when actions happen");
   expect(reply).toContain("Teacher explanation");
   expect(reply).toContain("Controlled practice");
+  expect(reply.match(/Your turn/gi)?.length).toBe(1);
+});
+
+test("listening openings teach with teacher input before asking the learner", async () => {
+  const reply = renderClassReply({
+    body: "Too short.",
+    position: "Pedro, trabajaremos con **Unit 4, Class 26**.",
+    unit: 4,
+    localClass: 5,
+    displayClass: 26,
+    identity: {
+      lessonTitle: "I had the wildest dream.",
+      bookPages: "",
+      pdfPages: "",
+      sections: "Listening & Speaking + Discussion + Reading",
+      skillFocus: "listening, speaking, discussion, reading",
+      grammarFocus: "listening for gist and details",
+      vocabularyFocus: "recurring dreams; dream meanings; flying; falling; being chased; being embraced; losing teeth; winning; stands for",
+      functions: "describe dreams; speculate about dream meanings",
+      targetStructures: "I think that means...; It sounds like...; The balloon probably stands for...",
+      expectedProduction: "predict and discuss dream meanings using dream vocabulary",
+    },
+  });
+
+  expect(reply).toContain("Unit 4, Class 5: I had the wildest dream");
+  expect(reply).not.toContain("Unit 4, Class 26");
+  expect(reply).toContain("Teacher listening input");
+  expect(reply).toContain("Gist question");
+  expect(reply).toContain("Detail question");
+  expect(reply).not.toContain("Evaluation gate");
+  expect(reply).not.toContain("I had the wildest dream..");
   expect(reply.match(/Your turn/gi)?.length).toBe(1);
 });
 
@@ -1033,7 +1074,7 @@ test("all classes display the canonical curriculum unit name", async () => {
   expect(titles.units[3]).toBe("Exploring new cities");
   expect(titles.units[4]).toBe("Early birds and night owls");
   expect(teachingContracts).toContain("passages-unit-titles.json");
-  expect(replyRendering).toContain("const displayLesson = identity.lessonTitle || identity.sections.split");
+  expect(replyRendering).toContain("const displayLesson = cleanDisplayLesson(identity.lessonTitle || identity.sections.split");
 });
 
 test("class opening cannot invent evaluation or logging results", async () => {

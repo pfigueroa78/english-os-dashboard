@@ -198,10 +198,12 @@ function activeSectionList(sectionList: string) {
 function lessonRoadmap(identity: ClassIdentity, localClass?: number | null) {
   const learningBlocks = lessonBlockRoadmap(identity, localClass);
   const activeBlock = learningBlocks[0] || "Learn & practice";
-  const laterBlocks = learningBlocks.slice(1).join(" -> ");
+  const laterBlocks = learningBlocks
+    .slice(1)
+    .filter((block) => !/evaluation gate/i.test(block));
   return [
     `Ruta de clase: **Bloque 1 de ${learningBlocks.length} - ${activeBlock}**.`,
-    laterBlocks ? `Después: ${laterBlocks}.` : "",
+    laterBlocks.length ? `Luego seguiremos con ${laterBlocks.join(" -> ")} según tu respuesta.` : "Luego avanzaremos según tu respuesta.",
   ].filter(Boolean).join(" ");
 
   const sections = activeSectionList(identity.sections);
@@ -223,7 +225,7 @@ function lessonRoadmap(identity: ClassIdentity, localClass?: number | null) {
 
 function evaluationModeLine(localClass: number) {
   if (localClass !== 7) return "";
-  return "Checkpoint de unidad: al final integraremos gramática, vocabulario y producción de toda la unidad antes de avanzar.";
+  return "Checkpoint de unidad: esta clase cierra la unidad, así que integraremos gramática, vocabulario y producción de forma gradual.";
 }
 
 export function ensureMinimumOpeningTask(reply: string, identity: ClassIdentity) {
@@ -306,13 +308,14 @@ export function renderClassReply(params: {
 }) {
   const identity = params.identity;
   const title = unitTitle(params.unit);
-  const displayLesson = identity.lessonTitle || identity.sections.split("+")[0]?.trim() || "Class session";
+  const displayLesson = cleanDisplayLesson(identity.lessonTitle || identity.sections.split("+")[0]?.trim() || "Class session");
   const formattedSkillFocus = learnerFriendlyFocus(identity.skillFocus.split(",").map((item) => item.trim()).filter(Boolean).join(", "));
   const teachingBody = guidedOpeningFallback(
     stripClassConfirmationDetours(stripPrematureClassClosure(stripModelOwnedIdentity(params.body))),
     identity,
     params.localClass,
   );
+  const position = learnerLocalClassPosition(params.position, params.unit, params.localClass, displayLesson);
   const reference = [
     `class ${params.localClass}`,
     displayLesson,
@@ -331,9 +334,25 @@ export function renderClassReply(params: {
     identity.sections ? `Empezamos con un bloque docente: **${activeSectionList(identity.sections).slice(0, 3).join(" + ") || displayLesson}**.` : "",
   ].filter(Boolean);
 
-  return readableMarkdownPunctuation(sanitizeLearnerFacingReply([params.position, "", ...header, "", teachingBody]
+  return readableMarkdownPunctuation(sanitizeLearnerFacingReply([position, "", ...header, "", teachingBody]
     .join("\n")
     .trim()));
+}
+
+function learnerLocalClassPosition(position: string, unit: number, localClass: number, lessonTitle: string) {
+  const text = String(position || "").trim();
+  const cleanLesson = cleanDisplayLesson(lessonTitle);
+  const localTarget = `Unit ${unit}, Class ${localClass}${cleanLesson ? `: ${cleanLesson}` : ""}`;
+  if (!text) return `Trabajaremos con **${localTarget}**.`;
+  return text
+    .replace(new RegExp(`Unit\\s+${unit}\\s*,\\s*Class\\s+\\d+`, "i"), localTarget)
+    .replace(new RegExp(`Unit\\s+${unit}\\s+Class\\s+\\d+`, "i"), localTarget)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function cleanDisplayLesson(value: string) {
+  return String(value || "").replace(/[.!?]+$/g, "").trim();
 }
 
 export function renderReviewReply(params: { body: string; position: string; unit: number }) {

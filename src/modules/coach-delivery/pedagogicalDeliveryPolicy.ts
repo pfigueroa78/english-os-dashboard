@@ -17,10 +17,13 @@ type TeacherOpeningViewModel = {
   activeSection: string;
   objective: string;
   mission: string;
+  warmup: string;
   context: string;
   focus: string;
   usefulLanguage: string[];
   teacherExplanation: string[];
+  teacherInput: string[];
+  noticing: string[];
   spanishSupport: string[];
   modelExamples: string[];
   controlledPractice: string[];
@@ -188,10 +191,13 @@ function baseOpening(teaching: TeachingContractV2, sectionKind: TeacherSectionKi
     activeSection: selectActiveSection(teaching, sectionKind),
     objective: learningObjective(teaching),
     mission: communicationMission(teaching, sectionKind),
+    warmup: warmupPrompt(teaching, sectionKind),
     context: realContext(teaching, sectionKind),
     focus: teaching.coreConcept,
     usefulLanguage: usefulLanguage(teaching),
     teacherExplanation: specificExplanation(teaching, sectionKind),
+    teacherInput: teacherInput(teaching, sectionKind),
+    noticing: noticingPoints(teaching, sectionKind),
     spanishSupport: teaching.spanishSupport.slice(0, 3),
     modelExamples: modelExamples(teaching),
     controlledPractice: controlledPractice(teaching, sectionKind),
@@ -274,14 +280,20 @@ function renderTeacherOpening(opening: TeacherOpeningViewModel) {
     `**Communication mission:** ${ensurePeriod(opening.mission)}`,
     "",
     `## ${ensurePeriod(opening.activeSection)}`,
+    ensurePeriod(opening.warmup),
+    "",
     opening.context,
     "",
-    `**Today's first focus:** ${ensurePeriod(opening.focus)}`,
+    `Today’s first focus is simple: ${ensurePeriod(opening.focus)}`,
     "",
     opening.usefulLanguage.length ? ["**Useful language:**", ...opening.usefulLanguage.map((item) => `- ${item}`)].join("\n") : "",
     "",
     "**Teacher explanation:**",
     ...opening.teacherExplanation.map((line) => ensurePeriod(line)),
+    "",
+    opening.teacherInput.length ? ["**Teacher input:**", ...opening.teacherInput.map((item) => ensurePeriod(item))].join("\n") : "",
+    "",
+    opening.noticing.length ? ["**Notice:**", ...opening.noticing.map((item) => `- ${ensurePeriod(item)}`)].join("\n") : "",
     "",
     opening.spanishSupport.length ? ["**Spanish support:**", ...opening.spanishSupport.map((item) => `- ${ensurePeriod(item)}`)].join("\n") : "",
     "",
@@ -296,11 +308,17 @@ function renderTeacherOpening(opening: TeacherOpeningViewModel) {
 }
 
 function learningObjective(teaching: TeachingContractV2) {
-  return `Use ${shortLanguageFocus(teaching)} in a clear B1/B2 answer`;
+  const concept = cleanConcept(teaching.coreConcept || shortLanguageFocus(teaching));
+  if (teaching.pedagogicalRole === "listening") return `Understand the main idea and reuse useful lesson language in your own words`;
+  if (teaching.pedagogicalRole === "video") return `Prepare to discuss the video topic using unit vocabulary and one useful structure`;
+  if (teaching.pedagogicalRole === "writing") return `Write a short, organized paragraph with one clear main idea`;
+  if (teaching.pedagogicalRole === "role-play") return `Start, continue, and close a short conversation naturally`;
+  if (teaching.pedagogicalRole === "grammar-plus") return `Consolidate the target grammar and choose the accurate form in context`;
+  return `Use ${lowerFirst(concept)} in your own clear B1/B2 answer`;
 }
 
 function communicationMission(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
-  const functions = teaching.targetLanguage.functions[0] || teaching.bookAnchor.skillFocus || teaching.coreConcept;
+  const functions = communicativeFunction(teaching);
   if (sectionKind === "writing") return "Write a short, organized answer with one clear main idea";
   if (sectionKind === "rolePlay") return "Handle a short conversation naturally and politely";
   if (sectionKind === "listening") return "Understand the main idea and respond with useful lesson language";
@@ -323,6 +341,26 @@ function realContext(teaching: TeachingContractV2, sectionKind: TeacherSectionKi
     return `Imagine you are speaking with another person in a realistic situation. You need natural phrases, short turns, and a polite ending.`;
   }
   return `Imagine you are using this topic in daily life or at work. You need a clear idea, one reason, and one natural example.`;
+}
+
+function warmupPrompt(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
+  const topic = lessonTopic(teaching);
+  if (sectionKind === "grammar" || sectionKind === "grammarPlus") {
+    return `Let’s first notice how the grammar helps you say something real about "${topic}", not just complete an exercise.`;
+  }
+  if (sectionKind === "listening") {
+    return `Before listening, get ready for the topic "${topic}" and listen first for the general idea.`;
+  }
+  if (sectionKind === "video") {
+    return `Before watching, we prepare your prediction and the useful language you will need.`;
+  }
+  if (sectionKind === "writing") {
+    return `Before writing, choose one clear idea and one example. That keeps your paragraph focused.`;
+  }
+  if (sectionKind === "rolePlay") {
+    return `Before speaking, picture the situation and choose one phrase you can actually use.`;
+  }
+  return `Let’s connect this lesson to a real situation before you answer.`;
 }
 
 function lessonTopic(teaching: TeachingContractV2) {
@@ -349,10 +387,65 @@ function uniqueTeachingItems(items: string[]) {
   });
 }
 
+function teacherInput(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
+  if (sectionKind === "listening") {
+    return [
+      "**Teacher listening input:**",
+      listeningMiniDialogue(teaching),
+      "Gist question: What is the main idea?",
+      "Detail question: Which useful words or expressions did you hear?",
+    ];
+  }
+  if (sectionKind === "reading") {
+    return [
+      "**Teacher reading input:**",
+      readingMiniText(teaching),
+      "Read for the main idea first. Then notice one useful word or structure you can reuse.",
+    ];
+  }
+  if (sectionKind === "writing") {
+    return [
+      "**Writing frame:**",
+      "My main idea is ______. One reason is ______. For example, ______. Because of that, ______.",
+    ];
+  }
+  return [];
+}
+
+function noticingPoints(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
+  if (sectionKind === "grammar" || sectionKind === "grammarPlus") {
+    return [
+      "Form and meaning work together: first check the structure, then check what idea it communicates.",
+      "A short accurate sentence is better than a long sentence with unclear grammar.",
+    ];
+  }
+  if (sectionKind === "vocabulary") {
+    return [
+      "Learn chunks as complete phrases so you can speak faster.",
+      "Use the chunk in a real sentence, not as an isolated translation.",
+    ];
+  }
+  if (sectionKind === "listening" || sectionKind === "video") {
+    return [
+      "First catch the gist; details come second.",
+      "Reuse one word or phrase from the input in your own answer.",
+    ];
+  }
+  if (sectionKind === "writing") {
+    return [
+      "The first sentence should make the main idea clear.",
+      "Every supporting sentence should connect back to that main idea.",
+    ];
+  }
+  return [
+    "Give one clear idea, then add one reason or example.",
+  ];
+}
+
 function specificExplanation(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
   if (sectionKind === "grammar" || sectionKind === "grammarPlus") {
     return [
-      `${teaching.coreConcept}`,
+      `${cleanConcept(teaching.coreConcept)}`,
       "Notice the form first, then use it in a short personal sentence. Accuracy matters more than length in this first step.",
     ];
   }
@@ -363,7 +456,7 @@ function specificExplanation(teaching: TeachingContractV2, sectionKind: TeacherS
     ];
   }
   return [
-    `${teaching.coreConcept}`,
+    `${cleanConcept(teaching.coreConcept)}`,
     "Start with a simple answer, then add one reason or example so it sounds more complete.",
   ];
 }
@@ -421,6 +514,47 @@ function shortLanguageFocus(teaching: TeachingContractV2) {
     teaching.coreConcept ||
     "the class language"
   );
+}
+
+function communicativeFunction(teaching: TeachingContractV2) {
+  const candidates = [
+    ...teaching.targetLanguage.functions,
+    teaching.bookAnchor.skillFocus,
+    teaching.coreConcept,
+  ].map(cleanConcept).filter(Boolean);
+  return candidates.find((candidate) => !isBookActivityLabel(candidate))
+    || cleanConcept(teaching.coreConcept)
+    || "Use the lesson language in a real conversation";
+}
+
+function isBookActivityLabel(value: string) {
+  return /^(define boldfaced words|complete|rewrite|choose|circle|match|listen and repeat|answer questions)$/i.test(String(value || "").trim());
+}
+
+function cleanConcept(value: string) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/[.!?]+$/g, "")
+    .trim();
+}
+
+function lowerFirst(value: string) {
+  const text = cleanConcept(value);
+  return text ? text.charAt(0).toLowerCase() + text.slice(1) : "the lesson language";
+}
+
+function listeningMiniDialogue(teaching: TeachingContractV2) {
+  const topic = lessonTopic(teaching);
+  const words = usefulLanguage(teaching).slice(0, 3);
+  const first = words[0] || "the main idea";
+  const second = words[1] || "one detail";
+  return `A: I heard something interesting about ${topic}. B: Really? What was the main point? A: It was mainly about ${first}, and it also mentioned ${second}.`;
+}
+
+function readingMiniText(teaching: TeachingContractV2) {
+  const topic = lessonTopic(teaching);
+  const words = usefulLanguage(teaching).slice(0, 2).join(" and ") || "the lesson topic";
+  return `This short text is about ${topic}. It introduces ${words} and gives you language you can reuse in your own answer.`;
 }
 
 function selectOpeningSections(teaching: TeachingContractV2, kind: OpeningBlockPolicy["kind"]) {

@@ -323,8 +323,8 @@ test("pre-model deterministic progress advances a learner production answer with
   expect(resolved).not.toBeNull();
   expect(resolved?.source).toBe("structured_learning_block_event");
   expect(resolved?.progress.currentStepIndex).toBe(1);
-  expect(resolved?.reply).toContain("You completed Paso 1 de 3");
-  expect(resolved?.reply).toContain("Next block: Paso 2 de 3 - Production");
+  expect(resolved?.reply).toContain("You completed Paso 1 de 2");
+  expect(resolved?.reply).toContain("Next block: Paso 2 de 2 - Evaluation gate");
   expect(resolved?.reply).not.toContain("Unit 5 — Communication");
 });
 

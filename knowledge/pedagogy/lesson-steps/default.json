@@ -3,7 +3,7 @@
   "roadmaps": {
     "video": ["Before watching", "While/After watching", "Speaking", "Evaluation gate"],
     "checkpoint": ["Checkpoint briefing", "Integrated checkpoint", "Evaluation gate"],
-    "guided_block": ["Learn & practice", "Production", "Evaluation gate"],
+    "guided_block": ["Learn & practice", "Evaluation gate"],
     "guided_block_without_production": ["Learn & practice", "Evaluation gate"]
   }
 }

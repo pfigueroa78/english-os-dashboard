@@ -275,6 +275,47 @@ function checkpointOpening(teaching: TeachingContractV2) {
 }
 
 function renderTeacherOpening(opening: TeacherOpeningViewModel) {
+  const hasGrammarContent = /grammar|clause|infinitive|gerund|modal|tense|structure|pattern/i
+    .test([opening.focus, ...opening.usefulLanguage].join(" "));
+  const languageHeading = opening.sectionKind === "grammar" || opening.sectionKind === "grammarPlus" || hasGrammarContent
+    ? "Grammar focus"
+    : "Key language";
+  const vocabularyHeading = opening.usefulLanguage.length ? "Vocabulary & useful expressions" : "";
+
+  return [
+    `**Learning objective:** ${ensurePeriod(opening.objective)}`,
+    `**Communication mission:** ${ensurePeriod(opening.mission)}`,
+    "",
+    `### ${ensurePeriod(opening.activeSection)}`,
+    ensurePeriod(opening.warmup),
+    "",
+    opening.context,
+    "",
+    `### ${ensurePeriod(languageHeading)}`,
+    ensurePeriod(opening.focus),
+    "",
+    opening.teacherExplanation.map((line) => ensurePeriod(line)).join("\n"),
+    "",
+    vocabularyHeading ? `### ${ensurePeriod(vocabularyHeading)}` : "",
+    opening.usefulLanguage.length ? opening.usefulLanguage.map((item) => `- ${item}`).join("\n") : "",
+    "",
+    opening.teacherInput.length ? ["### Teacher input.", ...opening.teacherInput.map((item) => ensurePeriod(item))].join("\n") : "",
+    "",
+    opening.noticing.length ? ["### Notice.", ...opening.noticing.map((item) => `- ${ensurePeriod(item)}`)].join("\n") : "",
+    "",
+    opening.spanishSupport.length ? ["### Spanish support.", ...opening.spanishSupport.map((item) => `- ${ensurePeriod(item)}`)].join("\n") : "",
+    "",
+    "### Model answers.",
+    ...opening.modelExamples.slice(0, 2).map((item) => `> ${ensurePeriod(item)}`),
+    "",
+    opening.controlledPractice.length ? ["### Controlled practice.", ...opening.controlledPractice.map((item) => `- ${ensurePeriod(item)}`)].join("\n") : "",
+    "",
+    "### Your turn.",
+    ensurePeriod(opening.learnerTask),
+  ].filter(Boolean).join("\n");
+}
+
+function renderTeacherOpeningLegacy(opening: TeacherOpeningViewModel) {
   return [
     `**Learning objective:** ${ensurePeriod(opening.objective)}`,
     `**Communication mission:** ${ensurePeriod(opening.mission)}`,
@@ -286,9 +327,9 @@ function renderTeacherOpening(opening: TeacherOpeningViewModel) {
     "",
     `Today’s first focus is simple: ${ensurePeriod(opening.focus)}`,
     "",
-    opening.usefulLanguage.length ? ["**Useful language:**", ...opening.usefulLanguage.map((item) => `- ${item}`)].join("\n") : "",
+    opening.usefulLanguage.length ? ["### Vocabulary & useful expressions.", ...opening.usefulLanguage.map((item) => `- ${item}`)].join("\n") : "",
     "",
-    "**Teacher explanation:**",
+    "### Key language.",
     ...opening.teacherExplanation.map((line) => ensurePeriod(line)),
     "",
     opening.teacherInput.length ? ["**Teacher input:**", ...opening.teacherInput.map((item) => ensurePeriod(item))].join("\n") : "",
@@ -297,7 +338,7 @@ function renderTeacherOpening(opening: TeacherOpeningViewModel) {
     "",
     opening.spanishSupport.length ? ["**Spanish support:**", ...opening.spanishSupport.map((item) => `- ${ensurePeriod(item)}`)].join("\n") : "",
     "",
-    "**Two model answers:**",
+    "### Model answers.",
     ...opening.modelExamples.slice(0, 2).map((item) => `> ${ensurePeriod(item)}`),
     "",
     opening.controlledPractice.length ? ["**Controlled practice:**", ...opening.controlledPractice.map((item) => `- ${ensurePeriod(item)}`)].join("\n") : "",
@@ -314,7 +355,8 @@ function learningObjective(teaching: TeachingContractV2) {
   if (teaching.pedagogicalRole === "writing") return `Write a short, organized paragraph with one clear main idea`;
   if (teaching.pedagogicalRole === "role-play") return `Start, continue, and close a short conversation naturally`;
   if (teaching.pedagogicalRole === "grammar-plus") return `Consolidate the target grammar and choose the accurate form in context`;
-  return `Use ${lowerFirst(concept)} in your own clear B1/B2 answer`;
+  if (startsWithActionVerb(concept)) return `Learn to ${lowerFirst(concept)} in a clear B1/B2 answer`;
+  return `Use ${lowerFirst(concept)} clearly in your own B1/B2 answer`;
 }
 
 function communicationMission(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
@@ -323,7 +365,9 @@ function communicationMission(teaching: TeachingContractV2, sectionKind: Teacher
   if (sectionKind === "rolePlay") return "Handle a short conversation naturally and politely";
   if (sectionKind === "listening") return "Understand the main idea and respond with useful lesson language";
   if (sectionKind === "video") return "Prepare to understand and discuss the video topic using unit language";
-  return ensurePeriod(functions).replace(/\.$/, "");
+  const mission = ensurePeriod(functions).replace(/\.$/, "");
+  if (mission.split(/\s+/).filter(Boolean).length >= 6) return mission;
+  return `${mission} in a real situation, with one clear reason or example`;
 }
 
 function realContext(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
@@ -499,11 +543,55 @@ function controlledPractice(teaching: TeachingContractV2, sectionKind: TeacherSe
 
 function learnerTask(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
   const task = String(teaching.guidedProduction || "").trim();
-  if (task) return task;
+  if (task) return enrichLearnerTask(task, teaching, sectionKind);
   if (sectionKind === "video") return "Write two short predictions about the video. Use one useful word or structure from the unit.";
   if (sectionKind === "writing") return "Write 4-5 sentences with one clear topic sentence and one supporting example.";
   if (sectionKind === "rolePlay") return "Write a 4-6 line dialogue using one opener, one follow-up, and one polite closing.";
   return "Write 3-5 sentences using the target language and one personal example.";
+}
+
+function enrichLearnerTask(task: string, teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
+  const requirements = learnerTaskRequirements(teaching, sectionKind);
+  if (!requirements.length) return task;
+  return [
+    task,
+    "",
+    "Include:",
+    ...requirements.map((requirement, index) => `${index + 1}. ${requirement}`),
+  ].join("\n");
+}
+
+function learnerTaskRequirements(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
+  if (sectionKind === "video" || sectionKind === "listening") {
+    return [
+      "one main idea",
+      "one useful word, chunk, or structure from the unit",
+      "one short personal connection or reason",
+    ];
+  }
+  if (sectionKind === "rolePlay") {
+    return [
+      "one opener",
+      "one follow-up question",
+      "one short reply",
+      "one polite closing",
+    ];
+  }
+  if (sectionKind === "writing") {
+    return [
+      "one clear topic sentence",
+      "one supporting detail",
+      "one example or reason",
+    ];
+  }
+  const patterns = teaching.targetLanguage.patterns.slice(0, 2);
+  const vocabulary = teaching.targetLanguage.vocabulary.slice(0, 2);
+  return [
+    patterns[0] ? `one sentence with ${patterns[0]}` : "",
+    patterns[1] ? `one sentence with ${patterns[1]}` : "",
+    vocabulary.length ? `two useful words or chunks from this list: ${vocabulary.join(", ")}` : "",
+    "one reason or example",
+  ].filter(Boolean).slice(0, 4);
 }
 
 function shortLanguageFocus(teaching: TeachingContractV2) {
@@ -541,6 +629,11 @@ function cleanConcept(value: string) {
 function lowerFirst(value: string) {
   const text = cleanConcept(value);
   return text ? text.charAt(0).toLowerCase() + text.slice(1) : "the lesson language";
+}
+
+function startsWithActionVerb(value: string) {
+  return /^(comment|describe|talk|explain|speculate|give|ask|answer|write|start|continue|close|compare|discuss|use|practice|prepare|understand|identify|summarize)\b/i
+    .test(cleanConcept(value));
 }
 
 function listeningMiniDialogue(teaching: TeachingContractV2) {

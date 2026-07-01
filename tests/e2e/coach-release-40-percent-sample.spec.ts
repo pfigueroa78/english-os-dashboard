@@ -78,12 +78,14 @@ function sampleTeacherBody(identity: ReturnType<typeof classIdentity>) {
     "",
     "Let's start with a compact teacher-led step.",
     "",
-    "Two model answers:",
+    "### Model answers.",
     "",
     "> I can connect this lesson to my work with one clear example.",
     "> I can use the target language and explain my reason.",
     "",
-    "Your turn - answer in English with two short sentences. Use one useful chunk from this class.",
+    "### Your turn.",
+    "",
+    "Answer in English with two short sentences. Use one useful chunk from this class.",
   ].join("\n");
 }
 
@@ -131,7 +133,7 @@ test("40 percent release sample covers 34 classes, all unit checkpoints, pedagog
     }
     expect(reply).toContain(`Unit ${item.unit}`);
     expect(reply).toContain(unitTitle(item.unit));
-    expect(reply).toContain("Ruta de clase");
+    expect(reply).toContain("Primero verás la explicación, ejemplos y una práctica guiada");
     expect(reply).toMatch(/Your turn|answer in English|Write|Complete|Try/i);
     if (approvalKind === "unit_checkpoint") {
       expect(reply).toContain("Checkpoint de unidad");

@@ -191,18 +191,31 @@ function hasExplicitOpeningTask(text: string) {
   return /(?:\byour turn\b|\bnow your turn\b|\banswer (?:in english|these|this)|\bwrite (?:two|2|one|1|a|your)|\btell me\b|\bcomplete (?:these|this)|\btry\b|^\s*\d+\.\s+\S)/im.test(text);
 }
 
+function learnerFriendlyLessonFlow(identity: ClassIdentity, localClass?: number | null) {
+  const learningBlocks = lessonBlockRoadmap(identity, localClass);
+  const hasLaterTeachingBlock = learningBlocks
+    .slice(1)
+    .some((block) => !/evaluation gate/i.test(block));
+
+  return [
+    "Primero verás la explicación, ejemplos y una práctica guiada.",
+    hasLaterTeachingBlock
+      ? "Después continuaremos con una producción más completa según tu respuesta."
+      : "Después harás una sola evaluación integrada.",
+  ].join(" ");
+}
+
 function activeSectionList(sectionList: string) {
   return classSections(sectionList);
 }
 
 function lessonRoadmap(identity: ClassIdentity, localClass?: number | null) {
   const learningBlocks = lessonBlockRoadmap(identity, localClass);
-  const activeBlock = learningBlocks[0] || "Learn & practice";
   const laterBlocks = learningBlocks
     .slice(1)
     .filter((block) => !/evaluation gate/i.test(block));
   return [
-    `Ruta de clase: **Bloque 1 de ${learningBlocks.length} - ${activeBlock}**.`,
+    "Primero verás la explicación, ejemplos y una práctica guiada.",
     laterBlocks.length ? `Luego seguiremos con ${laterBlocks.join(" -> ")} según tu respuesta.` : "Luego avanzaremos según tu respuesta.",
   ].filter(Boolean).join(" ");
 
@@ -218,7 +231,7 @@ function lessonRoadmap(identity: ClassIdentity, localClass?: number | null) {
   const current = steps[0] || firstSection;
   const next = steps.slice(1).join(" → ");
   return [
-    `Ruta de clase: **Paso 1 de ${steps.length} — ${current}**.`,
+    `Primero trabajaremos: **${current}**.`,
     next ? `Después: ${next}.` : "",
   ].filter(Boolean).join(" ");
 }
@@ -267,7 +280,7 @@ export function ensureRichOpeningTask(reply: string, identity: ClassIdentity) {
       "",
       "We will not invent the video transcript. First, we prepare your ideas so you can watch or discuss the video with a clear purpose.",
       "",
-      "Two model answers:",
+      "### Model answers.",
       "",
       "> I think the video will show different daily routines and how people manage their energy.",
       "> I expect to use Unit language like morning person, night owl, sleep habits, and productivity.",
@@ -275,7 +288,7 @@ export function ensureRichOpeningTask(reply: string, identity: ClassIdentity) {
       "> The video might compare people who work better early with people who feel more creative at night.",
       "> I can use time clauses such as after I wake up, before I start work, and whenever I feel tired.",
       "",
-      "Your turn - answer in English:",
+      "### Your turn.",
       "",
       "1. What do you think this video will show?",
       "2. Which useful Unit words or time clauses can you use to talk about it?",
@@ -289,12 +302,14 @@ export function ensureRichOpeningTask(reply: string, identity: ClassIdentity) {
     "",
     "## Starting point",
     "",
-    "Two model answers:",
+    "### Model answers.",
     "",
     "> I can explain my idea with a short example.",
     "> I can connect the lesson topic to my work or daily routine.",
     "",
-    "Your turn - answer in English with two short sentences about the lesson topic. I will continue from your answer.",
+    "### Your turn.",
+    "",
+    "Answer in English with two short sentences about the lesson topic. I will continue from your answer.",
   ].filter(Boolean).join("\n");
 }
 
@@ -324,14 +339,12 @@ export function renderClassReply(params: {
     `# ${ensureTerminalPeriod(`Unit ${params.unit}${title ? ` — ${title}` : ""}`)}`,
     `Hoy trabajaremos **${reference}**.`,
     "",
-    lessonRoadmap(identity, params.localClass),
+    learnerFriendlyLessonFlow(identity, params.localClass),
     evaluationModeLine(params.localClass),
     "",
     formattedSkillFocus
-      ? `Focus: **${formattedSkillFocus}**. Iremos paso a paso.`
+      ? `Trabajaremos especialmente: **${formattedSkillFocus}**.`
       : "Iremos paso a paso.",
-    "",
-    identity.sections ? `Empezamos con un bloque docente: **${activeSectionList(identity.sections).slice(0, 3).join(" + ") || displayLesson}**.` : "",
   ].filter(Boolean);
 
   return readableMarkdownPunctuation(sanitizeLearnerFacingReply([position, "", ...header, "", teachingBody]

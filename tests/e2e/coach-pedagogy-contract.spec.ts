@@ -496,15 +496,15 @@ test("application-owned identity precedes model-authored teaching", async () => 
   expect(rendererSource).toContain("Learning objective|Communication mission");
   expect(rendererSource).toContain("?::\\*\\*|\\*\\*:|:");
   expect(renderer).toContain('Hoy trabajaremos **${reference}**.');
-  expect(renderer).toContain("lessonRoadmap(identity, params.localClass)");
+  expect(renderer).toContain("learnerFriendlyLessonFlow(identity, params.localClass)");
   expect(rendererSource).toContain("function lessonRoadmap");
-  expect(rendererSource).toContain("Ruta de clase:");
-  expect(rendererSource).toContain("Bloque 1 de ${learningBlocks.length}");
+  expect(rendererSource).toContain("learnerFriendlyLessonFlow");
+  expect(rendererSource).toContain("Primero verás la explicación, ejemplos y una práctica guiada");
   expect(readFile("knowledge/pedagogy/lesson-steps/default.json")).toContain("Before watching");
   expect(readFile("knowledge/pedagogy/lesson-steps/default.json")).toContain("While/After watching");
   expect(readFile("src/modules/coach-delivery/pedagogicalDeliveryPolicy.ts")).toContain("lessonBlockRoadmap");
-  expect(renderer).toContain('Focus: **${formattedSkillFocus}**');
-  expect(renderer).toContain("Empezamos con un bloque docente");
+  expect(renderer).toContain('Trabajaremos especialmente: **${formattedSkillFocus}**');
+  expect(renderer).not.toContain("Empezamos con un bloque docente");
   expect(renderer).toContain("learnerFriendlyFocus");
   expect(rendererSource).toContain("it combines");
   expect(renderer).toContain("guidedOpeningFallback");
@@ -549,9 +549,9 @@ test("video class roadmap starts with the learner action, not the wrapper sectio
     },
   });
 
-  expect(reply).toContain("Ruta de clase: **Bloque 1 de 4");
+  expect(reply).toContain("Primero verás la explicación, ejemplos y una práctica guiada");
   expect(reply).toContain("Before watching");
-  expect(reply).toContain("Luego seguiremos con While/After watching");
+  expect(reply).toContain("Después continuaremos con una producción más completa");
   expect(reply).not.toContain("Evaluation gate");
   expect(reply).toContain("Unit 4, Class 7: Video Class");
   expect(reply).not.toContain("Unit 4, Class 28");
@@ -579,7 +579,7 @@ test("Grammar Plus fallback hides internal source-safety wording from learners",
     },
   });
 
-  expect(reply).toContain("Teacher explanation");
+  expect(reply).toContain("### Grammar focus");
   expect(reply).toContain("Controlled practice");
   expect(reply).toContain("Your turn");
   expect(reply).not.toContain("Recycle confirmed");
@@ -621,12 +621,12 @@ test("normal class opening teaches a full learning block before asking once", as
     },
   });
 
-  expect(reply).toContain("Bloque 1 de 3 - Learn & practice");
-  expect(reply).toContain("Empezamos con un bloque docente");
-  expect(reply).toContain("Teacher explanation");
-  expect(reply).toContain("Useful language");
+  expect(reply).not.toContain("Bloque 1 de 3 - Learn & practice");
+  expect(reply).not.toContain("Empezamos con un bloque docente");
+  expect(reply).toContain("### Grammar focus");
+  expect(reply).toContain("### Vocabulary & useful expressions");
   expect(reply).toContain("Controlled practice");
-  expect(reply).toContain("Two model answers");
+  expect(reply).toContain("Model answers");
   expect(reply).toContain("infinitive and gerund phrases");
   expect(reply).toContain("It's + adjective/noun + infinitive phrase");
   expect(reply).toContain("appropriate");
@@ -761,7 +761,7 @@ test("class reply displays the local unit class instead of the global class numb
   expect(reply).not.toContain("Evaluation gate");
   expect(reply).not.toContain("Use After finishing my workout, I head to the office");
   expect(reply).toContain("Use time clauses to describe when actions happen");
-  expect(reply).toContain("Teacher explanation");
+  expect(reply).toContain("### Grammar focus");
   expect(reply).toContain("Controlled practice");
   expect(reply.match(/Your turn/gi)?.length).toBe(1);
 });
@@ -854,7 +854,7 @@ test("small talk class opening teaches openers, closers, and a dialogue before a
   expect(reply).toContain("Conversation closers");
   expect(reply).toContain("How's it going?");
   expect(reply).toContain("It was great to meet you.");
-  expect(reply).toContain("Two model answers");
+  expect(reply).toContain("Model answers");
   expect(reply).toContain("Controlled practice");
   expect(reply).toContain("one polite closer");
   expectNoPoorTeachingTemplate(reply);
@@ -962,7 +962,7 @@ test("generic pedagogical profiles produce rich openings without unit-specific h
         targetStructures: "must have + past participle; might have + past participle; can't have + past participle",
         expectedProduction: "complete sentences using modals and discuss possible explanations",
       },
-      expected: ["## Starting point", "Useful language", "must have + past participle", "Controlled practice"],
+      expected: ["### Starting point", "Vocabulary & useful expressions", "must have + past participle", "Controlled practice"],
     },
     {
       name: "vocabulary-speaking",
@@ -978,7 +978,7 @@ test("generic pedagogical profiles produce rich openings without unit-specific h
         targetStructures: "I usually... because...; One solution is...",
         expectedProduction: "use problem-solving vocabulary in a short spoken answer",
       },
-      expected: ["## Vocabulary & Speaking", "Useful language", "deal with a problem", "Controlled practice"],
+      expected: ["### Vocabulary & Speaking", "Vocabulary & useful expressions", "deal with a problem", "Controlled practice"],
     },
     {
       name: "listening",
@@ -994,7 +994,7 @@ test("generic pedagogical profiles produce rich openings without unit-specific h
         targetStructures: "The main idea is...; One detail is...",
         expectedProduction: "answer gist and detail questions after listening",
       },
-      expected: ["Teacher explanation", "main idea", "details", "The main idea is"],
+      expected: ["Key language", "main idea", "details", "The main idea is"],
     },
     {
       name: "role-play",
@@ -1010,7 +1010,7 @@ test("generic pedagogical profiles produce rich openings without unit-specific h
         targetStructures: "A: ... / B: ...; follow-up question + short answer",
         expectedProduction: "write and perform a short dialogue",
       },
-      expected: ["## Role Play", "Two model answers", "Controlled practice", "4-6 line dialogue"],
+      expected: ["### Role Play", "Model answers", "Controlled practice", "4-6 line dialogue"],
     },
     {
       name: "writing",
@@ -1026,7 +1026,7 @@ test("generic pedagogical profiles produce rich openings without unit-specific h
         targetStructures: "topic sentence; supporting sentences; concluding sentence",
         expectedProduction: "write a paragraph with a clear main idea",
       },
-      expected: ["Teacher explanation", "Topic sentence", "Controlled practice", "Write one short paragraph"],
+      expected: ["Key language", "Topic sentence", "Controlled practice", "Write one short paragraph"],
     },
     {
       name: "discussion",
@@ -1042,7 +1042,7 @@ test("generic pedagogical profiles produce rich openings without unit-specific h
         targetStructures: "I think... because...; In my opinion...; For example...",
         expectedProduction: "give an opinion with a reason and example",
       },
-      expected: ["Teacher explanation", "I think", "For example", "Give your opinion"],
+      expected: ["Key language", "I think", "For example", "Give your opinion"],
     },
   ];
 
@@ -1143,8 +1143,8 @@ test("video class openings are enriched when the model returns a thin response",
   expect(helper).toContain("wordCount >= 45");
   expect(helper).toContain("Video Class - Before watching");
   expect(helper).toContain("We will not invent the video transcript");
-  expect(helper).toContain("Two model answers:");
-  expect(helper).toContain("Your turn - answer in English:");
+  expect(helper).toContain("### Model answers.");
+  expect(helper).toContain("### Your turn.");
   expect(helper).toContain("What do you think this video will show?");
   expect(helper).toContain("Write two short sentences");
 });

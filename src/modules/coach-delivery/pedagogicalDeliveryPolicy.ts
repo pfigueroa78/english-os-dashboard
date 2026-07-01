@@ -147,6 +147,43 @@ export function hasSufficientOpeningBlock(reply: string, identity: ClassIdentity
     && policySpecificEvidence(policy.kind, normalized);
 }
 
+export function openingQualityFeedback(reply: string, identity: ClassIdentity, localClass?: number | null) {
+  const text = String(reply || "");
+  const policy = openingBlockPolicy(identity, localClass);
+  const normalized = normalize(text);
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  const requiredHits = DELIVERY_POLICY.openingRules.requiredSignals
+    .filter((signal) => normalized.includes(normalize(signal)));
+  const forbiddenHits = DELIVERY_POLICY.openingRules.forbiddenPhrases
+    .filter((phrase) => normalized.includes(normalize(phrase)));
+  const feedback: string[] = [];
+
+  if (wordCount < DELIVERY_POLICY.openingRules.minimumWords) {
+    feedback.push(`The opening is too short (${wordCount} words). It needs fuller teaching before the learner task.`);
+  }
+  if (!hasSingleClearLearnerTask(text)) {
+    feedback.push("The opening must contain exactly one clear learner task, introduced with Your turn.");
+  }
+  const missingSignals = DELIVERY_POLICY.openingRules.requiredSignals
+    .filter((signal) => !requiredHits.includes(signal));
+  if (missingSignals.length) {
+    feedback.push(`Missing required teaching signals: ${missingSignals.join(", ")}.`);
+  }
+  if (forbiddenHits.length) {
+    feedback.push(`Remove forbidden learner-facing phrases: ${forbiddenHits.join(", ")}.`);
+  }
+  if (!policySpecificEvidence(policy.kind, normalized)) {
+    feedback.push("The opening does not show enough evidence of the required lesson block for this class type.");
+  }
+
+  return {
+    ok: feedback.length === 0,
+    policyKind: policy.kind,
+    wordCount,
+    feedback,
+  };
+}
+
 export function guidedOpeningFallback(reply: string, identity: ClassIdentity, localClass?: number | null) {
   if (hasSufficientOpeningBlock(reply, identity, localClass)) return String(reply || "").trim();
   return renderTeacherOpening(buildTeacherOpeningViewModel(identity, localClass));

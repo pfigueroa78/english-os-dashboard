@@ -93,6 +93,9 @@ test("coach API routes class requests to the pedagogy-first handler", async () =
   expect(reviewSystemPrompt).toContain("finish with exactly four numbered checkpoint items");
   expect(handler).toContain("deterministicIdentity: true");
   expect(handler).toContain("renderClassReply");
+  expect(handler).toContain("callTeacherOpeningModel");
+  expect(handler).toContain("openingSource");
+  expect(handler).toContain("teacher opening quality failed; regenerating");
   expect(handler).toContain("renderReviewReply");
   expect(replyRendering).toContain("stripModelOwnedIdentity");
   expect(modelClient).toContain("assertCompleteModelResponse");
@@ -641,6 +644,65 @@ test("normal class opening teaches a full learning block before asking once", as
   expect(reply).not.toMatch(/Communication mission:.*Starting point/s);
   expectNoPoorTeachingTemplate(reply);
   expect(reply.match(/Your turn/gi)?.length).toBe(1);
+});
+
+test("model-first class opening is not replaced when route quality gate has accepted it", async () => {
+  const modelOpening = [
+    "### Learning objective.",
+    "Learn to describe social behavior with infinitive and gerund phrases.",
+    "",
+    "### Communication mission.",
+    "At a work event, describe what feels polite or rude and explain your opinion with one clear reason.",
+    "",
+    "### Starting point.",
+    "Imagine you meet a new colleague at a company event. Some behaviors make conversation easy, and some make it uncomfortable.",
+    "",
+    "### Grammar focus.",
+    "Use It's + adjective + to + verb when you comment on an action. Use a gerund phrase when the action becomes the subject of the sentence.",
+    "",
+    "### Vocabulary & useful expressions.",
+    "- polite",
+    "- rude",
+    "- appropriate",
+    "- inappropriate",
+    "",
+    "### Model answers.",
+    "> It is polite to ask follow-up questions.",
+    "> Asking follow-up questions is polite because it shows interest.",
+    "",
+    "### Controlled practice.",
+    "- It is rude to ______.",
+    "- ______ is appropriate because ______.",
+    "",
+    "### Your turn.",
+    "Write 3 sentences about one conversation habit. Use one infinitive phrase and one gerund phrase.",
+    "",
+    "Teacher-style marker: this sentence must remain model-authored.",
+  ].join("\n");
+
+  const reply = renderClassReply({
+    body: modelOpening,
+    position: "Pedro, trabajaremos con **Unit 5, Class 29**.",
+    unit: 5,
+    localClass: 29,
+    displayClass: 29,
+    allowEmergencyFallback: false,
+    identity: {
+      lessonTitle: "Making conversation",
+      bookPages: "",
+      pdfPages: "",
+      sections: "Starting point + Grammar + Vocabulary & Speaking",
+      skillFocus: "reading, pair discussion, and vocabulary/speaking for making conversation",
+      grammarFocus: "Infinitive and gerund phrases",
+      vocabularyFocus: "appropriate; bad form; inappropriate; normal; offensive; polite; rude; strange; typical; unusual",
+      functions: "comment on behavior; discuss what is appropriate; express opinions about social behavior",
+      targetStructures: "It's + adjective/noun + infinitive phrase; gerund phrases; be considered + adjective",
+      expectedProduction: "rewrite sentences using infinitive or gerund phrases, discuss situations using the vocabulary of appropriateness",
+    },
+  });
+
+  expect(reply).toContain("Teacher-style marker: this sentence must remain model-authored.");
+  expect(reply).not.toContain("Rewrite with a gerund phrase");
 });
 
 test("teacher-led delivery is driven by Teaching Contract v2 instead of unit-specific patches", async () => {

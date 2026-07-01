@@ -320,16 +320,16 @@ export function renderClassReply(params: {
   unit: number;
   localClass: number;
   displayClass?: number | null;
+  allowEmergencyFallback?: boolean;
 }) {
   const identity = params.identity;
   const title = unitTitle(params.unit);
   const displayLesson = cleanDisplayLesson(identity.lessonTitle || identity.sections.split("+")[0]?.trim() || "Class session");
   const formattedSkillFocus = learnerFriendlyFocus(identity.skillFocus.split(",").map((item) => item.trim()).filter(Boolean).join(", "));
-  const teachingBody = guidedOpeningFallback(
-    stripClassConfirmationDetours(stripPrematureClassClosure(stripModelOwnedIdentity(params.body))),
-    identity,
-    params.localClass,
-  );
+  const cleanedBody = stripClassConfirmationDetours(stripPrematureClassClosure(stripModelOwnedIdentity(params.body)));
+  const teachingBody = params.allowEmergencyFallback === false
+    ? cleanedBody
+    : guidedOpeningFallback(cleanedBody, identity, params.localClass);
   const position = learnerLocalClassPosition(params.position, params.unit, params.localClass, displayLesson);
   const reference = [
     `class ${params.localClass}`,

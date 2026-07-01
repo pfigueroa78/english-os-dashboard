@@ -40,6 +40,10 @@ import {
   openingSectionInstruction,
 } from "@/modules/coach-delivery/teachingContracts";
 import {
+  hasSufficientOpeningBlock,
+  openingQualityFeedback,
+} from "@/modules/coach-delivery/pedagogicalDeliveryPolicy";
+import {
   assertNoMetadataFallback,
   learnerName,
   learnerPositionLine,
@@ -190,6 +194,67 @@ async function buildClassInput(params: {
       }),
     },
   ];
+}
+
+async function callTeacherOpeningModel(params: {
+  input: any[];
+  identity: ReturnType<typeof classIdentity>;
+  localClass: number;
+}) {
+  const first = await callCompleteCoachModel(params.input);
+  const firstClean = sanitizeLearnerFacingReply(first.reply);
+  if (hasSufficientOpeningBlock(firstClean, params.identity, params.localClass)) {
+    return {
+      data: first.data,
+      reply: first.reply,
+      allowEmergencyFallback: false,
+      openingSource: "model",
+      quality: openingQualityFeedback(firstClean, params.identity, params.localClass),
+    };
+  }
+
+  const firstQuality = openingQualityFeedback(firstClean, params.identity, params.localClass);
+  console.warn("[coach] teacher opening quality failed; regenerating", {
+    policyKind: firstQuality.policyKind,
+    wordCount: firstQuality.wordCount,
+    feedback: firstQuality.feedback,
+  });
+
+  const retryInput = [
+    ...params.input,
+    {
+      role: "user",
+      content: [
+        "Regenerate the opening class turn.",
+        "The previous answer did not meet the teacher-led opening policy.",
+        "Keep the same class target and class pack.",
+        "Do not expose metadata, rubrics, approval criteria, internal policy names, or implementation notes.",
+        "Teach before asking: include a clear objective, communication mission, explanation, examples, controlled practice, useful language, and exactly one Your turn task.",
+        "Quality feedback:",
+        ...firstQuality.feedback.map((item) => `- ${item}`),
+      ].join("\n"),
+    },
+  ];
+
+  const second = await callCompleteCoachModel(retryInput);
+  const secondClean = sanitizeLearnerFacingReply(second.reply);
+  const secondQuality = openingQualityFeedback(secondClean, params.identity, params.localClass);
+  const passed = hasSufficientOpeningBlock(secondClean, params.identity, params.localClass);
+  if (!passed) {
+    console.warn("[coach] regenerated teacher opening still failed; emergency fallback enabled", {
+      policyKind: secondQuality.policyKind,
+      wordCount: secondQuality.wordCount,
+      feedback: secondQuality.feedback,
+    });
+  }
+
+  return {
+    data: second.data,
+    reply: second.reply,
+    allowEmergencyFallback: !passed,
+    openingSource: passed ? "regenerated_model" : "emergency_fallback",
+    quality: secondQuality,
+  };
 }
 
 function readableClassContinuation(reply: string) {
@@ -506,11 +571,13 @@ export async function coachPost(request: Request) {
       userEmail: email,
       learnerId,
     }).catch(() => null);
-    const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
-      await buildClassInput({ message, learnerContext: context, classContent, classPack: content, filename, conversationHistory })
-    );
-    assertNoMetadataFallback(sanitizeLearnerFacingReply(modelBody));
     const identity = classIdentity(content);
+    const opening = await callTeacherOpeningModel({
+      input: await buildClassInput({ message, learnerContext: context, classContent, classPack: content, filename, conversationHistory }),
+      identity,
+      localClass,
+    });
+    if (!opening.allowEmergencyFallback) assertNoMetadataFallback(sanitizeLearnerFacingReply(opening.reply));
     const classProgress = createClassProgress({ unit, localClass, displayClass, identity });
     const position = [
       advancement.replyPrefix,
@@ -523,8 +590,8 @@ export async function coachPost(request: Request) {
         explicitClassRequest: false,
       }),
     ].filter(Boolean).join("\n");
-    const reply = renderClassReply({ body: modelBody, position, identity, unit, localClass, displayClass });
-    const u = usage(openaiData);
+    const reply = renderClassReply({ body: opening.reply, position, identity, unit, localClass, displayClass, allowEmergencyFallback: opening.allowEmergencyFallback });
+    const u = usage(opening.data);
     const session = sessionFor({
       mode: "class",
       activeUnit: unit,
@@ -540,7 +607,7 @@ export async function coachPost(request: Request) {
       session,
       activeUnit: legacyActiveUnit(session),
       activeClass: legacyActiveClass(session),
-      source: "Approved Class Advancement + Local Class Pack",
+      source: `Approved Class Advancement + Local Class Pack (${opening.openingSource})`,
       sessionEvents: sessionEventsFor(session, "class_advancement", "Approved Class Advancement + Local Class Pack"),
       deterministicIdentity: true,
       classProgress,
@@ -601,11 +668,13 @@ export async function coachPost(request: Request) {
       });
     }
 
-    const { data: openaiData, reply: modelBody } = await callCompleteCoachModel(
-      await buildClassInput({ message, learnerContext: context, classContent, classPack: content, filename, conversationHistory })
-    );
-    assertNoMetadataFallback(sanitizeLearnerFacingReply(modelBody));
     const identity = classIdentity(content);
+    const opening = await callTeacherOpeningModel({
+      input: await buildClassInput({ message, learnerContext: context, classContent, classPack: content, filename, conversationHistory }),
+      identity,
+      localClass,
+    });
+    if (!opening.allowEmergencyFallback) assertNoMetadataFallback(sanitizeLearnerFacingReply(opening.reply));
     const classProgress = createClassProgress({ unit, localClass, displayClass, identity });
     const position = learnerPositionLine({
       context,
@@ -614,8 +683,8 @@ export async function coachPost(request: Request) {
       requestedClass: displayClass,
       explicitClassRequest: target.explicitClassRequest,
     });
-    const reply = renderClassReply({ body: modelBody, position, identity, unit, localClass, displayClass });
-    const u = usage(openaiData);
+    const reply = renderClassReply({ body: opening.reply, position, identity, unit, localClass, displayClass, allowEmergencyFallback: opening.allowEmergencyFallback });
+    const u = usage(opening.data);
     const session = sessionFor({
       mode: "class",
       activeUnit: unit,
@@ -631,7 +700,7 @@ export async function coachPost(request: Request) {
       session,
       activeUnit: legacyActiveUnit(session),
       activeClass: legacyActiveClass(session),
-      source: "Local Class Pack + Pedagogy Prompt",
+      source: `Local Class Pack + Pedagogy Prompt (${opening.openingSource})`,
       sessionEvents: sessionEventsFor(session, "class", "Local Class Pack + Pedagogy Prompt"),
       deterministicIdentity: true,
       classProgress,

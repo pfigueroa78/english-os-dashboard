@@ -623,14 +623,22 @@ test("normal class opening teaches a full learning block before asking once", as
 
   expect(reply).not.toContain("Bloque 1 de 3 - Learn & practice");
   expect(reply).not.toContain("Empezamos con un bloque docente");
+  expect(reply).toContain("### Learning objective");
+  expect(reply).toContain("### Communication mission");
   expect(reply).toContain("### Grammar focus");
   expect(reply).toContain("### Vocabulary & useful expressions");
   expect(reply).toContain("Controlled practice");
   expect(reply).toContain("Model answers");
   expect(reply).toContain("infinitive and gerund phrases");
   expect(reply).toContain("It's + adjective/noun + infinitive phrase");
+  expect(reply).toContain("gerund phrases");
   expect(reply).toContain("appropriate");
+  expect(reply).toContain("rude");
+  expect(reply).toContain("Rewrite with a gerund phrase");
   expect(reply).toContain("Your turn");
+  expect(reply).not.toContain("Useful language:\n- It's + adjective/noun + infinitive phrase");
+  expect(reply).not.toContain("types of people you might meet");
+  expect(reply).not.toMatch(/Communication mission:.*Starting point/s);
   expectNoPoorTeachingTemplate(reply);
   expect(reply.match(/Your turn/gi)?.length).toBe(1);
 });

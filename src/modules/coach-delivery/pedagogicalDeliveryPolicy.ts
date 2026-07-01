@@ -20,6 +20,7 @@ type TeacherOpeningViewModel = {
   warmup: string;
   context: string;
   focus: string;
+  patterns: string[];
   usefulLanguage: string[];
   teacherExplanation: string[];
   teacherInput: string[];
@@ -194,7 +195,8 @@ function baseOpening(teaching: TeachingContractV2, sectionKind: TeacherSectionKi
     warmup: warmupPrompt(teaching, sectionKind),
     context: realContext(teaching, sectionKind),
     focus: teaching.coreConcept,
-    usefulLanguage: usefulLanguage(teaching),
+    patterns: grammarPatterns(teaching),
+    usefulLanguage: usefulVocabulary(teaching),
     teacherExplanation: specificExplanation(teaching, sectionKind),
     teacherInput: teacherInput(teaching, sectionKind),
     noticing: noticingPoints(teaching, sectionKind),
@@ -276,15 +278,18 @@ function checkpointOpening(teaching: TeachingContractV2) {
 
 function renderTeacherOpening(opening: TeacherOpeningViewModel) {
   const hasGrammarContent = /grammar|clause|infinitive|gerund|modal|tense|structure|pattern/i
-    .test([opening.focus, ...opening.usefulLanguage].join(" "));
+    .test([opening.focus, ...opening.patterns, ...opening.usefulLanguage].join(" "));
   const languageHeading = opening.sectionKind === "grammar" || opening.sectionKind === "grammarPlus" || hasGrammarContent
     ? "Grammar focus"
     : "Key language";
   const vocabularyHeading = opening.usefulLanguage.length ? "Vocabulary & useful expressions" : "";
 
   return [
-    `**Learning objective:** ${ensurePeriod(opening.objective)}`,
-    `**Communication mission:** ${ensurePeriod(opening.mission)}`,
+    "### Learning objective.",
+    ensurePeriod(opening.objective),
+    "",
+    "### Communication mission.",
+    ensurePeriod(opening.mission),
     "",
     `### ${ensurePeriod(opening.activeSection)}`,
     ensurePeriod(opening.warmup),
@@ -293,6 +298,8 @@ function renderTeacherOpening(opening: TeacherOpeningViewModel) {
     "",
     `### ${ensurePeriod(languageHeading)}`,
     ensurePeriod(opening.focus),
+    "",
+    opening.patterns.length ? ["Useful patterns:", ...opening.patterns.map((item) => `- ${item}`)].join("\n") : "",
     "",
     opening.teacherExplanation.map((line) => ensurePeriod(line)).join("\n"),
     "",
@@ -306,7 +313,7 @@ function renderTeacherOpening(opening: TeacherOpeningViewModel) {
     opening.spanishSupport.length ? ["### Spanish support.", ...opening.spanishSupport.map((item) => `- ${ensurePeriod(item)}`)].join("\n") : "",
     "",
     "### Model answers.",
-    ...opening.modelExamples.slice(0, 2).map((item) => `> ${ensurePeriod(item)}`),
+    ...opening.modelExamples.slice(0, 4).map((item) => `> ${ensurePeriod(item)}`),
     "",
     opening.controlledPractice.length ? ["### Controlled practice.", ...opening.controlledPractice.map((item) => `- ${ensurePeriod(item)}`)].join("\n") : "",
     "",
@@ -361,13 +368,15 @@ function learningObjective(teaching: TeachingContractV2) {
 
 function communicationMission(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
   const functions = communicativeFunction(teaching);
+  const vocabulary = usefulVocabulary(teaching).slice(0, 4);
   if (sectionKind === "writing") return "Write a short, organized answer with one clear main idea";
   if (sectionKind === "rolePlay") return "Handle a short conversation naturally and politely";
   if (sectionKind === "listening") return "Understand the main idea and respond with useful lesson language";
   if (sectionKind === "video") return "Prepare to understand and discuss the video topic using unit language";
   const mission = ensurePeriod(functions).replace(/\.$/, "");
-  if (mission.split(/\s+/).filter(Boolean).length >= 6) return mission;
-  return `${mission} in a real situation, with one clear reason or example`;
+  const usefulWords = vocabulary.length ? ` Use useful words like ${joinHumanList(vocabulary.slice(0, 3))}.` : "";
+  if (mission.split(/\s+/).filter(Boolean).length >= 6) return `${mission}. Give one clear reason or example.${usefulWords}`;
+  return `${mission} in a real situation, with one clear reason or example.${usefulWords}`;
 }
 
 function realContext(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
@@ -421,6 +430,19 @@ function usefulLanguage(teaching: TeachingContractV2) {
   ]).slice(0, 7);
 }
 
+function grammarPatterns(teaching: TeachingContractV2) {
+  return uniqueTeachingItems([
+    ...teaching.targetLanguage.patterns,
+    ...teaching.targetLanguage.grammar,
+  ]).filter(isLearnerFacingPattern).slice(0, 5);
+}
+
+function usefulVocabulary(teaching: TeachingContractV2) {
+  return uniqueTeachingItems(teaching.targetLanguage.vocabulary)
+    .filter(isLearnerFacingVocabulary)
+    .slice(0, 8);
+}
+
 function uniqueTeachingItems(items: string[]) {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -429,6 +451,22 @@ function uniqueTeachingItems(items: string[]) {
     seen.add(key);
     return true;
   });
+}
+
+function isLearnerFacingPattern(item: string) {
+  const text = cleanConcept(item);
+  if (!text) return false;
+  if (isBookActivityLabel(text)) return false;
+  return !/^(grammar focus|unit grammar|use target structures)$/i.test(text);
+}
+
+function isLearnerFacingVocabulary(item: string) {
+  const text = cleanConcept(item);
+  if (!text) return false;
+  if (isBookActivityLabel(text)) return false;
+  if (/^types of\b/i.test(text)) return false;
+  if (/^(comment|discuss|express|describe|talk|use|practice)\b/i.test(text)) return false;
+  return true;
 }
 
 function teacherInput(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
@@ -487,9 +525,13 @@ function noticingPoints(teaching: TeachingContractV2, sectionKind: TeacherSectio
 }
 
 function specificExplanation(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
+  const patternExplanation = grammarPatternExplanation(teaching);
+  if (patternExplanation.length && (sectionKind === "grammar" || sectionKind === "grammarPlus" || teaching.targetLanguage.patterns.length)) {
+    return patternExplanation;
+  }
   if (sectionKind === "grammar" || sectionKind === "grammarPlus") {
     return [
-      `${cleanConcept(teaching.coreConcept)}`,
+      "Use the structure to express one clear idea first. Then add a reason or example so the answer sounds complete.",
       "Notice the form first, then use it in a short personal sentence. Accuracy matters more than length in this first step.",
     ];
   }
@@ -500,9 +542,24 @@ function specificExplanation(teaching: TeachingContractV2, sectionKind: TeacherS
     ];
   }
   return [
-    `${cleanConcept(teaching.coreConcept)}`,
+    "Use the lesson language in one clear situation before you expand the answer.",
     "Start with a simple answer, then add one reason or example so it sounds more complete.",
   ];
+}
+
+function grammarPatternExplanation(teaching: TeachingContractV2) {
+  const patterns = grammarPatterns(teaching);
+  if (!patterns.length) return [];
+  const lines = [
+    "First understand what the structure helps you do, then use it in a short answer of your own.",
+  ];
+  patterns.slice(0, 3).forEach((pattern, index) => {
+    lines.push(`Pattern ${index + 1}: ${pattern}.`);
+  });
+  if (patterns.some((pattern) => /infinitive/i.test(pattern)) && patterns.some((pattern) => /gerund/i.test(pattern))) {
+    lines.push("The infinitive pattern usually introduces your comment first. The gerund pattern makes the action itself the subject, which often sounds a little more formal or mature.");
+  }
+  return lines;
 }
 
 function modelExamples(teaching: TeachingContractV2) {
@@ -515,7 +572,7 @@ function modelExamples(teaching: TeachingContractV2) {
 }
 
 function controlledPractice(teaching: TeachingContractV2, sectionKind: TeacherSectionKind) {
-  const items = teaching.controlledPractice.filter(Boolean).slice(0, 3);
+  const items = teaching.controlledPractice.filter(Boolean).slice(0, 4);
   if (items.length) return items;
   if (sectionKind === "rolePlay") {
     return [
@@ -584,8 +641,8 @@ function learnerTaskRequirements(teaching: TeachingContractV2, sectionKind: Teac
       "one example or reason",
     ];
   }
-  const patterns = teaching.targetLanguage.patterns.slice(0, 2);
-  const vocabulary = teaching.targetLanguage.vocabulary.slice(0, 2);
+  const patterns = grammarPatterns(teaching).slice(0, 2);
+  const vocabulary = usefulVocabulary(teaching).slice(0, 3);
   return [
     patterns[0] ? `one sentence with ${patterns[0]}` : "",
     patterns[1] ? `one sentence with ${patterns[1]}` : "",
@@ -629,6 +686,13 @@ function cleanConcept(value: string) {
 function lowerFirst(value: string) {
   const text = cleanConcept(value);
   return text ? text.charAt(0).toLowerCase() + text.slice(1) : "the lesson language";
+}
+
+function joinHumanList(items: string[]) {
+  const clean = items.map(cleanConcept).filter(Boolean);
+  if (clean.length <= 1) return clean[0] || "";
+  if (clean.length === 2) return `${clean[0]} and ${clean[1]}`;
+  return `${clean.slice(0, -1).join(", ")}, and ${clean[clean.length - 1]}`;
 }
 
 function startsWithActionVerb(value: string) {

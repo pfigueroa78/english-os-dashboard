@@ -284,7 +284,7 @@ function selectPractice(profile: LanguageFamilyProfile, role: PedagogicalRole) {
     "Write one sentence with the target pattern.",
     "Add one useful word or chunk from the lesson.",
     "Give one short personal example.",
-  ]).slice(0, 3);
+  ]).slice(0, 4);
 }
 
 function selectGuidedProduction(profile: LanguageFamilyProfile, role: PedagogicalRole, expectedProduction: string) {
